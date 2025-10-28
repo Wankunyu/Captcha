@@ -32,11 +32,9 @@ python run_single_experiment.py 4 --n-shot 2 --provider gemini --model gemini-2.
 | `--model` | 模型名称 | gemini-2.5-flash, gpt-4o |
 | `--max-per-type` | 每类题数 | 15 |
 | `--types` | 指定任务类型 | Dice_Count Place_Dot |
-| `--thinking` | 启用 thinking | (flag) |
-| `--collect-tokens` | 收集 token | (flag) |
-| `--error-analysis` | 错误分析 | (flag) |
-| `--dry-run` | 仅测试 | (flag) |
-
+| `--thinking` | 启用 thinking | (Bool) |
+| `--collect-tokens` | 收集 token | (Bool) |
+| `--error-analysis` | 错误分析 | (Bool) |
 
 ---
 
@@ -97,7 +95,7 @@ Hold_Button, Slide_Puzzle
 | Click_Order | 600×390 | ✅ 已处理 |
 | Place_Dot | 600×600 | ✅ 已处理 |
 | Patch_Select | 正方形 | ✅ 已处理（含5×5网格） |
-| 其他 | 原始尺寸 | ⏸️ 待处理 |
+| 其他 | 原始尺寸 | ✅ 无需处理 |
 
 ---
 
@@ -110,15 +108,13 @@ Hold_Button, Slide_Puzzle
 15 16 17 18 19
 20 21 22 23 24
 ```
-
-
 ---
 
 ## 八、实验结果位置
 
-- **CSV**: `results/exp1_gemini_gemini-2.5-flash.csv`
-- **Token**: `results/exp1_gt_gemini_gemini-2.5-flash_token_summary.json`
-- **错误分析**: `error_analysis/exp1_gt/errors.csv`
+- **CSV**: `results/`
+- **Token**: `results/**_token_summary.json`
+- **错误分析**: `error_analysis/**/errors.csv`
 
 ---
 
