@@ -52,6 +52,7 @@ assert cfg.get("providers",{}).get("openai",{}).get("api_key"), "openai.api_key 
 
 # %%
 IMG_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
+IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
 
 # Reasoning instruction for cognitive process tracing
 REASONING_INSTRUCTION = """
@@ -1053,6 +1054,37 @@ def load_few_shot_examples(few_shot_file: str = "./few_shot_examples.yaml") -> D
 
     return config if config else {}
 
+
+def _collect_image_paths(base_dir: pathlib.Path, name: str) -> List[str]:
+    """
+    Resolve image references for few-shot assets. Supports direct files and directories.
+    """
+    if not name:
+        return []
+
+    paths: List[str] = []
+    target = base_dir / name
+
+    def add_from_path(path: pathlib.Path) -> None:
+        if path.is_dir():
+            for file in sorted(path.iterdir()):
+                if file.is_file() and file.suffix.lower() in IMAGE_EXTENSIONS:
+                    paths.append(str(file))
+        elif path.is_file():
+            paths.append(str(path))
+
+    if target.exists():
+        add_from_path(target)
+    else:
+        stem = pathlib.Path(name).stem
+        for ext in [".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"]:
+            candidate = base_dir / f"{stem}{ext}"
+            if candidate.exists():
+                add_from_path(candidate)
+                break
+
+    return paths
+
 def build_few_shot_content(
     task_type: str,
     few_shot_examples: Dict,
@@ -1122,7 +1154,8 @@ def build_few_shot_content(
         if example is None:
             example = yaml_example
 
-        images = []
+        images: List[str] = []
+        seen: set[str] = set()
 
         # 某些任务类型的 filename 只是 puzzle ID，不对应真实图片文件
         # 这些任务类型使用 reference_image 和 option_images 作为实际图片
@@ -1130,17 +1163,10 @@ def build_few_shot_content(
 
         # 主图片（仅对非 puzzle_id_only 任务加载）
         if filename and task_type not in puzzle_id_only_tasks:
-            img_path = str(type_dir / filename)
-            if os.path.exists(img_path):
-                images.append(img_path)
-            else:
-                # 尝试查找其他格式（如 PNG → JPG）
-                base_name = os.path.splitext(filename)[0]
-                for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-                    alt_path = str(type_dir / f"{base_name}{ext}")
-                    if os.path.exists(alt_path):
-                        images.append(alt_path)
-                        break
+            for path in _collect_image_paths(type_dir, filename):
+                if path not in seen:
+                    images.append(path)
+                    seen.add(path)
 
         # 处理可能的第二张、第三张图片
         # 不同任务类型使用不同的字段名：
@@ -1159,17 +1185,10 @@ def build_few_shot_content(
             if field in example:
                 img_value = example[field]
                 if isinstance(img_value, str):
-                    additional_img_path = str(type_dir / img_value)
-                    if os.path.exists(additional_img_path):
-                        images.append(additional_img_path)
-                    else:
-                        # 尝试查找其他格式
-                        base_name = os.path.splitext(img_value)[0]
-                        for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-                            alt_path = str(type_dir / f"{base_name}{ext}")
-                            if os.path.exists(alt_path):
-                                images.append(alt_path)
-                                break
+                    for path in _collect_image_paths(type_dir, img_value):
+                        if path not in seen:
+                            images.append(path)
+                            seen.add(path)
 
         # 处理选择题的选项图片（options 或 option_images）
         # Connect_icon, Path_Finder: options
@@ -1185,17 +1204,10 @@ def build_few_shot_content(
             if isinstance(option_list, list):
                 for option_img in option_list:
                     if isinstance(option_img, str):
-                        option_img_path = str(type_dir / option_img)
-                        if os.path.exists(option_img_path):
-                            images.append(option_img_path)
-                        else:
-                            # 尝试查找其他格式
-                            base_name = os.path.splitext(option_img)[0]
-                            for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-                                alt_path = str(type_dir / f"{base_name}{ext}")
-                                if os.path.exists(alt_path):
-                                    images.append(alt_path)
-                                    break
+                        for path in _collect_image_paths(type_dir, option_img):
+                            if path not in seen:
+                                images.append(path)
+                                seen.add(path)
 
         # 构建简洁的答案文本（从硬编码数据中读取）
         answer = example.get("answer")
@@ -1369,7 +1381,12 @@ def build_tasks(
         # 过滤掉用作 few-shot 示例的样本
         excluded_files = exclude_examples.get(t, [])
         if excluded_files:
-            puzzle_ids = [pid for pid in puzzle_ids if pid not in excluded_files]
+            excluded_set = set(excluded_files)
+            excluded_stems = {os.path.splitext(name)[0] for name in excluded_files}
+            puzzle_ids = [
+                pid for pid in puzzle_ids
+                if pid not in excluded_set and os.path.splitext(pid)[0] not in excluded_stems
+            ]
 
         random.shuffle(puzzle_ids)
         if max_per_type:
