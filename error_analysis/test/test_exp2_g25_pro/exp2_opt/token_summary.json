@@ -1,0 +1,35 @@
+{
+  "experiment": "exp2_opt",
+  "overall": {
+    "total_questions": 20,
+    "total_tokens_in": 19683,
+    "total_tokens_out": 8805,
+    "total_tokens": 28488
+  },
+  "by_task_type": {
+    "Click_Order": {
+      "count": 5,
+      "tokens_in": 5880,
+      "tokens_out": 982,
+      "total_tokens": 6862
+    },
+    "Dice_Count": {
+      "count": 5,
+      "tokens_in": 4815,
+      "tokens_out": 5887,
+      "total_tokens": 10702
+    },
+    "Patch_Select": {
+      "count": 5,
+      "tokens_in": 4233,
+      "tokens_out": 1005,
+      "total_tokens": 5238
+    },
+    "Place_Dot": {
+      "count": 5,
+      "tokens_in": 4755,
+      "tokens_out": 931,
+      "total_tokens": 5686
+    }
+  }
+}

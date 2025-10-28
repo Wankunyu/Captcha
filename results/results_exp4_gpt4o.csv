@@ -1,0 +1,2 @@
+provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
+gemini,gemini-2.5-flash,Dice_Count,8,0.125,23266.3,23266.3,9048,4003,13051,0.012722,0.001590

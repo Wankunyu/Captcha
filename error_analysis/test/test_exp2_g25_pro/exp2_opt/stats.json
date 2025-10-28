@@ -1,0 +1,41 @@
+{
+  "experiment": "exp2_opt",
+  "by_task_type": {
+    "Click_Order": {
+      "total": 5,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 5880,
+      "tokens_out": 982
+    },
+    "Patch_Select": {
+      "total": 5,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 4233,
+      "tokens_out": 1005
+    },
+    "Dice_Count": {
+      "total": 5,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 4815,
+      "tokens_out": 5887
+    },
+    "Place_Dot": {
+      "total": 5,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 4755,
+      "tokens_out": 931
+    }
+  },
+  "overall": {
+    "total_cases": 20,
+    "total_correct": 0,
+    "overall_pass1": 0.0,
+    "total_tokens_in": 19683,
+    "total_tokens_out": 8805,
+    "total_tokens": 28488
+  }
+}

@@ -1,0 +1,13 @@
+__pycache__/
+.ipynb_checkpoints/
+.claude/
+captcha_data/
+ignore_me.ipynb
+*.pyc
+.venv/
+env/
+*.log
+wandb/
+*.ckpt
+*.pt
+*.npy

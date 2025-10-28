@@ -1,0 +1,42 @@
+{
+  "experiment": "exp2_opt",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "overall": {
+    "total_questions": 8,
+    "total_tokens_in": 7715,
+    "total_tokens_out": 3560,
+    "total_tokens": 11275,
+    "cost_usd": 0.011214
+  },
+  "by_task_type": {
+    "Click_Order": {
+      "count": 2,
+      "tokens_in": 2364,
+      "tokens_out": 283,
+      "total_tokens": 2647,
+      "cost_usd": 0.001417
+    },
+    "Dice_Count": {
+      "count": 2,
+      "tokens_in": 1926,
+      "tokens_out": 2219,
+      "total_tokens": 4145,
+      "cost_usd": 0.006125
+    },
+    "Patch_Select": {
+      "count": 2,
+      "tokens_in": 1691,
+      "tokens_out": 764,
+      "total_tokens": 2455,
+      "cost_usd": 0.002417
+    },
+    "Place_Dot": {
+      "count": 2,
+      "tokens_in": 1734,
+      "tokens_out": 294,
+      "total_tokens": 2028,
+      "cost_usd": 0.001255
+    }
+  }
+}
