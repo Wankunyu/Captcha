@@ -1,5 +1,0 @@
-provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
-gemini,gemini-2.5-flash,Click_Order,8,0.000,23100.7,23100.7,18848,944,19792,0.008014,0.001002
-gemini,gemini-2.5-flash,Dice_Count,8,0.000,25585.5,25585.5,12064,6829,18893,0.020692,0.002586
-gemini,gemini-2.5-flash,Patch_Select,8,0.250,20074.0,20074.0,11673,1241,12914,0.006604,0.000825
-gemini,gemini-2.5-flash,Place_Dot,8,0.000,171541.8,171541.8,12160,1214,13374,0.006683,0.000835
