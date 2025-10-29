@@ -1,0 +1,42 @@
+{
+  "experiment": "exp1_gt",
+  "provider": "OpenAI",
+  "model": "gpt-5-chat-latest",
+  "overall": {
+    "total_questions": 40,
+    "total_tokens_in": 45619,
+    "total_tokens_out": 38031,
+    "total_tokens": 83650,
+    "cost_usd": 0.0
+  },
+  "by_task_type": {
+    "Click_Order": {
+      "count": 10,
+      "tokens_in": 11170,
+      "tokens_out": 8211,
+      "total_tokens": 19381,
+      "cost_usd": 0.0
+    },
+    "Dice_Count": {
+      "count": 10,
+      "tokens_in": 13660,
+      "tokens_out": 13242,
+      "total_tokens": 26902,
+      "cost_usd": 0.0
+    },
+    "Patch_Select": {
+      "count": 10,
+      "tokens_in": 8989,
+      "tokens_out": 8665,
+      "total_tokens": 17654,
+      "cost_usd": 0.0
+    },
+    "Place_Dot": {
+      "count": 10,
+      "tokens_in": 11800,
+      "tokens_out": 7913,
+      "total_tokens": 19713,
+      "cost_usd": 0.0
+    }
+  }
+}
