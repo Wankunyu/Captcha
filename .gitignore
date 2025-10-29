@@ -11,3 +11,4 @@ wandb/
 *.ckpt
 *.pt
 *.npy
+.DS_Store
