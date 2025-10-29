@@ -53,6 +53,7 @@ assert cfg.get("providers",{}).get("openai",{}).get("api_key"), "openai.api_key 
 # %%
 IMG_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
 IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
+IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
 
 # Reasoning instruction for cognitive process tracing
 REASONING_INSTRUCTION = """
@@ -450,125 +451,320 @@ class ModelProvider:
 # %%
 class OpenAIProvider(ModelProvider):
     """
-    OpenAI：严格 JSON（response_format=json_object），图片以 data:URL 传入。
+    OpenAI Provider supporting GPT-5 chat (Chat Completions) and GPT-5 reasoning
+    models (Responses API) with strict JSON outputs.
     """
-    def __init__(self, model:str, api_key:str, **kwargs):
+
+    CHAT_MODELS = {"gpt-5-chat-latest"}
+    REASONING_MODELS = {"gpt-5"}
+
+    def __init__(self, model: str, api_key: str, **kwargs):
         super().__init__(model, api_key, **kwargs)
         if not self.api_key:
             raise RuntimeError("OpenAI: 请在 secrets.yaml 中配置 api_key。")
         from openai import OpenAI
+
         self.client = OpenAI(api_key=self.api_key, timeout=self.timeout)
-        self.reasoning_effort = (self.thinking_options.get("effort") or "medium")
 
-    def infer(self, prompt:str, images:List[str], json_schema:Dict[str, Any],
-              stream:bool=True, few_shot_examples:Optional[List]=None)->Tuple[str, Optional[Dict[str,Any]], Dict[str,Any]]:
-        system_msg = {"role":"system","content":
-                      (
-                          "You are a vision agent. Output ONLY a JSON object that strictly matches the given schema. "
-                          "If the schema contains optional field 'reasoning', you MUST fill it following the detailed cognitive tracing format provided."
-                      )}
+        normalized = model.lower()
+        if normalized in self.CHAT_MODELS:
+            self.is_chat_family = True
+            self.is_reasoning_family = False
+        elif normalized in self.REASONING_MODELS:
+            self.is_chat_family = False
+            self.is_reasoning_family = True
+        else:
+            raise RuntimeError(
+                f"OpenAIProvider: 不支持的模型 {model}。当前仅支持 gpt-5-chat-latest 与 gpt-5 (reasoning 模型)。"
+            )
+
+        # Default effort aligns with GPT-5 high reasoning configuration
+        self.reasoning_effort = self.thinking_options.get("effort", "high")
+        self.text_verbosity = self.thinking_options.get("verbosity", "medium")
+        self.use_strict_schema = bool(
+            kwargs.get("strict_json_schema")
+            or self.thinking_options.get("strict_json_schema", False)
+        )
+
+    # ---------- helper builders ----------
+
+    @staticmethod
+    def _system_prompt() -> str:
+        return (
+            "You are a vision agent. Output ONLY a JSON object that strictly matches the given schema. "
+            "If the schema contains optional field 'reasoning', you MUST fill it following the detailed cognitive tracing format provided."
+        )
+
+    @staticmethod
+    def _chat_image_block(path: str) -> Dict[str, Any]:
+        mime = guess_mime(path)
+        return {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{mime};base64,{IMG_CACHE.get_b64(path)}",
+                "detail": "high",
+            },
+        }
+
+    @staticmethod
+    def _responses_image_block(path: str) -> Dict[str, Any]:
+        mime = guess_mime(path)
+        return {
+            "type": "input_image",
+            "image_url": f"data:{mime};base64,{IMG_CACHE.get_b64(path)}",
+        }
+
+    @staticmethod
+    def _safe_get(obj: Any, attr: str, default: Any = None) -> Any:
+        if hasattr(obj, attr):
+            return getattr(obj, attr)
+        if isinstance(obj, dict):
+            return obj.get(attr, default)
+        return default
+
+    def _build_chat_messages(
+        self,
+        prompt: str,
+        images: List[str],
+        few_shot_examples: Optional[List],
+        schema_text: str,
+        reasoning_note: str,
+    ) -> List[Dict[str, Any]]:
+        content: List[Dict[str, Any]] = []
+
+        if few_shot_examples:
+            for example_images, example_text in few_shot_examples:
+                for img_path in example_images:
+                    if os.path.exists(img_path):
+                        content.append(self._chat_image_block(img_path))
+                content.append({"type": "text", "text": example_text})
+
+        for img_path in images:
+            if os.path.exists(img_path):
+                content.append(self._chat_image_block(img_path))
+
+        final_prompt = (
+            "Now solve this new problem:\n\n" + prompt
+            if few_shot_examples
+            else prompt
+        )
+        text_block = (
+            final_prompt
+            + "\n\nSchema:\n"
+            + schema_text
+            + (f"\n\n{reasoning_note}" if reasoning_note else "")
+        )
+        content.append({"type": "text", "text": text_block})
+
+        return [
+            {"role": "system", "content": self._system_prompt()},
+            {"role": "user", "content": content},
+        ]
+
+    def _build_responses_input(
+        self,
+        prompt: str,
+        images: List[str],
+        few_shot_examples: Optional[List],
+        schema_text: str,
+        reasoning_note: str,
+    ) -> List[Dict[str, Any]]:
+        payload: List[Dict[str, Any]] = [
+            {
+                "role": "developer",
+                "content": [{"type": "input_text", "text": self._system_prompt()}],
+            }
+        ]
+
+        user_content: List[Dict[str, Any]] = []
+
+        if few_shot_examples:
+            for example_images, example_text in few_shot_examples:
+                for img_path in example_images:
+                    if os.path.exists(img_path):
+                        user_content.append(self._responses_image_block(img_path))
+                user_content.append({"type": "input_text", "text": example_text})
+
+        for img_path in images:
+            if os.path.exists(img_path):
+                user_content.append(self._responses_image_block(img_path))
+
+        final_prompt = (
+            "Now solve this new problem:\n\n" + prompt
+            if few_shot_examples
+            else prompt
+        )
+        text_block = (
+            final_prompt
+            + "\n\nSchema:\n"
+            + schema_text
+            + (f"\n\n{reasoning_note}" if reasoning_note else "")
+        )
+        user_content.append({"type": "input_text", "text": text_block})
+
+        payload.append({"role": "user", "content": user_content})
+        return payload
+
+    # ---------- main entry ----------
+
+    def infer(
+        self,
+        prompt: str,
+        images: List[str],
+        json_schema: Dict[str, Any],
+        stream: bool = True,
+        few_shot_examples: Optional[List] = None,
+    ) -> Tuple[str, Optional[Dict[str, Any]], Dict[str, Any]]:
         schema_hint = json.dumps(json_schema, ensure_ascii=False)
-
-        # Check if reasoning field is in schema
         has_reasoning = "reasoning" in json_schema.get("properties", {})
         reasoning_note = REASONING_INSTRUCTION if has_reasoning else ""
 
-        content = []
-
-        # 1. Add few-shot examples first (if any)
-        if few_shot_examples:
-            for example_images, example_text in few_shot_examples:
-                # Add example images
-                for img_path in example_images:
-                    if os.path.exists(img_path):
-                        mime = guess_mime(img_path)
-                        content.append({
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime};base64,{IMG_CACHE.get_b64(img_path)}",
-                                "detail": "high"
-                            }
-                        })
-                # Add example answer text
-                content.append({"type":"text","text": example_text})
-
-        # 2. Add test images
-        for p in images:
-            mime = guess_mime(p)
-            content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:{mime};base64,{IMG_CACHE.get_b64(p)}",
-                    "detail": "high"
-                }
-            })
-
-        # 3. Add test prompt (with prefix if few-shot is used)
-        if few_shot_examples:
-            final_prompt = "Now solve this new problem:\n\n" + prompt
-        else:
-            final_prompt = prompt
-
-        content.append({"type":"text","text": (
-            final_prompt +
-            "\n\nSchema:\n" + schema_hint +
-            (f"\n\n{reasoning_note}" if reasoning_note else "")
-        )})
-
-        user_msg = {"role":"user","content": content}
-        response_format = {"type":"json_object"}
-
-        request_kwargs = {}
-        if self.thinking_enabled:
-            effort = self.thinking_options.get("effort", self.reasoning_effort)
-            request_kwargs["reasoning"] = {"effort": effort}
-
         start = time.perf_counter()
-        ttft = None
+        ttft_ms: Optional[float] = None
         tokens_in = tokens_out = None
 
         try:
-            if stream:
-                s = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[system_msg, user_msg],
-                    response_format=response_format,
-                    temperature=0,
-                    stream=True,
-                    **request_kwargs
+            if self.is_chat_family:
+                messages = self._build_chat_messages(
+                    prompt, images, few_shot_examples, schema_hint, reasoning_note
                 )
-                chunks = []
-                for i, chunk in enumerate(s):
-                    if ttft is None:
-                        ttft = (time.perf_counter() - start) * 1000.0
-                    chunks.append(chunk.choices[0].delta.content or "")
-                raw = "".join(chunks)
-                e2e = (time.perf_counter() - start) * 1000.0
+                raw, tokens_in, tokens_out, ttft_ms = self._infer_chat(messages, stream)
             else:
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[system_msg, user_msg],
-                    response_format=response_format,
-                    temperature=0,
-                    **request_kwargs
+                responses_input = self._build_responses_input(
+                    prompt, images, few_shot_examples, schema_hint, reasoning_note
                 )
-                if ttft is None: ttft = (time.perf_counter() - start) * 1000.0
-                raw = resp.choices[0].message.content or ""
-                e2e = (time.perf_counter() - start) * 1000.0
-                try:
-                    usage = resp.usage
-                    tokens_in = getattr(usage, "prompt_tokens", None)
-                    tokens_out = getattr(usage, "completion_tokens", None)
-                except Exception:
-                    pass
+                raw, tokens_in, tokens_out, ttft_ms = self._infer_responses(
+                    responses_input, json_schema, stream
+                )
         except Exception as e:
-            raw = f'__ERROR__: {type(e).__name__}: {e}'
-            e2e = (time.perf_counter() - start) * 1000.0
-            ttft = ttft or e2e
+            raw = f"__ERROR__: {type(e).__name__}: {e}"
+            ttft_ms = ttft_ms or (time.perf_counter() - start) * 1000.0
 
+        e2e_ms = (time.perf_counter() - start) * 1000.0
         parsed = extract_json(raw)
-        meta = dict(ttft_ms=ttft or e2e, e2e_ms=e2e, tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=None)
+        meta = dict(
+            ttft_ms=ttft_ms or e2e_ms,
+            e2e_ms=e2e_ms,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_usd=None,
+        )
         return raw, parsed, meta
+
+    # ---------- chat branch ----------
+
+    def _infer_chat(
+        self, messages: List[Dict[str, Any]], stream: bool
+    ) -> Tuple[str, Optional[int], Optional[int], Optional[float]]:
+        response_format = {"type": "json_object"}
+        start = time.perf_counter()
+        ttft_ms: Optional[float] = None
+        tokens_in = tokens_out = None
+
+        if stream:
+            chunks: List[str] = []
+            for event in self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                response_format=response_format,
+                temperature=0,
+                stream=True,
+            ):
+                delta = event.choices[0].delta.content if event.choices else None
+                if delta:
+                    if ttft_ms is None:
+                        ttft_ms = (time.perf_counter() - start) * 1000.0
+                    chunks.append(delta)
+            raw = "".join(chunks)
+        else:
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                response_format=response_format,
+                temperature=0,
+            )
+            raw = resp.choices[0].message.content or ""
+            usage = getattr(resp, "usage", None)
+            if usage:
+                tokens_in = getattr(usage, "prompt_tokens", None)
+                tokens_out = getattr(usage, "completion_tokens", None)
+            ttft_ms = (time.perf_counter() - start) * 1000.0
+
+        return raw, tokens_in, tokens_out, ttft_ms
+
+    # ---------- reasoning branch (Responses API) ----------
+
+    def _infer_responses(
+        self,
+        responses_input: List[Dict[str, Any]],
+        json_schema: Dict[str, Any],
+        stream: bool,
+    ) -> Tuple[str, Optional[int], Optional[int], Optional[float]]:
+        request_body: Dict[str, Any] = {
+            "model": self.model,
+            "input": responses_input,
+            "text": {"verbosity": self.text_verbosity},
+        }
+
+        if self.thinking_enabled:
+            effort = self.thinking_options.get("effort", self.reasoning_effort)
+            request_body["reasoning"] = {"effort": effort}
+
+        if self.use_strict_schema:
+            request_body["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "ExtractionSchema",
+                    "schema": json_schema,
+                    "strict": True,
+                },
+            }
+
+        start = time.perf_counter()
+        ttft_ms: Optional[float] = None
+        tokens_in = tokens_out = None
+
+        if stream:
+            chunks: List[str] = []
+            for event in self.client.responses.create(stream=True, **request_body):
+                event_type = self._safe_get(event, "type")
+                if event_type == "response.output_text.delta":
+                    delta = self._safe_get(event, "delta")
+                    if delta:
+                        if ttft_ms is None:
+                            ttft_ms = (time.perf_counter() - start) * 1000.0
+                        chunks.append(delta)
+                elif event_type == "response.completed":
+                    resp_obj = self._safe_get(event, "response")
+                    if resp_obj:
+                        usage = self._safe_get(resp_obj, "usage")
+                        if usage:
+                            tokens_in = self._safe_get(usage, "input_tokens")
+                            tokens_out = self._safe_get(usage, "output_tokens")
+            raw = "".join(chunks)
+        else:
+            resp = self.client.responses.create(**request_body)
+            output_chunks: List[str] = []
+            outputs = self._safe_get(resp, "output")
+            if outputs:
+                for item in outputs:
+                    content_list = self._safe_get(item, "content")
+                    if not content_list:
+                        continue
+                    for content in content_list:
+                        ctype = self._safe_get(content, "type")
+                        if ctype == "output_text":
+                            text = self._safe_get(content, "text")
+                            if text:
+                                output_chunks.append(text)
+            raw = "".join(output_chunks)
+            usage = self._safe_get(resp, "usage")
+            if usage:
+                tokens_in = self._safe_get(usage, "input_tokens")
+                tokens_out = self._safe_get(usage, "output_tokens")
+            ttft_ms = (time.perf_counter() - start) * 1000.0
+
+        return raw, tokens_in, tokens_out, ttft_ms
 
 # %% [markdown]
 # #### Anthropic Provider

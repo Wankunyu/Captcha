@@ -1,0 +1,41 @@
+{
+  "experiment": "exp4_fewshot",
+  "by_task_type": {
+    "Click_Order": {
+      "total": 8,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 0,
+      "tokens_out": 0
+    },
+    "Dice_Count": {
+      "total": 8,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 0,
+      "tokens_out": 0
+    },
+    "Place_Dot": {
+      "total": 8,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 0,
+      "tokens_out": 0
+    },
+    "Patch_Select": {
+      "total": 8,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 0,
+      "tokens_out": 0
+    }
+  },
+  "overall": {
+    "total_cases": 32,
+    "total_correct": 0,
+    "overall_pass1": 0.0,
+    "total_tokens_in": 0,
+    "total_tokens_out": 0,
+    "total_tokens": 0
+  }
+}
