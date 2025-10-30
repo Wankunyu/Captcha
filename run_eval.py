@@ -328,7 +328,34 @@ def _describe_failure(task, parsed, raw: str) -> str:
             parts.append("未识别到差异，检查原始响应格式是否符合要求。")
         return "；".join(parts)
 
-    if task_type in ("Place_Dot", "Geometry_Click", "Pick_Area", "Misleading_Click"):
+    if task_type == "Pick_Area":
+        if not isinstance(parsed, dict):
+            return "未返回坐标点。"
+        pt = parsed.get("point") or {}
+        if "x" not in pt or "y" not in pt:
+            return "预测点缺少 x/y 坐标。"
+        x_pred = float(pt.get("x"))
+        y_pred = float(pt.get("y"))
+        box = gt.get("area_box")
+        if not box:
+            return "GT 区域缺失，无法分析。"
+        if _is_rect_hit(x_pred, y_pred, box):
+            return "预测点落在 GT 区域内，但仍未通过校验，检查 answer_type 或 JSON 结构。"
+        # 规范化输出区域范围
+        if isinstance(box, dict) and all(k in box for k in ("x","y","width","height")):
+            x1, y1 = float(box["x"]), float(box["y"])
+            x2, y2 = x1 + float(box["width"]), y1 + float(box["height"])
+        elif isinstance(box, (list, tuple)) and len(box) == 2:
+            (x1, y1), (x2, y2) = box
+            x1, y1, x2, y2 = float(x1), float(y1), float(x2), float(y2)
+        else:
+            return "GT 区域格式异常，无法分析。"
+        return (
+            f"预测点 ({x_pred:.1f},{y_pred:.1f}) 不在 GT 区域内。"
+            f"GT 范围 ≈ [{min(x1,x2):.1f},{min(y1,y2):.1f}] 到 [{max(x1,x2):.1f},{max(y1,y2):.1f}] 像素。"
+        )
+
+    if task_type in ("Place_Dot", "Geometry_Click", "Misleading_Click"):
         if not isinstance(parsed, dict):
             return "未返回坐标点。"
         pred_pt = parsed.get("point") or {}
