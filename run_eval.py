@@ -1038,53 +1038,102 @@ class GeminiProvider(ModelProvider):
 # %%
 # (Legacy Gemini File API helper removed; refer to historical commits if needed.)
 
-
 # %% [markdown]
-# #### Qwen Provider
+# #### Fireworks AI Provider
 
 # %%
-class QwenProvider(ModelProvider):
+class FireworksProvider(ModelProvider):
     """
-    Qwen（DashScope 兼容 OpenAI）：与 OpenAI 相同的数据结构（data:URL）。
+    Fireworks AI Provider: OpenAI-compatible API with JSON Schema support.
+    Supports vision-language models like Qwen3-VL-235B.
+
+    Base URL: https://api.fireworks.ai/inference/v1
+    Model format: accounts/fireworks/models/{model_name}
     """
     def __init__(self, model:str, api_key:str, base_url:str=None, **kwargs):
         super().__init__(model, api_key, **kwargs)
         if not self.api_key:
-            raise RuntimeError("Qwen: 请在 secrets.yaml 中配置 api_key。")
+            raise RuntimeError("Fireworks: 请在 secrets.yaml 中配置 api_key。")
         from openai import OpenAI
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url=base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            base_url=base_url or "https://api.fireworks.ai/inference/v1",
             timeout=self.timeout
         )
 
     def infer(self, prompt:str, images:List[str], json_schema:Dict[str, Any],
-              stream:bool=True)->Tuple[str, Optional[Dict[str,Any]], Dict[str,Any]]:
+              stream:bool=True, few_shot_examples:Optional[List]=None)->Tuple[str, Optional[Dict[str,Any]], Dict[str,Any]]:
+        """
+        Fireworks inference with JSON Schema support.
+
+        Supports:
+        - Vision input (up to 30 images, max 10MB total base64)
+        - JSON Schema structured output
+        - Few-shot examples
+        """
         # Check if reasoning field is in schema
         has_reasoning = "reasoning" in json_schema.get("properties", {})
         reasoning_note = REASONING_INSTRUCTION if has_reasoning else ""
 
-        content = [{"type":"text","text": (
-            prompt +
-            "\nReturn ONLY valid JSON per schema:\n" + json.dumps(json_schema) +
-            (f"\n\n{reasoning_note}" if reasoning_note else "")
-        )}]
+        content = []
+
+        # 1. Add few-shot examples first (if any)
+        if few_shot_examples:
+            for example_images, example_text in few_shot_examples:
+                # Add example images
+                for img_path in example_images:
+                    if os.path.exists(img_path):
+                        mime = guess_mime(img_path)
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime};base64,{IMG_CACHE.get_b64(img_path)}",
+                                "detail": "high"
+                            }
+                        })
+                # Add example answer text
+                content.append({"type": "text", "text": example_text})
+            # Add separator for test problem
+            content.append({"type": "text", "text": "\n\nNow solve this new problem:\n\n"})
+
+        # 2. Add test prompt text
+        content.append({
+            "type": "text",
+            "text": (
+                prompt +
+                "\nReturn ONLY valid JSON per schema." +
+                (f"\n\n{reasoning_note}" if reasoning_note else "")
+            )
+        })
+
+        # 3. Add test images
         for p in images:
             mime = guess_mime(p)
             content.append({
-                "type":"image_url",
+                "type": "image_url",
                 "image_url": {
                     "url": f"data:{mime};base64,{IMG_CACHE.get_b64(p)}",
                     "detail": "high"
                 }
             })
+
         msgs = [
-            {"role":"system","content":"Output ONLY a JSON object that strictly matches the schema."},
-            {"role":"user","content":content}
+            {"role": "system", "content": "Output ONLY a JSON object that strictly matches the schema."},
+            {"role": "user", "content": content}
         ]
 
         if self.thinking_enabled:
-            print("[WARN] Qwen provider: thinking flag is not supported on the DashScope compatible endpoint; ignoring.")
+            print("[WARN] Fireworks provider: thinking flag is not explicitly supported; model may ignore.")
+
+        # Prepare response_format with JSON Schema
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "captcha_response",
+                "schema": json_schema,
+                "strict": True  # Fireworks supports strict mode
+            }
+        }
 
         start = time.perf_counter()
         try:
@@ -1092,6 +1141,7 @@ class QwenProvider(ModelProvider):
                 model=self.model,
                 messages=msgs,
                 temperature=0,
+                response_format=response_format,
             )
             raw = resp.choices[0].message.content or ""
             tokens_in = getattr(getattr(resp, "usage", None), "prompt_tokens", None)
@@ -1114,7 +1164,7 @@ def make_provider(name:str, model:str, secrets:dict, timeout_sec:float,
     """
     根据名称创建具体 Provider 实例，并从 secrets 中注入 api_key/base_url。
     参数：
-        name: provider 名称（openai/anthropic/gemini/qwen）。
+        name: provider 名称（openai/anthropic/gemini/fireworks）。
         model: 模型名称。
         secrets: 配置字典（load_secrets 返回）。
         timeout_sec: 超时秒数。
@@ -1147,9 +1197,9 @@ def make_provider(name:str, model:str, secrets:dict, timeout_sec:float,
         return AnthropicProvider(model=model, api_key=api_key, **common_kwargs)
     if name_l == "gemini":
         return GeminiProvider(model=model, api_key=api_key, **common_kwargs)
-    if name_l == "qwen":
-        return QwenProvider(model=model, api_key=api_key, base_url=prov_cfg.get("base_url"), **common_kwargs)
-    raise ValueError(f"未知 provider: {name}")
+    if name_l == "fireworks":
+        return FireworksProvider(model=model, api_key=api_key, base_url=prov_cfg.get("base_url"), **common_kwargs)
+    raise ValueError(f"未知 provider: {name}。支持的 providers: openai, anthropic, gemini, fireworks")
 
 
 
@@ -2926,7 +2976,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-root", required=True, help="./captcha_data")
     parser.add_argument("--types", nargs="+", required=True, help="评测的类型（如 Dice_Count Geometry_Click ...）")
-    parser.add_argument("--provider", default="openai", help="openai|anthropic|gemini|qwen")
+    parser.add_argument("--provider", default="openai", help="openai|anthropic|gemini|fireworks")
     parser.add_argument("--model", default="gpt-4o-mini", help="模型名称")
     parser.add_argument("--max-per-type", type=int, default=15, help="每类最多题数")
     parser.add_argument("--out-csv", default="results.csv", help="输出 CSV 路径")
@@ -3150,7 +3200,7 @@ def exp2_run_auto_only(
 
 exp2_run_auto_only(
     dataset_root="./captcha_data",
-    provider="openai",                 # 或 gemini / anthropic / qwen
+    provider="openai",                 # 或 gemini / anthropic / fireworks
     model="gpt-4o",               
     prompts_file="./prompts_optimized.yaml",
     
