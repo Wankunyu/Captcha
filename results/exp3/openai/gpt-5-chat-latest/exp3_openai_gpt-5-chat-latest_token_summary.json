@@ -1,0 +1,101 @@
+{
+  "provider": "openai",
+  "model": "gpt-5-chat-latest",
+  "overall": {
+    "tokens_in": 262758,
+    "tokens_out": 2628,
+    "total_tokens": 265386
+  },
+  "by_type": {
+    "Select_Animal": {
+      "tokens_in": 855,
+      "tokens_out": 14,
+      "total_tokens": 869
+    },
+    "Rotation_Match": {
+      "tokens_in": 10235,
+      "tokens_out": 91,
+      "total_tokens": 10326
+    },
+    "Dart_Count": {
+      "tokens_in": 83802,
+      "tokens_out": 140,
+      "total_tokens": 83942
+    },
+    "Coordinates": {
+      "tokens_in": 5541,
+      "tokens_out": 14,
+      "total_tokens": 5555
+    },
+    "Bingo": {
+      "tokens_in": 8798,
+      "tokens_out": 160,
+      "total_tokens": 8958
+    },
+    "Image_Recognition": {
+      "tokens_in": 2126,
+      "tokens_out": 26,
+      "total_tokens": 2152
+    },
+    "Place_Dot": {
+      "tokens_in": 9777,
+      "tokens_out": 230,
+      "total_tokens": 10007
+    },
+    "Pick_Area": {
+      "tokens_in": 8742,
+      "tokens_out": 230,
+      "total_tokens": 8972
+    },
+    "Unusual_Detection": {
+      "tokens_in": 2598,
+      "tokens_out": 54,
+      "total_tokens": 2652
+    },
+    "Geometry_Click": {
+      "tokens_in": 5564,
+      "tokens_out": 230,
+      "total_tokens": 5794
+    },
+    "Click_Order": {
+      "tokens_in": 8773,
+      "tokens_out": 600,
+      "total_tokens": 9373
+    },
+    "Object_Match": {
+      "tokens_in": 39998,
+      "tokens_out": 140,
+      "total_tokens": 40138
+    },
+    "Patch_Select": {
+      "tokens_in": 6220,
+      "tokens_out": 281,
+      "total_tokens": 6501
+    },
+    "Image_Matching": {
+      "tokens_in": 41622,
+      "tokens_out": 140,
+      "total_tokens": 41762
+    },
+    "Connect_Icon": {
+      "tokens_in": 11483,
+      "tokens_out": 70,
+      "total_tokens": 11553
+    },
+    "Path_Finder": {
+      "tokens_in": 3649,
+      "tokens_out": 55,
+      "total_tokens": 3704
+    },
+    "Misleading_Click": {
+      "tokens_in": 868,
+      "tokens_out": 23,
+      "total_tokens": 891
+    },
+    "Dice_Count": {
+      "tokens_in": 12107,
+      "tokens_out": 130,
+      "total_tokens": 12237
+    }
+  }
+}
