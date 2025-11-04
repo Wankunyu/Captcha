@@ -510,7 +510,7 @@ class OpenAIProvider(ModelProvider):
             )
 
         # Default effort aligns with GPT-5 high reasoning configuration
-        self.reasoning_effort = self.thinking_options.get("effort", "high")
+        self.reasoning_effort = self.thinking_options.get("effort", "medium")
         self.text_verbosity = self.thinking_options.get("verbosity", "medium")
         self.use_strict_schema = bool(
             kwargs.get("strict_json_schema")
