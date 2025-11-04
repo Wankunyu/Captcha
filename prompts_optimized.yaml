@@ -163,10 +163,19 @@ types:
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Bingo: |-
-    Task: Return one pair of indices (i,j) such that swapping them yields a valid line per the puzzle’s win condition.
+    Task: Return one pair of indices (i,j) such that swapping them yields a valid line per the puzzle's win condition.
+
+    Grid Layout (3×3):
+    - Cells are indexed 0-8 in row-major order (0-based indexing):
+      0  1  2
+      3  4  5
+      6  7  8
+    - Index 0 is top-left, index 8 is bottom-right
 
     Rules:
-    - If multiple swaps are valid, choose the lexicographically smallest pair (i<j, then compare i, then j).
+    - Indices MUST be 0-based (starting from 0, not 1)
+    - Return indices in the format [i, j] where both i and j are in the range [0, 8]
+    - If multiple swaps are valid, choose the lexicographically smallest pair (i<j, then compare i, then j)
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
