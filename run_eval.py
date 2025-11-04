@@ -158,12 +158,16 @@ def estimate_cost(provider: str, model: str, tokens_in: Optional[int], tokens_ou
         pricing = (secrets.get("pricing") or {}).get(provider, {})
         p = pricing.get(model) or pricing.get(model.lower())
         if not p:
+            print(f"[WARNING] No pricing found for provider='{provider}', model='{model}'")
             return None
         def _cost(toks, per_1k):
             if toks is None or per_1k is None: return 0.0
             return (toks / 1000.0) * float(per_1k)
         return round(_cost(tokens_in, p.get("in_per_1k")) + _cost(tokens_out, p.get("out_per_1k")), 6)
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] estimate_cost failed: provider={provider}, model={model}, error={e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
