@@ -195,8 +195,41 @@ def extract_json(text: str) -> Optional[dict]:
 
 def guess_mime(path: str) -> str:
     """
-    基于文件扩展名推测 MIME（不读取像素，不转换编码）
+    基于文件实际内容（magic bytes）检测 MIME 类型，而不是扩展名。
+    这避免了文件扩展名与实际格式不匹配导致的 API 错误。
     """
+    try:
+        with open(path, "rb") as f:
+            header = f.read(12)  # 读取前12字节以检测所有常见格式
+
+        # PNG: 89 50 4E 47 0D 0A 1A 0A
+        if header[:8] == b'\x89PNG\r\n\x1a\n':
+            return "image/png"
+
+        # JPEG: FF D8 FF
+        if header[:3] == b'\xff\xd8\xff':
+            return "image/jpeg"
+
+        # GIF: GIF87a or GIF89a
+        if header[:6] in (b'GIF87a', b'GIF89a'):
+            return "image/gif"
+
+        # WebP: RIFF....WEBP
+        if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+            return "image/webp"
+
+        # BMP: BM
+        if header[:2] == b'BM':
+            return "image/bmp"
+
+        # TIFF: II (little-endian) or MM (big-endian)
+        if header[:2] in (b'II\x2a\x00', b'MM\x00\x2a'):
+            return "image/tiff"
+
+    except Exception:
+        pass
+
+    # Fallback to extension-based detection
     m, _ = mimetypes.guess_type(path)
     if m:
         return m
@@ -803,7 +836,7 @@ class OpenAIProvider(ModelProvider):
 # %%
 class AnthropicProvider(ModelProvider):
     """
-    Anthropic（Claude）：使用 messages.create + json_schema response_format。
+    Anthropic（Claude）：使用 messages.create + json_schema tools。
     图片以“原始字节的 base64 + MIME”传入，不做转换。
     """
     def __init__(self, model:str, api_key:str, **kwargs):
@@ -823,8 +856,53 @@ class AnthropicProvider(ModelProvider):
 
     @staticmethod
     def _img_part(path:str)->dict:
+        """
+        准备图片数据供 Anthropic API 使用。
+        如果 base64 数据超过 5MB，自动压缩图片以符合 API 限制。
+        """
         b64 = IMG_CACHE.get_b64(path)
         mime = guess_mime(path)
+
+        # Anthropic 限制：单个图片不能超过 5MB
+        MAX_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+        b64_size = len(b64) * 3 // 4  # base64 编码后大小约为原始大小的 4/3
+
+        if b64_size > MAX_SIZE_BYTES:
+            # 需要压缩图片
+            try:
+                from PIL import Image
+                import io
+
+                # 读取原始图片
+                img = Image.open(path)
+
+                # 计算压缩质量（从 85 开始，逐步降低直到符合要求）
+                for quality in [85, 75, 65, 55, 45, 35]:
+                    buffer = io.BytesIO()
+
+                    # 保存为 JPEG（通常更小）
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        # 有透明通道的转换为 RGB
+                        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                        rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                        rgb_img.save(buffer, format='JPEG', quality=quality, optimize=True)
+                    else:
+                        img.save(buffer, format='JPEG', quality=quality, optimize=True)
+
+                    compressed_bytes = buffer.getvalue()
+                    compressed_b64 = base64.b64encode(compressed_bytes).decode('ascii')
+
+                    if len(compressed_bytes) <= MAX_SIZE_BYTES:
+                        print(f"  [Anthropic] 图片 {os.path.basename(path)} 压缩: {b64_size / (1024 * 1024):.2f} MB → {len(compressed_bytes) / (1024 * 1024):.2f} MB (quality={quality})")
+                        return {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":compressed_b64}}
+
+                # 如果所有质量都不能满足，使用最低质量
+                print(f"  [Anthropic] 警告: 图片 {os.path.basename(path)} 即使以最低质量也无法压缩到 5MB 以下")
+                return {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":compressed_b64}}
+
+            except Exception as e:
+                print(f"  [Anthropic] 图片压缩失败: {e}，使用原始图片")
+
         return {"type":"image","source":{"type":"base64","media_type":mime,"data":b64}}
 
     def infer(self, prompt:str, images:List[str], json_schema:Dict[str, Any],
@@ -857,14 +935,16 @@ class AnthropicProvider(ModelProvider):
 
         blocks.append({"type":"text","text": (
             final_prompt +
-            "\nReturn ONLY valid JSON per schema." +
             (f"\n\n{reasoning_note}" if reasoning_note else "")
         )})
 
-        response_format = {
-            "type": "json_schema",
-            "json_schema": {"name": "ocw_schema","schema": json_schema,"strict": True}
-        }
+        # Anthropic: Use tool calling to enforce JSON schema (most reliable method)
+        # Define a single tool with our JSON schema as input_schema
+        tools = [{
+            "name": "submit_answer",
+            "description": "Submit the answer in the required JSON format",
+            "input_schema": json_schema
+        }]
 
         start = time.perf_counter()
         tokens_in = tokens_out = None
@@ -874,16 +954,29 @@ class AnthropicProvider(ModelProvider):
                 max_tokens=2048,
                 temperature=0,
                 messages=[{"role":"user","content":blocks}],
-                system="Output ONLY a JSON object that strictly matches the schema.",
-                response_format=response_format,
+                tools=tools,
+                tool_choice={"type": "tool", "name": "submit_answer"}
             )
             if self._thinking_payload:
                 call_kwargs["thinking"] = self._thinking_payload
             resp = self.client.messages.create(**call_kwargs)
+
+            # Extract JSON from tool_use block
             raw = ""
+            tool_input = None
             for c in (resp.content or []):
-                if getattr(c, "type", "") == "text":
-                    raw += c.text or ""
+                if getattr(c, "type", "") == "tool_use":
+                    tool_input = getattr(c, "input", None)
+                    if tool_input:
+                        raw = json.dumps(tool_input)
+                        break
+
+            # Fallback to text content if no tool_use found
+            if not raw:
+                for c in (resp.content or []):
+                    if getattr(c, "type", "") == "text":
+                        raw += c.text or ""
+
             usage = getattr(resp, "usage", None)
             if usage:
                 tokens_in = getattr(usage, "input_tokens", None)
@@ -1734,14 +1827,29 @@ def build_tasks(
 
                 # 5) 写入任务（统一用矩形基线判定；shape 仅做记录/调试）
                 shape = target_type or "region"
+                cx = (bbox[0] + bbox[2]) / 2.0
+                cy = (bbox[1] + bbox[3]) / 2.0
+                tol = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2.0
                 tasks.append(
-                    TaskItem(t, pid, prompt, [img], {"bbox": bbox, "shape": shape})
+                    TaskItem(
+                        t,
+                        pid,
+                        prompt,
+                        [img],
+                        {
+                            "bbox": bbox,
+                            "shape": shape,
+                            "target_position": {"x": cx, "y": cy},
+                            "tolerance": tol,
+                        },
+                    )
                 )
 
 
             elif t == "Image_Matching":
                 ref = entry.get("reference_image")
-                options = entry.get("option_images", [])
+                # 支持 option_images 或 options 字段
+                options = entry.get("option_images") or entry.get("options", [])
                 if not ref or not options:
                     print(f"[跳过] {t}/{pid} 缺 reference/option_images")
                     continue
@@ -1881,7 +1989,8 @@ def build_tasks(
                     "Select ALL grid cells (0-based, row-major) that match the reference view."
                     " Return JSON {\"answer_type\":\"multi_select\",\"indices\":[...]}"
                 )
-                has_ref_opts = bool(entry.get("reference_image")) and bool(entry.get("option_images"))
+                # 支持 option_images 或 options 字段
+                has_ref_opts = bool(entry.get("reference_image")) and bool(entry.get("option_images") or entry.get("options"))
 
                 default_prompt = default_prompt_cls if has_ref_opts else default_prompt_multi
                 prompt = _choose_prompt(entry, t, pid, default_prompt,
@@ -1890,11 +1999,14 @@ def build_tasks(
 
                 if has_ref_opts:
                     ref = os.path.join(type_dir, entry["reference_image"])
-                    opts = [os.path.join(type_dir, p) for p in entry["option_images"]]
+                    # 支持 option_images 或 options 字段
+                    option_list = entry.get("option_images") or entry.get("options", [])
+                    opts = [os.path.join(type_dir, p) for p in option_list]
                     if not (os.path.isfile(ref) and all(os.path.isfile(p) for p in opts)):
                         print(f"[跳过] {t}/{pid} 缺图像文件")
                         continue
-                    corr = int(_get_first(entry, "correct_option_index","correct_index","answer", default=0))
+                    # 支持 correct_option、correct_option_index、correct_index、answer 字段
+                    corr = int(_get_first(entry, "correct_option","correct_option_index","correct_index","answer", default=0))
                     tasks.append(TaskItem(t, pid, prompt, [ref]+opts, {"correct_index": corr}))
                 else:
                     img = os.path.join(type_dir, pid)
@@ -1913,7 +2025,8 @@ def build_tasks(
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 # 优先读取 reference + options；若没有，就只发单图
                 ref = entry.get("reference_image")
-                options = entry.get("option_images", [])
+                # 支持 option_images 或 options 字段
+                options = entry.get("option_images") or entry.get("options", [])
                 imgs: List[str] = []
                 if ref and options:
                     img_ref = os.path.join(type_dir, ref)
@@ -2297,12 +2410,12 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                 "required":["answer_type","indices"]}, include_reasoning=include_reasoning)
 
     # === 静态化13类 ===
-    if task_type in ("Image_Recognition","Select_Animal","Unusual_Detection","Path_Finder"):
+    if task_type in ("Image_Recognition","Select_Animal","Unusual_Detection"):
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["multi_select"]},
                                               "indices":{"type":"array","items":{"type":"integer"}}},
                 "required":["answer_type","indices"]}, include_reasoning=include_reasoning)
 
-    if task_type in ("Dart_Count","Coordinates","Connect_Icon","Object_Match"):
+    if task_type in ("Dart_Count","Coordinates","Connect_Icon","Object_Match","Path_Finder"):
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["classify"]},
                                               "index":{"type":"integer"}},
                 "required":["answer_type","index"]}, include_reasoning=include_reasoning)
