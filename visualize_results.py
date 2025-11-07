@@ -22,11 +22,69 @@ sns.set_palette("husl")
 class CAPTCHAVisualizer:
     """CAPTCHA experiment result visualizer"""
 
-    def __init__(self, results_dir: str = "./results", error_dir: str = "./error_analysis"):
+    # Default model display name mapping
+    DEFAULT_MODEL_NAMES = {
+        'openai/gpt-5': 'GPT-5',
+        'openai/gpt-5-chat-latest': 'GPT-5-Chat',
+        'openai/gpt4o': 'GPT-4o',
+        'anthropic/claude-sonnet-4-5': 'Claude Sonnet 4.5',
+        'anthropic/claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
+        'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
+        'gemini/gemini-2.5-pro': 'Gemini 2.5 Pro',
+        'fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct': 'Qwen3-VL-235B',
+    }
+
+    # Default experiment display name mapping
+    DEFAULT_EXP_NAMES = {
+        'exp1': 'Exp1 (Baseline)',
+        'exp2': 'Exp2 (Optimized)',
+        'exp3': 'Exp3 (Until-Correct)',
+        'exp4': 'Exp4 (Few-Shot)',
+    }
+
+    def __init__(self, results_dir: str = "./results", error_dir: str = "./error_analysis",
+                 model_names: Optional[Dict[str, str]] = None,
+                 exp_names: Optional[Dict[str, str]] = None):
+        """
+        Initialize CAPTCHA visualizer
+
+        Args:
+            results_dir: Results directory path
+            error_dir: Error analysis directory path
+            model_names: Custom model display names (overrides defaults)
+            exp_names: Custom experiment display names (overrides defaults)
+        """
         self.results_dir = Path(results_dir)
         self.error_dir = Path(error_dir)
+
+        # Merge custom names with defaults
+        self.model_names = self.DEFAULT_MODEL_NAMES.copy()
+        if model_names:
+            self.model_names.update(model_names)
+
+        self.exp_names = self.DEFAULT_EXP_NAMES.copy()
+        if exp_names:
+            self.exp_names.update(exp_names)
+
         self.data = self._load_all_data()
         self.task_types = sorted(self.data['task_type'].unique()) if not self.data.empty else []
+
+    def _get_display_name(self, identifier: str, name_type: str = 'model') -> str:
+        """
+        Get display name for model or experiment
+
+        Args:
+            identifier: Original identifier (e.g., 'openai/gpt-5')
+            name_type: 'model' or 'experiment'
+
+        Returns:
+            Display name or original identifier if not found
+        """
+        if name_type == 'model':
+            return self.model_names.get(identifier, identifier)
+        elif name_type == 'experiment':
+            return self.exp_names.get(identifier, identifier)
+        return identifier
 
     def _load_all_data(self) -> pd.DataFrame:
         """Load all experiment results, automatically handle missing data"""
@@ -146,6 +204,9 @@ class CAPTCHAVisualizer:
         if metric == 'pass':
             pivot = pivot * 100
 
+        # Rename columns to display names
+        pivot.columns = [self._get_display_name(col, 'model') for col in pivot.columns]
+
         return pivot
 
     def plot_heatmap(self, experiment: str = 'exp1',
@@ -182,7 +243,7 @@ class CAPTCHAVisualizer:
             cmap='RdYlGn',
             vmin=0,
             vmax=100,
-            cbar_kws={'label': 'Accuracy (%)'},
+            cbar_kws={'label': 'Pass@1 (%)'},
             linewidths=0.5,
             linecolor='gray',
             ax=ax,
@@ -191,12 +252,7 @@ class CAPTCHAVisualizer:
         )
 
         # Title and labels
-        exp_title = {
-            'exp1': 'Baseline (Ground Truth Prompts)',
-            'exp2': 'Optimized Prompts',
-            'exp3': 'Until Correct',
-            'exp4': 'Few-shot Learning'
-        }.get(experiment, experiment)
+        exp_title = self._get_display_name(experiment, 'experiment')
 
         ax.set_title(f'CAPTCHA Task Difficulty Heatmap - {exp_title}',
                      fontsize=16, fontweight='bold', pad=20)
@@ -266,8 +322,9 @@ class CAPTCHAVisualizer:
         for i, exp in enumerate(experiments):
             if exp in pivot.columns:
                 offset = (i - len(experiments)/2) * width + width/2
+                exp_label = self._get_display_name(exp, 'experiment')
                 bars = ax.bar(x + offset, pivot[exp], width,
-                             label=exp.upper(), color=colors[i % len(colors)],
+                             label=exp_label, color=colors[i % len(colors)],
                              alpha=0.9)
 
                 # Add value labels on bars (only for valid data)
@@ -280,12 +337,13 @@ class CAPTCHAVisualizer:
         ax.axhline(y=60, color='red', linestyle='--', linewidth=2,
                   label='CAPTCHA Threshold (60%)', alpha=0.7)
 
-        ax.set_ylabel('Accuracy (%)', fontsize=13, fontweight='bold')
+        ax.set_ylabel('Pass@1 (%)', fontsize=13, fontweight='bold')
         ax.set_xlabel('Task Type (Sorted by Difficulty)', fontsize=13, fontweight='bold')
 
         title = 'Optimization Impact on CAPTCHA Task Difficulty'
         if model_filter:
-            title += f'\nModel: {model_filter}'
+            model_display = self._get_display_name(model_filter, 'model')
+            title += f'\nModel: {model_display}'
         ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
 
         ax.set_xticks(x)
@@ -378,14 +436,18 @@ class CAPTCHAVisualizer:
                        label='Recommended CAPTCHA Zone')
 
         # Labels and title
-        ax.set_xlabel(f'{base_exp.upper()} Baseline Accuracy (%)',
+        base_exp_display = self._get_display_name(base_exp, 'experiment')
+        opt_exp_display = self._get_display_name(opt_exp, 'experiment')
+
+        ax.set_xlabel(f'{base_exp_display} Pass@1 (%)',
                      fontsize=13, fontweight='bold')
-        ax.set_ylabel(f'{opt_exp.upper()} Optimized Accuracy (%)',
+        ax.set_ylabel(f'{opt_exp_display} Pass@1 (%)',
                      fontsize=13, fontweight='bold')
 
         title = 'Task Optimization Resistance Analysis'
         if model_filter:
-            title += f'\nModel: {model_filter}'
+            model_display = self._get_display_name(model_filter, 'model')
+            title += f'\nModel: {model_display}'
         ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
 
         ax.set_xlim(-5, 105)
@@ -400,7 +462,9 @@ class CAPTCHAVisualizer:
             plt.scatter([], [], s=100, c='#ffa726', alpha=0.7,
                        edgecolors='black', label='Improved (Low -> High)'),
             plt.scatter([], [], s=100, c='#78909c', alpha=0.7,
-                       edgecolors='black', label='Easy (High -> High)')
+                       edgecolors='black', label='Easy (High -> High)'),
+            plt.scatter([], [], s=100, c='#7e57c2', alpha=0.7,
+                       edgecolors='black', label='Easy (High -> Low) [ALERT]')
         ]
         ax.legend(handles=legend_elements, loc='lower right', fontsize=10)
 
@@ -471,10 +535,12 @@ class CAPTCHAVisualizer:
         ax.axhline(y=60, color='red', linestyle='--', linewidth=2,
                   label='CAPTCHA Threshold', alpha=0.7)
 
-        ax.set_ylabel('Accuracy (%) across Models', fontsize=13, fontweight='bold')
+        ax.set_ylabel('Pass@1 (%) across Models', fontsize=13, fontweight='bold')
         ax.set_xlabel('Task Type (Sorted by Median Difficulty)',
                      fontsize=13, fontweight='bold')
-        ax.set_title(f'Cross-Model Stability Analysis - {experiment.upper()}',
+
+        exp_display = self._get_display_name(experiment, 'experiment')
+        ax.set_title(f'Cross-Model Stability Analysis - {exp_display}',
                     fontsize=16, fontweight='bold', pad=20)
 
         plt.xticks(rotation=45, ha='right')
@@ -490,6 +556,168 @@ class CAPTCHAVisualizer:
             save_path_obj.parent.mkdir(parents=True, exist_ok=True)
             plt.savefig(save_path, format='pdf', bbox_inches='tight')
             print(f"[SAVED] Box plot saved: {save_path}")
+
+        return fig
+
+    def plot_exp3_analysis(self, model_filter: Optional[str] = None,
+                          figsize: Tuple[int, int] = (20, 12),
+                          save_path: Optional[str] = None):
+        """
+        Plot comprehensive Experiment 3 (Until-Correct) analysis with 4 subplots
+
+        Args:
+            model_filter: Only show specific model
+            figsize: Figure size
+            save_path: Save path
+
+        Returns:
+            Figure object
+        """
+        if self.data.empty:
+            print("[WARNING] Cannot plot Exp3 analysis: No data")
+            return None
+
+        # Filter Exp3 data
+        df = self.data[self.data['experiment'] == 'exp3'].copy()
+        if model_filter:
+            df = df[df['provider_model'] == model_filter]
+
+        if df.empty:
+            print("[WARNING] No Exp3 data available")
+            return None
+
+        # Check if required columns exist
+        if 'avg_attempts' not in df.columns or 'avg_e2e_ms' not in df.columns:
+            print("[WARNING] Exp3 data missing required columns (avg_attempts, avg_e2e_ms)")
+            return None
+
+        # Create figure with 4 subplots
+        fig = plt.figure(figsize=figsize)
+        gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.3)
+
+        # Aggregate by task type
+        task_stats = df.groupby('task_type').agg({
+            'pass': 'mean',
+            'avg_attempts': 'mean',
+            'avg_e2e_ms': 'mean',
+            'n': 'sum'
+        }).reset_index()
+
+        task_stats['pass_pct'] = task_stats['pass'] * 100
+        task_stats['avg_time_sec'] = task_stats['avg_e2e_ms'] / 1000
+        task_stats['time_per_attempt'] = task_stats['avg_time_sec'] / task_stats['avg_attempts']
+
+        # Sort by average attempts (descending)
+        task_stats = task_stats.sort_values('avg_attempts', ascending=False)
+
+        # Color palette
+        colors_hard = ['#d32f2f' if x >= 5 else '#7eb3d6' for x in task_stats['avg_attempts']]
+
+        # ===== Subplot 1: Average Attempts per Task Type =====
+        ax1 = fig.add_subplot(gs[0, 0])
+        bars1 = ax1.barh(task_stats['task_type'], task_stats['avg_attempts'], color=colors_hard, alpha=0.8)
+        ax1.set_xlabel('Average Attempts Until Success', fontsize=11, fontweight='bold')
+        ax1.set_ylabel('Task Type', fontsize=11, fontweight='bold')
+        ax1.set_title('Exp3: Retry Attempts Required', fontsize=13, fontweight='bold')
+        ax1.axvline(x=5, color='red', linestyle='--', linewidth=2, alpha=0.5, label='High Difficulty (≥5 attempts)')
+        ax1.grid(axis='x', alpha=0.3)
+        ax1.legend(fontsize=9)
+
+        # Add value labels
+        for i, (idx, row) in enumerate(task_stats.iterrows()):
+            ax1.text(row['avg_attempts'] + 0.2, i, f"{row['avg_attempts']:.1f}",
+                    va='center', fontsize=9)
+
+        # ===== Subplot 2: Average Time per Task Type =====
+        ax2 = fig.add_subplot(gs[0, 1])
+        task_stats_time = task_stats.sort_values('avg_time_sec', ascending=False)
+        colors_time = ['#ff6b6b' if x >= 30 else '#4ecdc4' for x in task_stats_time['avg_time_sec']]
+        bars2 = ax2.barh(task_stats_time['task_type'], task_stats_time['avg_time_sec'], color=colors_time, alpha=0.8)
+        ax2.set_xlabel('Average Time Until Success (seconds)', fontsize=11, fontweight='bold')
+        ax2.set_ylabel('Task Type', fontsize=11, fontweight='bold')
+        ax2.set_title('Exp3: Time Cost Analysis', fontsize=13, fontweight='bold')
+        ax2.axvline(x=30, color='orange', linestyle='--', linewidth=2, alpha=0.5, label='High Time Cost (≥30s)')
+        ax2.grid(axis='x', alpha=0.3)
+        ax2.legend(fontsize=9)
+
+        # Add value labels
+        for i, (idx, row) in enumerate(task_stats_time.iterrows()):
+            ax2.text(row['avg_time_sec'] + 1, i, f"{row['avg_time_sec']:.1f}s",
+                    va='center', fontsize=9)
+
+        # ===== Subplot 3: Pass@1 vs Until-Correct Success Rate =====
+        ax3 = fig.add_subplot(gs[1, 0])
+
+        # Get Exp1 data for comparison (Pass@1)
+        exp1_data = self.data[self.data['experiment'] == 'exp1'].copy()
+        if model_filter:
+            exp1_data = exp1_data[exp1_data['provider_model'] == model_filter]
+
+        if not exp1_data.empty:
+            exp1_pass = exp1_data.groupby('task_type')['pass'].mean() * 100
+            exp3_pass = task_stats.set_index('task_type')['pass_pct']
+
+            # Merge data
+            comparison = pd.DataFrame({
+                'Pass@1 (Exp1)': exp1_pass,
+                'Until-Correct (Exp3)': exp3_pass
+            }).fillna(0)
+
+            comparison = comparison.sort_values('Pass@1 (Exp1)')
+
+            x = np.arange(len(comparison))
+            width = 0.35
+
+            bars_exp1 = ax3.bar(x - width/2, comparison['Pass@1 (Exp1)'], width,
+                               label='Pass@1 (Exp1 Baseline)', color='#7eb3d6', alpha=0.9)
+            bars_exp3 = ax3.bar(x + width/2, comparison['Until-Correct (Exp3)'], width,
+                               label='Until-Correct (Exp3)', color='#70ad47', alpha=0.9)
+
+            ax3.set_ylabel('Success Rate (%)', fontsize=11, fontweight='bold')
+            ax3.set_xlabel('Task Type', fontsize=11, fontweight='bold')
+            ax3.set_title('Pass@1 vs Until-Correct Success Rate', fontsize=13, fontweight='bold')
+            ax3.set_xticks(x)
+            ax3.set_xticklabels(comparison.index, rotation=45, ha='right', fontsize=9)
+            ax3.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
+            ax3.legend(fontsize=10)
+            ax3.grid(axis='y', alpha=0.3)
+            ax3.set_ylim(0, 110)
+        else:
+            ax3.text(0.5, 0.5, 'Exp1 data not available for comparison',
+                    ha='center', va='center', fontsize=12, transform=ax3.transAxes)
+            ax3.set_title('Pass@1 vs Until-Correct Success Rate', fontsize=13, fontweight='bold')
+
+        # ===== Subplot 4: Time Efficiency (Time per Attempt) =====
+        ax4 = fig.add_subplot(gs[1, 1])
+        task_stats_eff = task_stats.sort_values('time_per_attempt', ascending=False)
+        colors_eff = ['#9b59b6' if x >= 5 else '#95a5a6' for x in task_stats_eff['time_per_attempt']]
+        bars4 = ax4.barh(task_stats_eff['task_type'], task_stats_eff['time_per_attempt'], color=colors_eff, alpha=0.8)
+        ax4.set_xlabel('Average Time per Attempt (seconds)', fontsize=11, fontweight='bold')
+        ax4.set_ylabel('Task Type', fontsize=11, fontweight='bold')
+        ax4.set_title('Exp3: Time Efficiency per Attempt', fontsize=13, fontweight='bold')
+        ax4.axvline(x=5, color='purple', linestyle='--', linewidth=2, alpha=0.5, label='Slow (≥5s/attempt)')
+        ax4.grid(axis='x', alpha=0.3)
+        ax4.legend(fontsize=9)
+
+        # Add value labels
+        for i, (idx, row) in enumerate(task_stats_eff.iterrows()):
+            ax4.text(row['time_per_attempt'] + 0.2, i, f"{row['time_per_attempt']:.1f}s",
+                    va='center', fontsize=9)
+
+        # Main title
+        exp3_display = self._get_display_name('exp3', 'experiment')
+        title = f'{exp3_display} Comprehensive Analysis'
+        if model_filter:
+            model_display = self._get_display_name(model_filter, 'model')
+            title += f'\nModel: {model_display}'
+        fig.suptitle(title, fontsize=16, fontweight='bold', y=0.995)
+
+        if save_path:
+            # Ensure output directory exists
+            save_path_obj = Path(save_path)
+            save_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path, format='pdf', bbox_inches='tight')
+            print(f"[SAVED] Exp3 analysis saved: {save_path}")
 
         return fig
 
@@ -519,18 +747,18 @@ class CAPTCHAVisualizer:
             'pass': ['mean', 'std', 'count']
         }).round(4)
 
-        stats.columns = ['avg_accuracy', 'std_accuracy', 'n_models']
-        stats['avg_accuracy'] *= 100
-        stats['std_accuracy'] *= 100
+        stats.columns = ['avg_pass@1', 'std_pass@1', 'n_models']
+        stats['avg_pass@1'] *= 100
+        stats['std_pass@1'] *= 100
 
         # Filter difficult task types
-        difficult_tasks = stats[stats['avg_accuracy'] < threshold].copy()
-        difficult_tasks = difficult_tasks.sort_values('avg_accuracy')
+        difficult_tasks = stats[stats['avg_pass@1'] < threshold].copy()
+        difficult_tasks = difficult_tasks.sort_values('avg_pass@1')
 
         # Add recommendation score
         difficult_tasks['captcha_score'] = (
-            (100 - difficult_tasks['avg_accuracy']) * 0.6 +  # Difficulty weight
-            (100 - difficult_tasks['std_accuracy']) * 0.4     # Stability weight
+            (100 - difficult_tasks['avg_pass@1']) * 0.6 +  # Difficulty weight
+            (100 - difficult_tasks['std_pass@1']) * 0.4     # Stability weight
         )
 
         difficult_tasks = difficult_tasks.sort_values('captcha_score', ascending=False)
@@ -538,7 +766,7 @@ class CAPTCHAVisualizer:
         result = difficult_tasks.head(top_n).copy()
         result['rank'] = range(1, len(result) + 1)
 
-        return result[['rank', 'avg_accuracy', 'std_accuracy', 'n_models', 'captcha_score']]
+        return result[['rank', 'avg_pass@1', 'std_pass@1', 'n_models', 'captcha_score']]
 
     def plot_all(self, output_dir: str = "./figures"):
         """
@@ -618,6 +846,20 @@ class CAPTCHAVisualizer:
                         plt.close(fig)
                 except Exception as e:
                     print(f"[WARNING] Box plot {exp} generation failed: {e}")
+
+        # 5. Exp3 comprehensive analysis (if available)
+        if 'exp3' in available_exps:
+            for model in available_models:
+                try:
+                    fig = self.plot_exp3_analysis(
+                        model_filter=model,
+                        save_path=str(output_path / f"exp3_analysis_{model.replace('/', '_')}.pdf")
+                    )
+                    if fig:
+                        figures.append(fig)
+                        plt.close(fig)
+                except Exception as e:
+                    print(f"[WARNING] Exp3 analysis {model} generation failed: {e}")
 
         print(f"\n[COMPLETED] Chart generation finished! Total {len(list(output_path.glob('*.pdf')))} PDF files")
         print(f"[OUTPUT] Save location: {output_path.absolute()}")
