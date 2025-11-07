@@ -42,6 +42,35 @@ class CAPTCHAVisualizer:
         'exp4': 'Exp4 (Few-Shot)',
     }
 
+    # Task family (category) mapping for radar plots and grouped summaries
+    TASK_FAMILY = {
+        # Click / Coordinate tasks
+        'Dice_Count': 'Click/Coordinate',
+        'Click_Order': 'Click/Coordinate',
+        'Place_Dot': 'Click/Coordinate',
+        'Geometry_Click': 'Click/Coordinate',
+        'Pick_Area': 'Click/Coordinate',
+        'Misleading_Click': 'Click/Coordinate',
+
+        # Grid selection
+        'Patch_Select': 'Grid Selection',
+        'Select_Animal': 'Grid Selection',
+        'Image_Recognition': 'Grid Selection',
+        'Unusual_Detection': 'Grid Selection',
+
+        # Image matching
+        'Image_Matching': 'Image Matching',
+        'Object_Match': 'Image Matching',
+        'Path_Finder': 'Image Matching',
+        'Rotation_Match': 'Image Matching',
+
+        # Logic / Reasoning
+        'Bingo': 'Logic/Reasoning',
+        'Dart_Count': 'Logic/Reasoning',
+        'Coordinates': 'Logic/Reasoning',
+        'Connect_Icon': 'Logic/Reasoning',
+    }
+
     def __init__(self, results_dir: str = "./results", error_dir: str = "./error_analysis",
                  model_names: Optional[Dict[str, str]] = None,
                  exp_names: Optional[Dict[str, str]] = None):
@@ -276,6 +305,254 @@ class CAPTCHAVisualizer:
             plt.savefig(save_path, format='pdf', bbox_inches='tight')
             print(f"[SAVED] Heatmap saved: {save_path}")
 
+        return fig
+
+    def plot_cost_performance_frontier(self,
+                                       experiments: List[str] = ('exp1', 'exp2', 'exp4'),
+                                       model_filter: Optional[str] = None,
+                                       log_x: bool = True,
+                                       figsize: Tuple[int, int] = (12, 8),
+                                       save_path: Optional[str] = None):
+        """
+        Cost–Performance frontier: x=cost_per_question (USD), y=Pass@1 (%).
+        Overlays multiple experiments for the same model.
+        """
+        if self.data.empty:
+            print("[WARNING] Cannot plot frontier: No data")
+            return None
+
+        df = self.data.copy()
+        if model_filter:
+            df = df[df['provider_model'] == model_filter]
+        df = df[df['experiment'].isin(experiments)]
+        if df.empty:
+            print("[WARNING] No data after filtering for frontier plot")
+            return None
+
+        # Require cost column
+        if 'cost_per_question' not in df.columns:
+            print("[WARNING] results.csv missing cost_per_question column; skip frontier plot")
+            return None
+
+        # Prepare figure
+        fig, ax = plt.subplots(figsize=figsize)
+
+        colors = ['#2e75b6', '#70ad47', '#ffc000', '#d32f2f']
+        exp_list = [e for e in experiments if e in set(df['experiment'])]
+        for i, exp in enumerate(exp_list):
+            sub = df[df['experiment'] == exp].copy()
+            if sub.empty:
+                continue
+            sub['pass_pct'] = sub['pass'] * 100
+            ax.scatter(sub['cost_per_question'], sub['pass_pct'],
+                       s=80, alpha=0.8, label=self._get_display_name(exp, 'experiment'),
+                       color=colors[i % len(colors)], edgecolors='black', linewidths=0.8)
+
+            # Optional: simple Pareto frontier (maximize y, minimize x)
+            pts = sub[['cost_per_question', 'pass_pct']].dropna().values
+            if len(pts) >= 2:
+                # Sort by cost asc, then sweep to keep increasing pass
+                pts_sorted = pts[pts[:, 0].argsort()]
+                frontier = []
+                best_y = -1
+                for x, y in pts_sorted:
+                    if y > best_y:
+                        frontier.append((x, y))
+                        best_y = y
+                if len(frontier) >= 2:
+                    xs, ys = zip(*frontier)
+                    ax.plot(xs, ys, color=colors[i % len(colors)], linestyle='-', alpha=0.6)
+
+        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5, label='CAPTCHA Threshold (60%)')
+        ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Cost per Question (USD)', fontsize=12, fontweight='bold')
+        ax.set_ylim(-5, 105)
+        if log_x:
+            ax.set_xscale('log')
+        ax.grid(alpha=0.3, which='both', axis='both')
+
+        title = 'Cost–Performance Frontier'
+        if model_filter:
+            title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
+        ax.set_title(title, fontsize=16, fontweight='bold', pad=16)
+        ax.legend(loc='lower right', fontsize=10, framealpha=0.9)
+
+        plt.tight_layout()
+        if save_path:
+            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path, format='pdf', bbox_inches='tight')
+            print(f"[SAVED] Frontier saved: {save_path}")
+        return fig
+
+    def plot_time_performance_scatter(self,
+                                       experiments: List[str] = ('exp1', 'exp2', 'exp3', 'exp4'),
+                                       model_filter: Optional[str] = None,
+                                       metric: str = 'avg_e2e_ms',
+                                       figsize: Tuple[int, int] = (12, 8),
+                                       save_path: Optional[str] = None):
+        """
+        Time–Performance scatter: x=avg_e2e_ms, y=Pass@1 (%). Overlays experiments.
+        """
+        if self.data.empty:
+            print("[WARNING] Cannot plot time-performance: No data")
+            return None
+
+        if metric not in self.data.columns:
+            print(f"[WARNING] Column '{metric}' not found; skip time-performance plot")
+            return None
+
+        df = self.data.copy()
+        if model_filter:
+            df = df[df['provider_model'] == model_filter]
+        df = df[df['experiment'].isin(experiments)]
+        if df.empty:
+            print("[WARNING] No data after filtering for time-performance plot")
+            return None
+
+        fig, ax = plt.subplots(figsize=figsize)
+        colors = ['#7eb3d6', '#2e75b6', '#70ad47', '#ffc000']
+        exp_list = [e for e in experiments if e in set(df['experiment'])]
+
+        for i, exp in enumerate(exp_list):
+            sub = df[df['experiment'] == exp].copy()
+            if sub.empty:
+                continue
+            sub = sub.dropna(subset=[metric])
+            sub['pass_pct'] = sub['pass'] * 100
+            ax.scatter(sub[metric], sub['pass_pct'], s=80, alpha=0.85,
+                       label=self._get_display_name(exp, 'experiment'),
+                       color=colors[i % len(colors)], edgecolors='black', linewidths=0.8)
+
+        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Average E2E Time (ms)', fontsize=12, fontweight='bold')
+        ax.set_ylim(-5, 105)
+        ax.grid(alpha=0.3)
+
+        title = 'Time–Performance Scatter'
+        if model_filter:
+            title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
+        ax.set_title(title, fontsize=16, fontweight='bold', pad=16)
+        ax.legend(loc='lower left', fontsize=10, framealpha=0.9)
+
+        plt.tight_layout()
+        if save_path:
+            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path, format='pdf', bbox_inches='tight')
+            print(f"[SAVED] Time–Performance saved: {save_path}")
+        return fig
+
+    def plot_slope_improvement(self,
+                               base_exp: str = 'exp1',
+                               target_exp: str = 'exp2',
+                               model_filter: Optional[str] = None,
+                               top_k: Optional[int] = None,
+                               figsize: Tuple[int, int] = (16, 8),
+                               save_path: Optional[str] = None):
+        """
+        Slope chart: per-task change from base_exp to target_exp.
+        """
+        if self.data.empty:
+            print("[WARNING] Cannot plot slope: No data")
+            return None
+
+        df = self.data.copy()
+        if model_filter:
+            df = df[df['provider_model'] == model_filter]
+
+        a = df[df['experiment'] == base_exp].groupby('task_type')['pass'].mean()
+        b = df[df['experiment'] == target_exp].groupby('task_type')['pass'].mean()
+
+        merged = pd.DataFrame({'base': a, 'target': b}).dropna()
+        if merged.empty:
+            print("[WARNING] No overlapping tasks for slope plot")
+            return None
+
+        merged['base_pct'] = merged['base'] * 100
+        merged['target_pct'] = merged['target'] * 100
+        merged['delta'] = merged['target_pct'] - merged['base_pct']
+        merged = merged.sort_values('base_pct')
+
+        if top_k and top_k > 0:
+            # Select top_k with largest absolute improvement
+            sel = merged.reindex(merged['delta'].abs().sort_values(ascending=False).index).head(top_k)
+            merged = merged.loc[sel.index]
+
+        fig, ax = plt.subplots(figsize=figsize)
+        x = np.arange(len(merged))
+        ax.scatter(x, merged['base_pct'], color='#7eb3d6', label=self._get_display_name(base_exp, 'experiment'))
+        ax.scatter(x, merged['target_pct'], color='#70ad47', label=self._get_display_name(target_exp, 'experiment'))
+        for i, (y0, y1) in enumerate(zip(merged['base_pct'], merged['target_pct'])):
+            color = '#70ad47' if y1 >= y0 else '#d32f2f'
+            ax.plot([i, i], [y0, y1], color=color, linewidth=2, alpha=0.9)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(merged.index, rotation=45, ha='right')
+        ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
+        ax.set_title('Improvement Slope', fontsize=16, fontweight='bold', pad=16)
+        if model_filter:
+            ax.set_title(f"Improvement Slope\nModel: {self._get_display_name(model_filter, 'model')}", fontsize=16, fontweight='bold', pad=16)
+        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        ax.set_ylim(-5, 105)
+        ax.grid(alpha=0.3, axis='y')
+        ax.legend(fontsize=10)
+
+        plt.tight_layout()
+        if save_path:
+            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path, format='pdf', bbox_inches='tight')
+            print(f"[SAVED] Slope saved: {save_path}")
+        return fig
+
+    def plot_task_family_radar(self,
+                                experiment: str = 'exp2',
+                                model_filter: Optional[str] = None,
+                                figsize: Tuple[int, int] = (8, 8),
+                                save_path: Optional[str] = None):
+        """
+        Radar chart of average Pass@1 by task family (Click/Coordinate, Grid Selection, Image Matching, Logic/Reasoning).
+        """
+        if self.data.empty:
+            print("[WARNING] Cannot plot radar: No data")
+            return None
+
+        df = self.data.copy()
+        df = df[df['experiment'] == experiment]
+        if model_filter:
+            df = df[df['provider_model'] == model_filter]
+        if df.empty:
+            print("[WARNING] No data for radar after filtering")
+            return None
+
+        # Map to families
+        df['family'] = df['task_type'].map(self.TASK_FAMILY).fillna('Other')
+        fam = df.groupby('family')['pass'].mean().reindex(['Click/Coordinate', 'Grid Selection', 'Image Matching', 'Logic/Reasoning']).fillna(0)
+        values = (fam * 100).values.tolist()
+        labels = fam.index.tolist()
+        # Close the polygon
+        values += values[:1]
+        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+        angles += angles[:1]
+
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111, polar=True)
+        ax.plot(angles, values, color='#2e75b6', linewidth=2)
+        ax.fill(angles, values, color='#7eb3d6', alpha=0.25)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(labels)
+        ax.set_yticks([20, 40, 60, 80, 100])
+        ax.set_yticklabels(['20', '40', '60', '80', '100'])
+        ax.set_ylim(0, 100)
+
+        title = f"Task Family Radar - {self._get_display_name(experiment, 'experiment')}"
+        if model_filter:
+            title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
+        ax.set_title(title, fontsize=14, fontweight='bold', va='bottom')
+
+        if save_path:
+            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(save_path, format='pdf', bbox_inches='tight')
+            print(f"[SAVED] Radar saved: {save_path}")
         return fig
 
     def plot_comparison_bars(self, experiments: List[str] = ['exp1', 'exp2', 'exp4'],
@@ -860,6 +1137,64 @@ class CAPTCHAVisualizer:
                         plt.close(fig)
                 except Exception as e:
                     print(f"[WARNING] Exp3 analysis {model} generation failed: {e}")
+
+        # 6. Cost–Performance frontier per model (if cost columns present)
+        for model in available_models:
+            try:
+                fig = self.plot_cost_performance_frontier(
+                    experiments=[e for e in available_exps if e in ('exp1', 'exp2', 'exp4')],
+                    model_filter=model,
+                    save_path=str(output_path / f"frontier_{model.replace('/', '_')}.pdf")
+                )
+                if fig:
+                    figures.append(fig)
+                    plt.close(fig)
+            except Exception as e:
+                print(f"[WARNING] Frontier {model} generation failed: {e}")
+
+        # 7. Time–Performance scatter per model
+        for model in available_models:
+            try:
+                fig = self.plot_time_performance_scatter(
+                    experiments=available_exps,
+                    model_filter=model,
+                    save_path=str(output_path / f"time_perf_{model.replace('/', '_')}.pdf")
+                )
+                if fig:
+                    figures.append(fig)
+                    plt.close(fig)
+            except Exception as e:
+                print(f"[WARNING] Time–Performance {model} generation failed: {e}")
+
+        # 8. Slope improvement (exp1→exp2) per model if both exist
+        if 'exp1' in available_exps and 'exp2' in available_exps:
+            for model in available_models:
+                try:
+                    fig = self.plot_slope_improvement(
+                        base_exp='exp1', target_exp='exp2', model_filter=model,
+                        save_path=str(output_path / f"slope_exp1_to_exp2_{model.replace('/', '_')}.pdf")
+                    )
+                    if fig:
+                        figures.append(fig)
+                        plt.close(fig)
+                except Exception as e:
+                    print(f"[WARNING] Slope {model} generation failed: {e}")
+
+        # 9. Radar (by task family) for exp2 per model (fallback to exp1)
+        target_exp_for_radar = 'exp2' if 'exp2' in available_exps else ('exp1' if 'exp1' in available_exps else None)
+        if target_exp_for_radar:
+            for model in available_models:
+                try:
+                    fig = self.plot_task_family_radar(
+                        experiment=target_exp_for_radar,
+                        model_filter=model,
+                        save_path=str(output_path / f"radar_{target_exp_for_radar}_{model.replace('/', '_')}.pdf")
+                    )
+                    if fig:
+                        figures.append(fig)
+                        plt.close(fig)
+                except Exception as e:
+                    print(f"[WARNING] Radar {model} generation failed: {e}")
 
         print(f"\n[COMPLETED] Chart generation finished! Total {len(list(output_path.glob('*.pdf')))} PDF files")
         print(f"[OUTPUT] Save location: {output_path.absolute()}")
