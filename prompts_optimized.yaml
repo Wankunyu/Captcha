@@ -5,7 +5,7 @@ types:
 
     Rules:
     1) Count ONLY the TOP face of each die (the upward, horizontal face). Ignore sides/edges.
-    2) If the TOP face shows a digit (e.g., 1–9), use that digit as the die’s value.
+    2) If the TOP face shows a digit (e.g., 1–9), use that digit as the die's value.
     3) If the TOP face shows pips (dots), count the dots on that face as the value.
     4) Sum these values over all dice to produce one integer total.
     5) For overlaps/occlusions, count only digits/dots that are clearly visible on the TOP face—do not guess from shadows or partial hints.
@@ -15,24 +15,24 @@ types:
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
-  Geometry_Click: |-
-    Task: Click the geometric CENTER of the intended target.
+  Geometry_Click:
+    mode: merge
+    rules: |-
+      Rules:
+      - Pixel coordinates with origin (0,0) at the top-left; the point must lie within image bounds.
+      - If the target is an area/shape, click its geometric center; if it is a line/edge/vertex, click the midpoint or intersection.
+      - When multiple similar regions exist, use the region implied by the figure; otherwise choose the smallest bounded valid region.
 
-    Rules:
-    - Pixel coordinates with origin (0,0) at the top-left; the point must lie within image bounds.
-    - If the target is an area/shape, click its geometric center; if it is a line/edge/vertex, click the midpoint or intersection.
-    - When multiple similar regions exist, use the region implied by the figure; otherwise choose the smallest bounded valid region.
-
-    Respond with JSON only, strictly following the provided schema. No extra fields or text.
+      Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Place_Dot: |-
-    Task: Place the dot at the path’s endpoint. The large marker with the car icon is the start, not the target..
+    Task: Place the dot at the path's endpoint. The large marker with the car icon is the start, not the target..
 
     Rules:
     - Determine image bounds.
     - Pixel coordinates with origin (0,0) at top-left; stay within bounds.
     - Follow only the single continuous path directly connected to the start marker, regardless of color; ignore unconnected shapes.
-    - If the endpoint is a line tip, click its center pixel; if it’s an area, click its geometric center; if it ends at the image edge, click the last visible in-bounds pixel.
+    - If the endpoint is a line tip, click its center pixel; if it's an area, click its geometric center; if it ends at the image edge, click the last visible in-bounds pixel.
     - If the target is an area, click its geometric center; if a line end, click the endpoint.
     - For blurry/anti-aliased edges, choose the visually most central valid pixel.
 
@@ -48,93 +48,142 @@ types:
     4) Color/texture
     5) Text glyph shape (not semantic meaning)
 
-    Notes:
-    - Ignore minor lighting/scale/compression differences.
-    - If multiple candidates appear valid, choose the smallest index (0-based; row-major when in a grid).
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1)
+    - Index 0 represents the first option
+    - If there are N options, valid indices are 0 to N-1
+    - Ignore minor lighting/scale/compression differences
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
-  Patch_Select: |-
-    Task: Select ALL grid cells that contain the target object.
+  Patch_Select:
+    mode: merge
+    rules: |-
+      Indexing Rules:
+      - Indices are 0-based (starting from 0, not 1) and row-major
+      - Index 0 is the top-left cell, index 1 is to its right, etc.
+      - For a 5×5 grid: indices 0-4 are row 1, indices 5-9 are row 2, etc.
+      - Return a unique ascending set of indices
+      - If none match, return an empty set
 
-    Rules:
-    - Apply strong constraints first (category/shape/key parts), then weak ones (color/texture/orientation).
-    - Indices are 0-based and row-major; return a unique ascending set.
-    - Ignore lighting/compression noise; subtle color shifts alone are insufficient to exclude a true positive.
-    - If none match, return an empty set.
+      Selection Rules:
+      - Apply strong constraints first (category/shape/key parts), then weak ones (color/texture/orientation)
+      - Ignore lighting/compression noise; subtle color shifts alone are insufficient to exclude a true positive
 
-    Respond with JSON only, strictly following the provided schema. No extra fields or text.
+      Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
-  Select_Animal: |-
-    Task: Select ALL cells that contain the requested animal(s).
+  Select_Animal:
+    mode: merge
+    rules: |-
+      Indexing Rules:
+      - Indices are 0-based (starting from 0, not 1) and row-major
+      - Index 0 is the first cell, index 1 is the second cell, etc.
+      - Deduplicate and sort ascending
+      - If none match, return an empty set
 
-    Rules:
-    - Prefer category/shape and characteristic parts (ears, muzzle, tail) over color; allow minor pose changes.
-    - Indices are 0-based and row-major; deduplicate and sort ascending. If none match, return an empty set.
+      Selection Rules:
+      - Prefer category/shape and characteristic parts (ears, muzzle, tail) over color
+      - Allow minor pose changes
 
-    Respond with JSON only, strictly following the provided schema. No extra fields or text.
+      Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Unusual_Detection: |-
-    Task: Select ALL items that are inconsistent with the majority (the “odd ones out”).
+    Task: Select ALL items that are inconsistent with the majority (the "odd ones out").
 
-    Rules:
-    - Structural or semantic inconsistency qualifies (wrong part, wrong category, reversed orientation).
-    - Color/brightness differences alone are NOT sufficient.
-    - Indices are 0-based and row-major; return a unique ascending set. If none qualify, return an empty set.
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1) and row-major
+    - Index 0 is the first item, index 1 is the second item, etc.
+    - Return a unique ascending set
+    - If none qualify, return an empty set
+
+    Detection Rules:
+    - Structural or semantic inconsistency qualifies (wrong part, wrong category, reversed orientation)
+    - Color/brightness differences alone are NOT sufficient
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Path_Finder: |-
-    Task: Match the same path/location outcome as the reference.
+    Task: Find the option where the object is at the SAME LOCATION as the target marker (X/cross) in the reference.
 
-    Modes:
-    - If a reference image is followed by several options: choose the SINGLE option depicting the SAME physical path/location outcome as the reference.
-    - If a single grid image is shown: select ALL cells that match the reference view/endpoint pattern.
+    Instructions:
+    1. In the reference image, locate the target marker (X or cross symbol)
+    2. Note the target's spatial position (which grid cell or area)
+    3. Check each option: where is the object (duck/book/etc.) positioned?
+    4. Select the option where the object occupies the same position as the target marker
 
-    Rules:
-    - Prioritize connectivity/topology and endpoint alignment over color/background texture.
-    - For ties: choose the smallest index (classify) or include all valid cells (multi-select).
-    - Indices are 0-based and row-major when applicable.
+    Key Rules:
+    - ONLY the final object position matters (ignore paths/arrows)
+    - Match spatial coordinates and grid alignment
+    - Don't confuse starting position with target position
+
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1)
+    - Index 0 is the first option
+    - If multiple options appear correct, choose the smallest index
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Dart_Count: |-
-    Task: Choose the option whose TOTAL dartboard score equals the given reference number.
+    Task: Find the option where darts sum to the reference number.
 
-    Rules:
-    - Sum each dart’s ring-adjusted score (single/double/triple) based on its landing.
-    - Prefer options with unambiguous ring positions; when in doubt, down-weight borderline hits.
-    - Ignore occlusions unless a dart clearly crosses into another ring.
-    - If multiple candidates fit, choose the smallest index (0-based).
+    Scoring Rules:
+    - Each colored sector has a NUMBER labeled on it (e.g., 2, 7, 12, etc.)
+    - A dart scores the NUMBER of the sector where its TIP lands
+    - Sum all dart scores in the option
+    - Match the sum to the reference number
+
+    Key Points:
+    - Only the dart TIP position matters (not the flight/tail)
+    - Read the number on each sector carefully
+    - For boundary cases: use the sector containing most of the tip
+    - Count all visible darts
+
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1)
+    - Index 0 represents the first option
+    - If multiple candidates fit, choose the smallest index
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Coordinates: |-
     Task: Choose the option where the object/person occupies the target seat/cell indicated by the reference.
 
-    Rules:
-    - Match grid position (row/column) and relative placement; ignore minor scale/lighting/styling changes.
-    - If multiple options appear correct, choose the smallest index (0-based).
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1)
+    - Index 0 represents the first option
+    - If multiple options appear correct, choose the smallest index
+
+    Matching Rules:
+    - Match grid position (row/column) and relative placement
+    - Ignore minor scale/lighting/styling changes
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Connect_Icon: |-
     Task: Choose the SINGLE option that correctly connects/corresponds to the reference icon/pattern as indicated.
 
-    Rules:
-    - Prioritize geometric compatibility and connection endpoints over color/texture.
-    - Ignore small shadows or compression artifacts.
-    - If multiple candidates fit, choose the smallest index (0-based).
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1)
+    - Index 0 represents the first option
+    - If multiple candidates fit, choose the smallest index
+
+    Matching Rules:
+    - Prioritize geometric compatibility and connection endpoints over color/texture
+    - Ignore small shadows or compression artifacts
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Object_Match: |-
     Task: Choose the option whose object COUNT and arrangement match the reference image.
 
-    Rules:
-    - Prioritize exact cardinality; then use relative layout/spacing to decide among ties.
-    - Ignore minor color/illumination changes.
-    - If still tied, choose the smallest index (0-based).
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1)
+    - Index 0 represents the first option
+    - If still tied, choose the smallest index
+
+    Matching Rules:
+    - Prioritize exact cardinality; then use relative layout/spacing to decide among ties
+    - Ignore minor color/illumination changes
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
@@ -151,9 +200,9 @@ types:
     You receive TWO images in order:
     1. REFERENCE image: Shows the sequence/order of target icons
     2. MAIN image: The puzzle image where you need to locate and click
-  
+
     Task: Identify each icon from the reference, locate it in the MAIN image, and return click coordinates in the reference's order.
-  
+
     Rules:
     - All coordinates MUST be in the MAIN image's pixel coordinate system (origin at top-left)
     - Click at/near the center of each target icon
@@ -188,17 +237,23 @@ types:
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
-  Image_Recognition: |-
-    Task: Select ALL images that satisfy the textual query (e.g., “include a car”).
+  Image_Recognition:
+    mode: merge
+    rules: |-
+      Indexing Rules:
+      - Indices are 0-based (starting from 0, not 1) and row-major
+      - Index 0 is the first image, index 1 is the second image, etc.
+      - Return a unique ascending set
+      - If none qualify, return an empty set
 
-    Rules:
-    - Rely on category/shape/parts over color; allow natural variation in pose, style, and lighting.
-    - Indices are 0-based and row-major; return a unique ascending set. If none qualify, return an empty set.
+      Recognition Rules:
+      - Rely on category/shape/parts over color
+      - Allow natural variation in pose, style, and lighting
 
-    Respond with JSON only, strictly following the provided schema. No extra fields or text.
+      Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
   Misleading_Click: |-
-    Task: Obey any negative instruction (e.g., “do NOT click X”) with highest priority, and click a valid alternative target.
+    Task: Obey any negative instruction (e.g., "do NOT click X") with highest priority, and click a valid alternative target.
 
     Rules:
     - Stay strictly OUTSIDE the forbidden area.

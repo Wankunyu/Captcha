@@ -2913,13 +2913,10 @@ def run_until_type_correct(
             "tokens_in", "tokens_out", "ttft_ms", "e2e_ms", "reasoning"
         ])
 
-    # CSV 头
+    # CSV 行收集（在内存中累积，最后一次性写入）
     os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
-    need_header = (not os.path.exists(out_csv)) or (os.path.getsize(out_csv) == 0)
-    outp = open(out_csv, "a", encoding="utf-8")
-    if need_header:
-        outp.write("kind,provider,model,type,puzzle_id,attempt_idx,cumulative_ms,pass1,notes\n")
-        outp.flush()
+    csv_rows = []  # 收集所有要写入的行
+    csv_rows.append("kind,provider,model,type,puzzle_id,attempt_idx,cumulative_ms,pass1,notes")  # CSV header
 
     overall = {"by_type": {}, "sum_attempts": 0, "sum_cum_ms": 0.0, "sum_pass1": 0, "n_types": 0}
 
@@ -3001,8 +2998,7 @@ def run_until_type_correct(
                 ])
 
             if log_attempt_rows:
-                outp.write(f"attempt,{provider},{model},{t},{task.puzzle_id},{attempts},{cumulative:.1f},{int(ok)},{last_err}\n")
-                outp.flush()
+                csv_rows.append(f"attempt,{provider},{model},{t},{task.puzzle_id},{attempts},{cumulative:.1f},{int(ok)},{last_err}")
 
             if ok:
                 success = 1
@@ -3013,8 +3009,7 @@ def run_until_type_correct(
             time.sleep(retry_sleep_ms / 1000.0)
 
         # 类型汇总行
-        outp.write(f"summary,{provider},{model},{t},{first_success_pid},{attempts},{cumulative:.1f},{success},{last_err}\n")
-        outp.flush()
+        csv_rows.append(f"summary,{provider},{model},{t},{first_success_pid},{attempts},{cumulative:.1f},{success},{last_err}")
 
         if token_log_writer:
             token_log_writer.writerow([
@@ -3044,7 +3039,10 @@ def run_until_type_correct(
         overall["sum_pass1"] += success
         overall["n_types"] += 1
 
-    outp.close()
+    # 实验结束，一次性写入所有结果（覆盖模式）
+    with open(out_csv, "w", encoding="utf-8") as outp:
+        for row in csv_rows:
+            outp.write(row + "\n")
 
     # overall 宏观指标（按类型取平均）
     n = max(1, overall["n_types"])
