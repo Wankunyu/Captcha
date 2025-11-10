@@ -1,0 +1,101 @@
+{
+  "provider": "fireworks",
+  "model": "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct",
+  "overall": {
+    "tokens_in": 343343,
+    "tokens_out": 15146,
+    "total_tokens": 358489
+  },
+  "by_type": {
+    "Misleading_Click": {
+      "tokens_in": 476,
+      "tokens_out": 32,
+      "total_tokens": 508
+    },
+    "Unusual_Detection": {
+      "tokens_in": 3830,
+      "tokens_out": 104,
+      "total_tokens": 3934
+    },
+    "Object_Match": {
+      "tokens_in": 47383,
+      "tokens_out": 100,
+      "total_tokens": 47483
+    },
+    "Click_Order": {
+      "tokens_in": 5265,
+      "tokens_out": 6582,
+      "total_tokens": 11847
+    },
+    "Path_Finder": {
+      "tokens_in": 24231,
+      "tokens_out": 18,
+      "total_tokens": 24249
+    },
+    "Geometry_Click": {
+      "tokens_in": 291,
+      "tokens_out": 31,
+      "total_tokens": 322
+    },
+    "Bingo": {
+      "tokens_in": 119936,
+      "tokens_out": 2221,
+      "total_tokens": 122157
+    },
+    "Connect_Icon": {
+      "tokens_in": 10652,
+      "tokens_out": 131,
+      "total_tokens": 10783
+    },
+    "Place_Dot": {
+      "tokens_in": 6188,
+      "tokens_out": 319,
+      "total_tokens": 6507
+    },
+    "Image_Recognition": {
+      "tokens_in": 8287,
+      "tokens_out": 303,
+      "total_tokens": 8590
+    },
+    "Rotation_Match": {
+      "tokens_in": 7363,
+      "tokens_out": 87,
+      "total_tokens": 7450
+    },
+    "Dart_Count": {
+      "tokens_in": 8119,
+      "tokens_out": 19,
+      "total_tokens": 8138
+    },
+    "Image_Matching": {
+      "tokens_in": 12800,
+      "tokens_out": 40,
+      "total_tokens": 12840
+    },
+    "Pick_Area": {
+      "tokens_in": 43192,
+      "tokens_out": 2269,
+      "total_tokens": 45461
+    },
+    "Select_Animal": {
+      "tokens_in": 2511,
+      "tokens_out": 34,
+      "total_tokens": 2545
+    },
+    "Dice_Count": {
+      "tokens_in": 17334,
+      "tokens_out": 193,
+      "total_tokens": 17527
+    },
+    "Patch_Select": {
+      "tokens_in": 13783,
+      "tokens_out": 2620,
+      "total_tokens": 16403
+    },
+    "Coordinates": {
+      "tokens_in": 11702,
+      "tokens_out": 43,
+      "total_tokens": 11745
+    }
+  }
+}

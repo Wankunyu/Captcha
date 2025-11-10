@@ -1,0 +1,20 @@
+{
+  "experiment": "exp1_gt",
+  "by_task_type": {
+    "Path_Finder": {
+      "total": 10,
+      "correct": 10,
+      "pass1": 1.0,
+      "tokens_in": 98810,
+      "tokens_out": 520
+    }
+  },
+  "overall": {
+    "total_cases": 10,
+    "total_correct": 10,
+    "overall_pass1": 1.0,
+    "total_tokens_in": 98810,
+    "total_tokens_out": 520,
+    "total_tokens": 99330
+  }
+}

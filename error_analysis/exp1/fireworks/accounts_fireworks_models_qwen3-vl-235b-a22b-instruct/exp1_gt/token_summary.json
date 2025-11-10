@@ -1,0 +1,119 @@
+{
+  "experiment": "exp1_gt",
+  "overall": {
+    "total_questions": 18,
+    "total_tokens_in": 74462,
+    "total_tokens_out": 558,
+    "total_tokens": 75020
+  },
+  "by_task_type": {
+    "Bingo": {
+      "count": 1,
+      "tokens_in": 634,
+      "tokens_out": 19,
+      "total_tokens": 653
+    },
+    "Click_Order": {
+      "count": 1,
+      "tokens_in": 355,
+      "tokens_out": 83,
+      "total_tokens": 438
+    },
+    "Connect_Icon": {
+      "count": 1,
+      "tokens_in": 1558,
+      "tokens_out": 18,
+      "total_tokens": 1576
+    },
+    "Coordinates": {
+      "count": 1,
+      "tokens_in": 5709,
+      "tokens_out": 18,
+      "total_tokens": 5727
+    },
+    "Dart_Count": {
+      "count": 1,
+      "tokens_in": 7899,
+      "tokens_out": 20,
+      "total_tokens": 7919
+    },
+    "Dice_Count": {
+      "count": 1,
+      "tokens_in": 1066,
+      "tokens_out": 17,
+      "total_tokens": 1083
+    },
+    "Geometry_Click": {
+      "count": 1,
+      "tokens_in": 335,
+      "tokens_out": 29,
+      "total_tokens": 364
+    },
+    "Image_Matching": {
+      "count": 1,
+      "tokens_in": 6227,
+      "tokens_out": 18,
+      "total_tokens": 6245
+    },
+    "Image_Recognition": {
+      "count": 1,
+      "tokens_in": 686,
+      "tokens_out": 26,
+      "total_tokens": 712
+    },
+    "Misleading_Click": {
+      "count": 1,
+      "tokens_in": 514,
+      "tokens_out": 31,
+      "total_tokens": 545
+    },
+    "Object_Match": {
+      "count": 1,
+      "tokens_in": 14982,
+      "tokens_out": 20,
+      "total_tokens": 15002
+    },
+    "Patch_Select": {
+      "count": 1,
+      "tokens_in": 273,
+      "tokens_out": 106,
+      "total_tokens": 379
+    },
+    "Path_Finder": {
+      "count": 1,
+      "tokens_in": 24006,
+      "tokens_out": 19,
+      "total_tokens": 24025
+    },
+    "Pick_Area": {
+      "count": 1,
+      "tokens_in": 6284,
+      "tokens_out": 31,
+      "total_tokens": 6315
+    },
+    "Place_Dot": {
+      "count": 1,
+      "tokens_in": 408,
+      "tokens_out": 30,
+      "total_tokens": 438
+    },
+    "Rotation_Match": {
+      "count": 1,
+      "tokens_in": 1299,
+      "tokens_out": 20,
+      "total_tokens": 1319
+    },
+    "Select_Animal": {
+      "count": 1,
+      "tokens_in": 1112,
+      "tokens_out": 17,
+      "total_tokens": 1129
+    },
+    "Unusual_Detection": {
+      "count": 1,
+      "tokens_in": 1115,
+      "tokens_out": 36,
+      "total_tokens": 1151
+    }
+  }
+}
