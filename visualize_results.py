@@ -13,6 +13,12 @@ import json
 import warnings
 warnings.filterwarnings('ignore')
 
+# Optional dependency to avoid overlapping text labels in scatter plots
+try:
+    from adjustText import adjust_text  # type: ignore
+except Exception:
+    adjust_text = None
+
 # Set font and chart style
 plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
@@ -143,18 +149,26 @@ class CAPTCHAVisualizer:
                             'pass1': 'pass'
                         })
 
-                        # Calculate aggregated statistics by task type
+                        # Prepare per-row metrics before grouping (each summary row = one task type per run)
+                        import numpy as _np
+                        eps = 1e-9
+                        df['avg_attempts_per_row'] = df['attempt_idx']
+                        df['cum_e2e_ms_per_row'] = df['cumulative_ms']
+                        df['avg_e2e_ms_per_row'] = df['cumulative_ms'] / _np.clip(df['attempt_idx'], eps, None)
+
+                        # Aggregate statistics by task type (mean across runs if multiple exist)
                         agg_df = df.groupby('task_type').agg({
-                            'pass': 'mean',  # Success rate (already 0-1)
-                            'attempt_idx': 'mean',  # Average attempts
-                            'cumulative_ms': 'mean'  # Average time
+                            'pass': 'mean',
+                            'avg_attempts_per_row': 'mean',
+                            'cum_e2e_ms_per_row': 'mean',
+                            'avg_e2e_ms_per_row': 'mean'
                         }).reset_index()
 
                         agg_df = agg_df.rename(columns={
-                            'attempt_idx': 'avg_attempts',
-                            'cumulative_ms': 'avg_e2e_ms'
+                            'avg_attempts_per_row': 'avg_attempts',
+                            'cum_e2e_ms_per_row': 'cum_e2e_ms',
+                            'avg_e2e_ms_per_row': 'avg_e2e_ms'
                         })
-                        # Keep 'pass' as is (0-1 range)
 
                         # Add metadata
                         agg_df['experiment'] = experiment
@@ -419,13 +433,14 @@ class CAPTCHAVisualizer:
                 continue
             sub = sub.dropna(subset=[metric])
             sub['pass_pct'] = sub['pass'] * 100
-            ax.scatter(sub[metric], sub['pass_pct'], s=80, alpha=0.85,
+            # Convert milliseconds to seconds for unified units (s)
+            ax.scatter(sub[metric] / 1000.0, sub['pass_pct'], s=80, alpha=0.85,
                        label=self._get_display_name(exp, 'experiment'),
                        color=colors[i % len(colors)], edgecolors='black', linewidths=0.8)
 
         ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
         ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
-        ax.set_xlabel('Average E2E Time (ms)', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Average E2E Time (s)', fontsize=12, fontweight='bold')
         ax.set_ylim(-5, 105)
         ax.grid(alpha=0.3)
 
@@ -536,13 +551,33 @@ class CAPTCHAVisualizer:
 
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, polar=True)
-        ax.plot(angles, values, color='#2e75b6', linewidth=2)
-        ax.fill(angles, values, color='#7eb3d6', alpha=0.25)
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(labels)
+        ax.plot(angles, values, color='#2e75b6', linewidth=2, zorder=2)
+        ax.fill(angles, values, color='#7eb3d6', alpha=0.25, zorder=1)
+
+        # Compute separate angles for label placement (without closing angle)
+        label_angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False)
+
+        # Hide default theta tick labels and draw custom labels slightly outside the outer ring
+        ax.set_xticks([])
+        rmax = 110  # extend radius a bit to leave room for labels
+        ax.set_ylim(0, rmax)
+        label_r = rmax * 0.985
+        for a, lab in zip(label_angles, labels):
+            # Choose alignment based on quadrant so labels stay outside
+            if -np.pi/2 <= a <= np.pi/2:
+                ha = 'left'
+            elif np.pi/2 < a < 3*np.pi/2:
+                ha = 'right'
+            else:
+                ha = 'center'
+            ax.text(a, label_r, lab, ha=ha, va='center', fontsize=11,
+                    bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.7),
+                    zorder=3)
+
+        # Move radial tick labels away from crowded areas
+        ax.set_rlabel_position(225)
         ax.set_yticks([20, 40, 60, 80, 100])
         ax.set_yticklabels(['20', '40', '60', '80', '100'])
-        ax.set_ylim(0, 100)
 
         title = f"Task Family Radar - {self._get_display_name(experiment, 'experiment')}"
         if model_filter:
@@ -644,7 +679,8 @@ class CAPTCHAVisualizer:
                                     opt_exp: str = 'exp2',
                                     model_filter: Optional[str] = None,
                                     figsize: Tuple[int, int] = (11, 11),
-                                    save_path: Optional[str] = None):
+                                    save_path: Optional[str] = None,
+                                    use_adjust_text: bool = True):
         """
         Plot scatter plot: Optimization resistance analysis
 
@@ -696,11 +732,30 @@ class CAPTCHAVisualizer:
         scatter = ax.scatter(comparison['baseline'], comparison['optimized'],
                            s=200, c=colors, alpha=0.7, edgecolors='black', linewidth=1.5)
 
-        # Add task type labels
+        # Add task labels; prefer using adjustText to reduce overlaps if available
+        texts = []
         for idx, row in comparison.iterrows():
-            ax.annotate(idx, (row['baseline'], row['optimized']),
-                       xytext=(5, 5), textcoords='offset points',
-                       fontsize=9, alpha=0.8)
+            t = ax.text(row['baseline'], row['optimized'], idx,
+                        fontsize=9, alpha=0.9, color='black')
+            texts.append(t)
+
+        if use_adjust_text and adjust_text is not None and len(texts) > 0:
+            try:
+                adjust_text(
+                    texts,
+                    ax=ax,
+                    only_move={'points': 'y', 'texts': 'xy'},
+                    autoalign='y',
+                    force_points=0.2,
+                    force_text=0.2,
+                    expand_text=(1.05, 1.2),
+                    expand_points=(1.1, 1.3),
+                    arrowprops=dict(arrowstyle='-', color='gray', lw=0.5, alpha=0.6)
+                )
+            except Exception as e:
+                print(f"[WARNING] adjustText failed: {e}. Falling back to static labels.")
+        elif use_adjust_text and adjust_text is None:
+            print("[INFO] 'adjustText' not installed. Run 'pip install adjustText' to enable automatic label adjustment.")
 
         # Diagonal line (y=x)
         lims = [0, 105]
@@ -872,17 +927,20 @@ class CAPTCHAVisualizer:
         fig = plt.figure(figsize=figsize)
         gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.3)
 
-        # Aggregate by task type
+        # Aggregate by task type (in case multiple runs/files were merged)
         task_stats = df.groupby('task_type').agg({
             'pass': 'mean',
             'avg_attempts': 'mean',
-            'avg_e2e_ms': 'mean',
+            'avg_e2e_ms': 'mean',   # derived avg per attempt in loader
+            'cum_e2e_ms': 'mean',   # cumulative time across attempts
             'n': 'sum'
         }).reset_index()
 
         task_stats['pass_pct'] = task_stats['pass'] * 100
-        task_stats['avg_time_sec'] = task_stats['avg_e2e_ms'] / 1000
-        task_stats['time_per_attempt'] = task_stats['avg_time_sec'] / task_stats['avg_attempts']
+        # Cumulative time until success (seconds)
+        task_stats['cum_time_sec'] = task_stats['cum_e2e_ms'] / 1000.0
+        # Average time per attempt (seconds)
+        task_stats['avg_time_per_attempt_sec'] = task_stats['avg_e2e_ms'] / 1000.0
 
         # Sort by average attempts (descending)
         task_stats = task_stats.sort_values('avg_attempts', ascending=False)
@@ -907,10 +965,10 @@ class CAPTCHAVisualizer:
 
         # ===== Subplot 2: Average Time per Task Type =====
         ax2 = fig.add_subplot(gs[0, 1])
-        task_stats_time = task_stats.sort_values('avg_time_sec', ascending=False)
-        colors_time = ['#ff6b6b' if x >= 30 else '#4ecdc4' for x in task_stats_time['avg_time_sec']]
-        bars2 = ax2.barh(task_stats_time['task_type'], task_stats_time['avg_time_sec'], color=colors_time, alpha=0.8)
-        ax2.set_xlabel('Average Time Until Success (seconds)', fontsize=11, fontweight='bold')
+        task_stats_time = task_stats.sort_values('cum_time_sec', ascending=False)
+        colors_time = ['#ff6b6b' if x >= 30 else '#4ecdc4' for x in task_stats_time['cum_time_sec']]
+        bars2 = ax2.barh(task_stats_time['task_type'], task_stats_time['cum_time_sec'], color=colors_time, alpha=0.8)
+        ax2.set_xlabel('Cumulative Time Until Success (s)', fontsize=11, fontweight='bold')
         ax2.set_ylabel('Task Type', fontsize=11, fontweight='bold')
         ax2.set_title('Exp3: Time Cost Analysis', fontsize=13, fontweight='bold')
         ax2.axvline(x=30, color='orange', linestyle='--', linewidth=2, alpha=0.5, label='High Time Cost (≥30s)')
@@ -919,7 +977,7 @@ class CAPTCHAVisualizer:
 
         # Add value labels
         for i, (idx, row) in enumerate(task_stats_time.iterrows()):
-            ax2.text(row['avg_time_sec'] + 1, i, f"{row['avg_time_sec']:.1f}s",
+            ax2.text(row['cum_time_sec'] + 1, i, f"{row['cum_time_sec']:.1f}s",
                     va='center', fontsize=9)
 
         # ===== Subplot 3: Pass@1 vs Until-Correct Success Rate =====
@@ -966,10 +1024,10 @@ class CAPTCHAVisualizer:
 
         # ===== Subplot 4: Time Efficiency (Time per Attempt) =====
         ax4 = fig.add_subplot(gs[1, 1])
-        task_stats_eff = task_stats.sort_values('time_per_attempt', ascending=False)
-        colors_eff = ['#9b59b6' if x >= 5 else '#95a5a6' for x in task_stats_eff['time_per_attempt']]
-        bars4 = ax4.barh(task_stats_eff['task_type'], task_stats_eff['time_per_attempt'], color=colors_eff, alpha=0.8)
-        ax4.set_xlabel('Average Time per Attempt (seconds)', fontsize=11, fontweight='bold')
+        task_stats_eff = task_stats.sort_values('avg_time_per_attempt_sec', ascending=False)
+        colors_eff = ['#9b59b6' if x >= 5 else '#95a5a6' for x in task_stats_eff['avg_time_per_attempt_sec']]
+        bars4 = ax4.barh(task_stats_eff['task_type'], task_stats_eff['avg_time_per_attempt_sec'], color=colors_eff, alpha=0.8)
+        ax4.set_xlabel('Average Time per Attempt (s)', fontsize=11, fontweight='bold')
         ax4.set_ylabel('Task Type', fontsize=11, fontweight='bold')
         ax4.set_title('Exp3: Time Efficiency per Attempt', fontsize=13, fontweight='bold')
         ax4.axvline(x=5, color='purple', linestyle='--', linewidth=2, alpha=0.5, label='Slow (≥5s/attempt)')
@@ -978,7 +1036,7 @@ class CAPTCHAVisualizer:
 
         # Add value labels
         for i, (idx, row) in enumerate(task_stats_eff.iterrows()):
-            ax4.text(row['time_per_attempt'] + 0.2, i, f"{row['time_per_attempt']:.1f}s",
+            ax4.text(row['avg_time_per_attempt_sec'] + 0.2, i, f"{row['avg_time_per_attempt_sec']:.1f}s",
                     va='center', fontsize=9)
 
         # Main title
