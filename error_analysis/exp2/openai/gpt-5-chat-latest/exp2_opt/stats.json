@@ -1,95 +1,74 @@
 {
   "experiment": "exp2_opt",
   "by_task_type": {
-    "Pick_Area": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 8460,
-      "tokens_out": 230
-    },
-    "Place_Dot": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 9490,
-      "tokens_out": 230
-    },
-    "Bingo": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 8500,
-      "tokens_out": 160
-    },
-    "Select_Animal": {
-      "total": 10,
-      "correct": 10,
-      "pass1": 1.0,
-      "tokens_in": 8242,
-      "tokens_out": 140
-    },
-    "Image_Matching": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 41320,
-      "tokens_out": 140
-    },
-    "Dart_Count": {
-      "total": 10,
-      "correct": 1,
-      "pass1": 0.1,
-      "tokens_in": 83510,
-      "tokens_out": 140
-    },
-    "Path_Finder": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 8830,
-      "tokens_out": 140
-    },
-    "Coordinates": {
-      "total": 10,
-      "correct": 4,
-      "pass1": 0.4,
-      "tokens_in": 50470,
-      "tokens_out": 140
-    },
     "Misleading_Click": {
       "total": 10,
-      "correct": 8,
-      "pass1": 0.8,
+      "correct": 6,
+      "pass1": 0.6,
       "tokens_in": 8420,
       "tokens_out": 230
     },
     "Unusual_Detection": {
       "total": 10,
-      "correct": 4,
-      "pass1": 0.4,
-      "tokens_in": 8380,
-      "tokens_out": 164
+      "correct": 3,
+      "pass1": 0.3,
+      "tokens_in": 9250,
+      "tokens_out": 167
     },
-    "Image_Recognition": {
-      "total": 10,
-      "correct": 8,
-      "pass1": 0.8,
-      "tokens_in": 20976,
-      "tokens_out": 263
-    },
-    "Object_Match": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 39710,
-      "tokens_out": 140
-    },
-    "Rotation_Match": {
+    "Patch_Select": {
       "total": 10,
       "correct": 1,
       "pass1": 0.1,
-      "tokens_in": 15280,
+      "tokens_in": 7359,
+      "tokens_out": 308
+    },
+    "Dart_Count": {
+      "total": 10,
+      "correct": 2,
+      "pass1": 0.2,
+      "tokens_in": 84270,
+      "tokens_out": 140
+    },
+    "Dice_Count": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 11820,
+      "tokens_out": 130
+    },
+    "Object_Match": {
+      "total": 10,
+      "correct": 2,
+      "pass1": 0.2,
+      "tokens_in": 40390,
+      "tokens_out": 140
+    },
+    "Path_Finder": {
+      "total": 10,
+      "correct": 10,
+      "pass1": 1.0,
+      "tokens_in": 40820,
+      "tokens_out": 140
+    },
+    "Coordinates": {
+      "total": 10,
+      "correct": 3,
+      "pass1": 0.3,
+      "tokens_in": 51180,
+      "tokens_out": 140
+    },
+    "Bingo": {
+      "total": 10,
+      "correct": 5,
+      "pass1": 0.5,
+      "tokens_in": 10540,
+      "tokens_out": 160
+    },
+    "Rotation_Match": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 15000,
       "tokens_out": 130
     },
     "Click_Order": {
@@ -99,41 +78,62 @@
       "tokens_in": 8490,
       "tokens_out": 600
     },
-    "Dice_Count": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 11820,
-      "tokens_out": 130
-    },
-    "Patch_Select": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 5939,
-      "tokens_out": 281
-    },
     "Connect_Icon": {
-      "total": 10,
-      "correct": 2,
-      "pass1": 0.2,
-      "tokens_in": 22540,
-      "tokens_out": 140
-    },
-    "Geometry_Click": {
       "total": 10,
       "correct": 1,
       "pass1": 0.1,
-      "tokens_in": 4997,
+      "tokens_in": 23230,
+      "tokens_out": 140
+    },
+    "Select_Animal": {
+      "total": 10,
+      "correct": 10,
+      "pass1": 1.0,
+      "tokens_in": 9002,
+      "tokens_out": 140
+    },
+    "Image_Recognition": {
+      "total": 10,
+      "correct": 7,
+      "pass1": 0.7,
+      "tokens_in": 21666,
+      "tokens_out": 257
+    },
+    "Place_Dot": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 9480,
       "tokens_out": 230
+    },
+    "Geometry_Click": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 4883,
+      "tokens_out": 230
+    },
+    "Pick_Area": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 8460,
+      "tokens_out": 230
+    },
+    "Image_Matching": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 42330,
+      "tokens_out": 140
     }
   },
   "overall": {
     "total_cases": 180,
-    "total_correct": 39,
-    "overall_pass1": 0.21666666666666667,
-    "total_tokens_in": 365374,
-    "total_tokens_out": 3628,
-    "total_tokens": 369002
+    "total_correct": 50,
+    "overall_pass1": 0.2777777777777778,
+    "total_tokens_in": 406590,
+    "total_tokens_out": 3652,
+    "total_tokens": 410242
   }
 }

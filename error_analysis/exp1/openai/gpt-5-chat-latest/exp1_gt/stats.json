@@ -1,33 +1,33 @@
 {
   "experiment": "exp1_gt",
   "by_task_type": {
-    "Unusual_Detection": {
+    "Click_Order": {
       "total": 10,
-      "correct": 5,
-      "pass1": 0.5,
-      "tokens_in": 7480,
-      "tokens_out": 170
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 7140,
+      "tokens_out": 600
+    },
+    "Object_Match": {
+      "total": 10,
+      "correct": 0,
+      "pass1": 0.0,
+      "tokens_in": 39370,
+      "tokens_out": 140
+    },
+    "Image_Matching": {
+      "total": 10,
+      "correct": 1,
+      "pass1": 0.1,
+      "tokens_in": 40800,
+      "tokens_out": 140
     },
     "Image_Recognition": {
       "total": 10,
       "correct": 6,
       "pass1": 0.6,
-      "tokens_in": 20106,
-      "tokens_out": 260
-    },
-    "Image_Matching": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 40210,
-      "tokens_out": 140
-    },
-    "Geometry_Click": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 4069,
-      "tokens_out": 230
+      "tokens_in": 20616,
+      "tokens_out": 257
     },
     "Misleading_Click": {
       "total": 10,
@@ -36,26 +36,19 @@
       "tokens_in": 7680,
       "tokens_out": 230
     },
-    "Object_Match": {
+    "Pick_Area": {
       "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 38970,
-      "tokens_out": 140
+      "correct": 1,
+      "pass1": 0.1,
+      "tokens_in": 7730,
+      "tokens_out": 230
     },
-    "Path_Finder": {
+    "Geometry_Click": {
       "total": 10,
       "correct": 0,
       "pass1": 0.0,
-      "tokens_in": 7550,
-      "tokens_out": 140
-    },
-    "Bingo": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 7790,
-      "tokens_out": 160
+      "tokens_in": 4068,
+      "tokens_out": 230
     },
     "Place_Dot": {
       "total": 10,
@@ -64,11 +57,39 @@
       "tokens_in": 7760,
       "tokens_out": 230
     },
+    "Connect_Icon": {
+      "total": 10,
+      "correct": 2,
+      "pass1": 0.2,
+      "tokens_in": 22190,
+      "tokens_out": 140
+    },
+    "Patch_Select": {
+      "total": 10,
+      "correct": 2,
+      "pass1": 0.2,
+      "tokens_in": 5799,
+      "tokens_out": 320
+    },
     "Coordinates": {
       "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 49700,
+      "correct": 5,
+      "pass1": 0.5,
+      "tokens_in": 50120,
+      "tokens_out": 140
+    },
+    "Rotation_Match": {
+      "total": 10,
+      "correct": 2,
+      "pass1": 0.2,
+      "tokens_in": 13480,
+      "tokens_out": 130
+    },
+    "Select_Animal": {
+      "total": 10,
+      "correct": 10,
+      "pass1": 1.0,
+      "tokens_in": 7952,
       "tokens_out": 140
     },
     "Dice_Count": {
@@ -78,34 +99,6 @@
       "tokens_in": 9630,
       "tokens_out": 130
     },
-    "Pick_Area": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 7730,
-      "tokens_out": 230
-    },
-    "Click_Order": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 7140,
-      "tokens_out": 600
-    },
-    "Connect_Icon": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 21780,
-      "tokens_out": 140
-    },
-    "Rotation_Match": {
-      "total": 10,
-      "correct": 1,
-      "pass1": 0.1,
-      "tokens_in": 13760,
-      "tokens_out": 130
-    },
     "Dart_Count": {
       "total": 10,
       "correct": 1,
@@ -113,27 +106,34 @@
       "tokens_in": 82490,
       "tokens_out": 140
     },
-    "Patch_Select": {
-      "total": 10,
-      "correct": 0,
-      "pass1": 0.0,
-      "tokens_in": 4949,
-      "tokens_out": 278
-    },
-    "Select_Animal": {
+    "Path_Finder": {
       "total": 10,
       "correct": 10,
       "pass1": 1.0,
-      "tokens_in": 7442,
+      "tokens_in": 38960,
       "tokens_out": 140
+    },
+    "Unusual_Detection": {
+      "total": 10,
+      "correct": 3,
+      "pass1": 0.3,
+      "tokens_in": 7990,
+      "tokens_out": 149
+    },
+    "Bingo": {
+      "total": 10,
+      "correct": 1,
+      "pass1": 0.1,
+      "tokens_in": 8700,
+      "tokens_out": 160
     }
   },
   "overall": {
     "total_cases": 180,
-    "total_correct": 30,
-    "overall_pass1": 0.16666666666666666,
-    "total_tokens_in": 346236,
-    "total_tokens_out": 3628,
-    "total_tokens": 349864
+    "total_correct": 51,
+    "overall_pass1": 0.2833333333333333,
+    "total_tokens_in": 382475,
+    "total_tokens_out": 3646,
+    "total_tokens": 386121
   }
 }

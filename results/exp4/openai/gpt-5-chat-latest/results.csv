@@ -1,5 +1,5 @@
 provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
-openai,gpt-5-chat-latest,Click_Order,8,0.000,2822.7,2825.5,21176,480,21656,0.000000,0.000000
-openai,gpt-5-chat-latest,Dice_Count,8,0.125,8438.9,8446.3,24112,104,24216,0.000000,0.000000
-openai,gpt-5-chat-latest,Patch_Select,8,0.000,3787.2,3787.6,13197,229,13426,0.000000,0.000000
-openai,gpt-5-chat-latest,Place_Dot,8,0.000,2681.7,2685.9,18024,184,18208,0.000000,0.000000
+openai,gpt-5-chat-latest,Click_Order,8,0.000,2822.7,2825.5,21176,480,21656,0.031270,0.003909
+openai,gpt-5-chat-latest,Dice_Count,8,0.125,8438.9,8446.3,24112,104,24216,0.031180,0.003897
+openai,gpt-5-chat-latest,Patch_Select,8,0.000,3787.2,3787.6,13197,229,13426,0.018786,0.002348
+openai,gpt-5-chat-latest,Place_Dot,8,0.000,2681.7,2685.9,18024,184,18208,0.024370,0.003046

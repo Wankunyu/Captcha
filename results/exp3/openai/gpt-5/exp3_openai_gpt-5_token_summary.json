@@ -2,100 +2,100 @@
   "provider": "openai",
   "model": "gpt-5",
   "overall": {
-    "tokens_in": 91683,
-    "tokens_out": 110555,
-    "total_tokens": 202238
+    "tokens_in": 77279,
+    "tokens_out": 106501,
+    "total_tokens": 183780
   },
   "by_type": {
-    "Path_Finder": {
-      "tokens_in": 2733,
-      "tokens_out": 3314,
-      "total_tokens": 6047
-    },
-    "Coordinates": {
-      "tokens_in": 3995,
-      "tokens_out": 977,
-      "total_tokens": 4972
-    },
-    "Dart_Count": {
-      "tokens_in": 16883,
-      "tokens_out": 5986,
-      "total_tokens": 22869
-    },
-    "Bingo": {
-      "tokens_in": 5274,
-      "tokens_out": 16812,
-      "total_tokens": 22086
+    "Rotation_Match": {
+      "tokens_in": 11722,
+      "tokens_out": 10688,
+      "total_tokens": 22410
     },
     "Misleading_Click": {
-      "tokens_in": 871,
-      "tokens_out": 1303,
-      "total_tokens": 2174
-    },
-    "Pick_Area": {
-      "tokens_in": 8745,
-      "tokens_out": 16230,
-      "total_tokens": 24975
-    },
-    "Select_Animal": {
-      "tokens_in": 855,
-      "tokens_out": 145,
-      "total_tokens": 1000
-    },
-    "Patch_Select": {
-      "tokens_in": 3103,
-      "tokens_out": 7597,
-      "total_tokens": 10700
-    },
-    "Place_Dot": {
-      "tokens_in": 9770,
-      "tokens_out": 14182,
-      "total_tokens": 23952
+      "tokens_in": 874,
+      "tokens_out": 1239,
+      "total_tokens": 2113
     },
     "Click_Order": {
-      "tokens_in": 876,
-      "tokens_out": 689,
-      "total_tokens": 1565
+      "tokens_in": 2634,
+      "tokens_out": 2899,
+      "total_tokens": 5533
     },
-    "Image_Recognition": {
-      "tokens_in": 2127,
-      "tokens_out": 345,
-      "total_tokens": 2472
+    "Select_Animal": {
+      "tokens_in": 932,
+      "tokens_out": 209,
+      "total_tokens": 1141
     },
-    "Geometry_Click": {
-      "tokens_in": 1735,
-      "tokens_out": 2373,
-      "total_tokens": 4108
-    },
-    "Object_Match": {
-      "tokens_in": 3999,
-      "tokens_out": 401,
-      "total_tokens": 4400
-    },
-    "Rotation_Match": {
-      "tokens_in": 15568,
-      "tokens_out": 12704,
-      "total_tokens": 28272
+    "Patch_Select": {
+      "tokens_in": 4246,
+      "tokens_out": 13407,
+      "total_tokens": 17653
     },
     "Connect_Icon": {
-      "tokens_in": 2464,
-      "tokens_out": 1681,
-      "total_tokens": 4145
+      "tokens_in": 2532,
+      "tokens_out": 1041,
+      "total_tokens": 3573
+    },
+    "Path_Finder": {
+      "tokens_in": 4109,
+      "tokens_out": 849,
+      "total_tokens": 4958
     },
     "Unusual_Detection": {
-      "tokens_in": 2594,
-      "tokens_out": 3703,
-      "total_tokens": 6297
-    },
-    "Image_Matching": {
-      "tokens_in": 4036,
-      "tokens_out": 529,
-      "total_tokens": 4565
+      "tokens_in": 952,
+      "tokens_out": 339,
+      "total_tokens": 1291
     },
     "Dice_Count": {
-      "tokens_in": 6055,
-      "tokens_out": 21584,
-      "total_tokens": 27639
+      "tokens_in": 10139,
+      "tokens_out": 37632,
+      "total_tokens": 47771
+    },
+    "Coordinates": {
+      "tokens_in": 4068,
+      "tokens_out": 1297,
+      "total_tokens": 5365
+    },
+    "Geometry_Click": {
+      "tokens_in": 481,
+      "tokens_out": 471,
+      "total_tokens": 952
+    },
+    "Pick_Area": {
+      "tokens_in": 8753,
+      "tokens_out": 21414,
+      "total_tokens": 30167
+    },
+    "Image_Matching": {
+      "tokens_in": 4117,
+      "tokens_out": 273,
+      "total_tokens": 4390
+    },
+    "Dart_Count": {
+      "tokens_in": 8519,
+      "tokens_out": 2833,
+      "total_tokens": 11352
+    },
+    "Image_Recognition": {
+      "tokens_in": 2195,
+      "tokens_out": 217,
+      "total_tokens": 2412
+    },
+    "Bingo": {
+      "tokens_in": 1085,
+      "tokens_out": 3410,
+      "total_tokens": 4495
+    },
+    "Object_Match": {
+      "tokens_in": 4065,
+      "tokens_out": 593,
+      "total_tokens": 4658
+    },
+    "Place_Dot": {
+      "tokens_in": 5856,
+      "tokens_out": 7690,
+      "total_tokens": 13546
     }
   }
 }
