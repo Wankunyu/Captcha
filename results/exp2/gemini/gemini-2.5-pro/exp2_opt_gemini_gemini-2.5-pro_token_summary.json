@@ -1,0 +1,140 @@
+{
+  "experiment": "exp2_opt",
+  "provider": "gemini",
+  "model": "gemini-2.5-pro",
+  "overall": {
+    "total_questions": 180,
+    "total_tokens_in": 221726,
+    "total_tokens_out": 3829,
+    "total_tokens": 225555,
+    "cost_usd": 0.315447
+  },
+  "by_task_type": {
+    "Bingo": {
+      "count": 10,
+      "tokens_in": 6490,
+      "tokens_out": 194,
+      "total_tokens": 6684,
+      "cost_usd": 0.010053
+    },
+    "Click_Order": {
+      "count": 10,
+      "tokens_in": 7700,
+      "tokens_out": 516,
+      "total_tokens": 8216,
+      "cost_usd": 0.014785
+    },
+    "Connect_Icon": {
+      "count": 10,
+      "tokens_in": 22890,
+      "tokens_out": 128,
+      "total_tokens": 23018,
+      "cost_usd": 0.029893
+    },
+    "Coordinates": {
+      "count": 10,
+      "tokens_in": 21292,
+      "tokens_out": 131,
+      "total_tokens": 21423,
+      "cost_usd": 0.027925
+    },
+    "Dart_Count": {
+      "count": 10,
+      "tokens_in": 35932,
+      "tokens_out": 139,
+      "total_tokens": 36071,
+      "cost_usd": 0.046305
+    },
+    "Dice_Count": {
+      "count": 10,
+      "tokens_in": 5580,
+      "tokens_out": 138,
+      "total_tokens": 5718,
+      "cost_usd": 0.008355
+    },
+    "Geometry_Click": {
+      "count": 10,
+      "tokens_in": 4582,
+      "tokens_out": 287,
+      "total_tokens": 4869,
+      "cost_usd": 0.008597
+    },
+    "Image_Matching": {
+      "count": 10,
+      "tokens_in": 18696,
+      "tokens_out": 128,
+      "total_tokens": 18824,
+      "cost_usd": 0.02465
+    },
+    "Image_Recognition": {
+      "count": 10,
+      "tokens_in": 25605,
+      "tokens_out": 236,
+      "total_tokens": 25841,
+      "cost_usd": 0.034366
+    },
+    "Misleading_Click": {
+      "count": 10,
+      "tokens_in": 4340,
+      "tokens_out": 251,
+      "total_tokens": 4591,
+      "cost_usd": 0.007935
+    },
+    "Object_Match": {
+      "count": 10,
+      "tokens_in": 17670,
+      "tokens_out": 137,
+      "total_tokens": 17807,
+      "cost_usd": 0.023458
+    },
+    "Patch_Select": {
+      "count": 10,
+      "tokens_in": 5849,
+      "tokens_out": 379,
+      "total_tokens": 6228,
+      "cost_usd": 0.011101
+    },
+    "Path_Finder": {
+      "count": 10,
+      "tokens_in": 18190,
+      "tokens_out": 134,
+      "total_tokens": 18324,
+      "cost_usd": 0.024078
+    },
+    "Pick_Area": {
+      "count": 10,
+      "tokens_in": 4350,
+      "tokens_out": 254,
+      "total_tokens": 4604,
+      "cost_usd": 0.007978
+    },
+    "Place_Dot": {
+      "count": 10,
+      "tokens_in": 5460,
+      "tokens_out": 248,
+      "total_tokens": 5708,
+      "cost_usd": 0.009305
+    },
+    "Rotation_Match": {
+      "count": 10,
+      "tokens_in": 7020,
+      "tokens_out": 160,
+      "total_tokens": 7180,
+      "cost_usd": 0.010375
+    },
+    "Select_Animal": {
+      "count": 10,
+      "tokens_in": 4910,
+      "tokens_out": 181,
+      "total_tokens": 5091,
+      "cost_usd": 0.007947
+    },
+    "Unusual_Detection": {
+      "count": 10,
+      "tokens_in": 5170,
+      "tokens_out": 188,
+      "total_tokens": 5358,
+      "cost_usd": 0.008343
+    }
+  }
+}

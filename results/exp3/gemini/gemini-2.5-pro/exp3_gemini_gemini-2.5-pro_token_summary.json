@@ -1,0 +1,101 @@
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-pro",
+  "overall": {
+    "tokens_in": 58966,
+    "tokens_out": 1839,
+    "total_tokens": 60805
+  },
+  "by_type": {
+    "Patch_Select": {
+      "tokens_in": 2492,
+      "tokens_out": 147,
+      "total_tokens": 2639
+    },
+    "Coordinates": {
+      "tokens_in": 6974,
+      "tokens_out": 42,
+      "total_tokens": 7016
+    },
+    "Unusual_Detection": {
+      "tokens_in": 558,
+      "tokens_out": 19,
+      "total_tokens": 577
+    },
+    "Click_Order": {
+      "tokens_in": 8091,
+      "tokens_out": 576,
+      "total_tokens": 8667
+    },
+    "Connect_Icon": {
+      "tokens_in": 2324,
+      "tokens_out": 11,
+      "total_tokens": 2335
+    },
+    "Dart_Count": {
+      "tokens_in": 3401,
+      "tokens_out": 14,
+      "total_tokens": 3415
+    },
+    "Geometry_Click": {
+      "tokens_in": 4979,
+      "tokens_out": 281,
+      "total_tokens": 5260
+    },
+    "Place_Dot": {
+      "tokens_in": 5857,
+      "tokens_out": 247,
+      "total_tokens": 6104
+    },
+    "Pick_Area": {
+      "tokens_in": 3803,
+      "tokens_out": 214,
+      "total_tokens": 4017
+    },
+    "Select_Animal": {
+      "tokens_in": 531,
+      "tokens_out": 16,
+      "total_tokens": 547
+    },
+    "Bingo": {
+      "tokens_in": 687,
+      "tokens_out": 13,
+      "total_tokens": 700
+    },
+    "Object_Match": {
+      "tokens_in": 1806,
+      "tokens_out": 14,
+      "total_tokens": 1820
+    },
+    "Image_Recognition": {
+      "tokens_in": 5202,
+      "tokens_out": 46,
+      "total_tokens": 5248
+    },
+    "Rotation_Match": {
+      "tokens_in": 2966,
+      "tokens_out": 62,
+      "total_tokens": 3028
+    },
+    "Misleading_Click": {
+      "tokens_in": 473,
+      "tokens_out": 23,
+      "total_tokens": 496
+    },
+    "Dice_Count": {
+      "tokens_in": 2992,
+      "tokens_out": 72,
+      "total_tokens": 3064
+    },
+    "Path_Finder": {
+      "tokens_in": 1857,
+      "tokens_out": 14,
+      "total_tokens": 1871
+    },
+    "Image_Matching": {
+      "tokens_in": 3973,
+      "tokens_out": 28,
+      "total_tokens": 4001
+    }
+  }
+}
