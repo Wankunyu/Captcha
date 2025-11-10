@@ -1,9 +1,0 @@
-provider,model,type,puzzle_id,tokens_in,tokens_out,ttft_ms,e2e_ms
-gemini,gemini-2.5-flash,Place_Dot,path3.jpg,867,159,9473.9,9473.9
-gemini,gemini-2.5-flash,Place_Dot,path9.jpg,867,135,7979.5,7979.5
-gemini,gemini-2.5-flash,Click_Order,image6.jpg,1182,159,9193.4,9193.4
-gemini,gemini-2.5-flash,Click_Order,image2.jpg,1182,124,9440.6,9440.6
-gemini,gemini-2.5-flash,Patch_Select,image9.jpg,845,106,9518.1,9518.1
-gemini,gemini-2.5-flash,Patch_Select,image8.jpg,846,658,12900.3,12900.3
-gemini,gemini-2.5-flash,Dice_Count,dice3.jpg,963,816,12226.2,12226.2
-gemini,gemini-2.5-flash,Dice_Count,dice4.jpg,963,1403,17570.2,17570.2
