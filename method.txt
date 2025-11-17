@@ -1,0 +1,105 @@
+\section{Methods and Experimental Setup}
+\subsection{Dataset and Task Types}
+Our benchmark comprises a suite of visual CAPTCHA puzzles that mirrors the interaction patterns found in modern commercial systems. In total we curate 378 unique items organised into 18 task types. Each task type corresponds to a directory of images and a machine-readable \texttt{ground\_truth.json} file describing the natural-language instruction, the correct answer, and any task-specific evaluation parameters such as coordinate tolerances or rotation thresholds.
+
+Each puzzle instance consists of one or more RGB images plus an instruction written in English. The metadata specifies the canonical action required to solve the puzzle (e.g., clicking a point, selecting one or more grid cells, choosing an option index, or predicting a rotation angle). All coordinates are expressed in pixel space with origin at the top-left corner, and grid-based tasks adopt a consistent zero-based row-major indexing convention.
+
+For exposition we group the 18 task types into four families:
+\begin{itemize}
+    \item \textbf{Counting and aggregation.} Dice Count requires summing the values of all visible dice top faces, while Dart Count presents a target score and multiple dartboard configurations, asking the model to select the option whose darts sum to the reference value.
+    \item \textbf{Pointing and path-based localization.} Geometry Click and Place Dot ask the model to click the geometric centre or endpoint of a specified target; Pick Area and Misleading Click require placing a point inside (or explicitly outside) a designated region; Click Order asks for a sequence of clicks following a reference ordering; Path Finder asks the model to identify the option where an object arrives at the same spatial location as in a reference image.
+    \item \textbf{Grid selection and matching.} Bingo, Patch Select, Image Recognition, Select Animal, Unusual Detection and Object Match all operate on grids of candidate images, requiring the model to select all cells that satisfy some semantic or structural condition (e.g., matching a reference icon, containing a specific animal, or being the ``odd one out'').
+    \item \textbf{Relational and transformation puzzles.} Coordinates and Connect Icon require reasoning about relative positions between reference and candidate images. Rotation Match asks the model to output the rotation angle that best aligns an object with a reference orientation.
+\end{itemize}
+
+Across all task types we keep the original image resolutions and work directly in the underlying pixel coordinate system. The task taxonomy is deliberately heterogeneous: some tasks emphasise fine-grained localization, others test multi-step spatial reasoning, counting, or pattern matching. This diversity allows us to probe which classes of CAPTCHAs remain difficult for state-of-the-art vision--language models even under heavy prompt engineering and few-shot conditioning.
+
+\subsection{Models and Providers}
+We evaluate a representative set of large vision--language models from four major providers: OpenAI, Google Gemini, Anthropic, and Fireworks AI. All models support mixed image--text input and are queried via their official APIs.
+
+For OpenAI we test both the reasoning-centric GPT-5 model and the faster GPT-5-Chat variant. GPT-5 is accessed through the Responses API, which natively supports JSON Schema--constrained outputs and optional reasoning traces, while GPT-5-Chat is accessed via the Chat Completions API with JSON mode enabled (the \texttt{response\_format} field is set such that the model must produce a single JSON object). In both cases we set the sampling temperature to zero to maximise determinism and request that the model output only a single JSON object following the schema we specify.
+
+For Anthropic we use the Claude Sonnet 4.5 model through the \texttt{messages.create} interface with tool-calling. We define a single tool whose input schema is the JSON Schema for the current task; the model is required to invoke this tool exactly once, which yields a structured JSON argument payload that we treat as the prediction. When enabled, we pass Anthropic's optional ``thinking'' configuration with a fixed budget of internal tokens so that the model can allocate additional compute to harder cases.
+
+For Google Gemini we use the gemini-2.5-Flash and gemini-2.5-Pro models via the \texttt{generate\_content} endpoint. Images are sent as raw bytes, and we configure the \texttt{response\_schema} and set \texttt{response\_mime\_type} to \texttt{application/json} so that the model directly emits a JSON object matching our schema. Similar to Anthropic, we can optionally enable Gemini's thinking configuration with a token budget to allow deeper reasoning.
+
+For Fireworks AI we evaluate the Qwen3-VL-235B family through Fireworks' OpenAI-compatible chat API. Here we rely on the provider's JSON Schema support: we wrap the task-type--specific schema in a JSON-based response format, again with temperature zero and vision inputs provided as base64-encoded images.
+
+All providers are configured via a single \texttt{secrets.yaml} file that supplies API keys and per-model pricing. The evaluation framework exposes a unified \texttt{ModelProvider} abstraction, so the high-level evaluation logic is identical across providers: each call receives a prompt string, one or more images, and a JSON Schema, and returns the raw model response together with a parsed JSON object and metadata (tokens, latency, and cost estimates).
+
+\subsection{Evaluation Pipeline}
+Our evaluation pipeline is implemented in a single framework that supports four experimental regimes and multiple providers. For all experiments we fix a random seed and, for each task type, sample up to a maximum of \emph{max\_per\_type} items from the available puzzles (using all puzzles when the dataset is smaller). The same sampled items are reused across providers and experimental conditions so that differences in performance reflect modelling choices rather than dataset sampling.
+
+Given a dataset root and a list of task types, we first construct a list of \emph{TaskItem} objects. Each task item bundles the task type, a unique puzzle identifier, the list of image paths, a fully instantiated prompt, and the ground-truth metadata. For every task type we automatically derive a task-specific JSON Schema via a helper function that encodes both the required answer mode (e.g., number, single point, index, multi-select, rotation) and the exact field names the model must fill. When a detailed reasoning trace is desired, the schema is augmented with an additional free-form \texttt{reasoning} field and the system prompt includes a detailed instruction asking the model to expose its cognitive steps.
+
+Prompt construction is central to our experimental design. The baseline prompts are those that ship with the dataset, typically mirroring the instructions shown to human users. For each puzzle we optionally apply a prompt optimisation layer defined in a separate YAML file. This layer supports several modes: (i) \emph{gt}, which uses only the original prompt; (ii) \emph{opt}, which replaces the original prompt with a task-type--specific expert prompt; and (iii) \emph{merge}, which concatenates the original prompt with additional rules and clarifications. The \emph{auto} mode automatically chooses between replacement and merging depending on whether the puzzle already has a per-item instruction. This design lets us study how far careful prompt engineering alone can improve model robustness on CAPTCHA-style tasks.
+
+At inference time, we iterate over the list of tasks and, for each task, call the provider wrapper with the current prompt, images, and JSON Schema. The raw text response is post-processed with a lightweight JSON extractor that strips code fences and recovers the outermost JSON object if the model produced any surrounding text. The parsed JSON is then evaluated using a type-specific grading function: for classification and grid-selection tasks we require exact match of the predicted indices with the ground-truth set; for localization tasks we require the predicted point to lie within a tolerance window around the ground-truth coordinates or within a specified bounding box; for rotation tasks we check that the angular error is within a task-specific threshold. Each prediction is marked as pass or fail, and we aggregate the proportion of passes per task type as our primary \emph{Pass@1} metric.
+
+Besides correctness, we record timing and token statistics for every call. For each task type and model we compute the mean end-to-end latency (from request to full response) and the time-to-first-token, as well as total input and output tokens consumed. Using model-specific pricing from the configuration file, we translate token counts into dollar costs and write both per-type and overall summaries. When enabled, an error-analysis module also logs all failures with an automatically generated natural-language error description and (for reasoning-capable models) the model's own intermediate reasoning trace.
+
+We instantiate four experimental regimes on top of this common pipeline:
+\begin{itemize}
+    \item \textbf{Exp1: Ground-truth prompts.} Single-shot inference using only the original dataset prompts, providing a baseline Pass@1, latency, and cost profile.
+    \item \textbf{Exp2: Optimised prompts.} Single-shot inference using the prompt-optimisation layer, which injects task-specific rules such as indexing conventions, decision procedures, and tie-breaking strategies.
+    \item \textbf{Exp3: Until-correct strategy.} An iterative regime in which, for each task type, we repeatedly sample puzzles from a candidate pool and query the model until it solves one instance correctly or a maximum number of attempts \(k\) is reached. For every task type we record the number of attempts taken, a binary success indicator, and the cumulative latency and tokens across attempts.
+    \item \textbf{Exp4: Few-shot learning.} A few-shot regime that augments the prompt with \(n\) worked examples per task type drawn from a disjoint subset of the dataset. The framework automatically excludes these few-shot examples from the evaluation set, ensuring zero-shot generalisation to unseen puzzles of the same type.
+\end{itemize}
+
+\subsection{Statistical Link}
+The single-shot (Exp1/Exp2) and until-correct (Exp3) regimes provide complementary views of model performance. To relate them quantitatively, we model each CAPTCHA task type as a Bernoulli trial with an unknown per-attempt success probability \(p\). The empirical Pass@1 obtained in Exp2 for a given model and task type serves as an estimate \(\hat{p}\) of this quantity.
+
+Under the simplifying assumption that repeated attempts on the same task type are independent and identically distributed with probability \(p\), the probability of achieving at least one success within \(k\) attempts follows a truncated geometric model,
+\[
+q(k) \;=\; 1 - (1-p)^k,
+\]
+and the expected number of attempts before the first success, truncated at \(k\), is
+\[
+A(k) \;=\; \mathbb{E}[\min(G,k)] \;=\; \sum_{a=1}^k \Pr(G \geq a) \;=\; \frac{1 - (1-p)^k}{p},
+\]
+where \(G \sim \mathrm{Geom}(p)\) is the number of trials to first success. In our implementation (both in the analysis scripts and in the public toolkit), this truncated-geometric mapping is the \emph{default} way we predict Exp3 behaviour from Exp2: for each task type and model we plug the Exp2 estimate \(\hat{p}\) into these expressions to obtain predicted Exp3 quantities \(\hat{q}\) and \(\hat{A}\), and compare them to the empirical success probability and average attempts observed in Exp3. This provides a simple, parameter-free check of whether Exp3 behaves like repeated independent attempts on the same underlying single-try task.
+
+In addition to this baseline model, we consider refinements that better reflect the structure of our benchmark, but treat them as optional robustness checks rather than part of the main pipeline. First, because Exp3 samples puzzles from a finite pool without reuse within a run, we can interpret the task as sampling from a finite population of items with heterogeneous difficulty. In the extreme case where each item is either deterministically solvable or not, the Exp3 success probability is given by a finite-population correction
+\[
+q(k) \;=\; 1 - \frac{\binom{N-M}{k}}{\binom{N}{k}},
+\]
+where \(N\) is the number of puzzles of the given type and \(M\) is the number that are solvable in a single try. Second, to capture genuine item-level variability, we treat item-wise success probabilities \(p_i\) as draws from a latent distribution and ask whether the triple \((\hat{p}, \bar{q}, \bar{A})\) inferred from Exp2 and Exp3 is internally consistent with such a model. In practice we fit these models at the level of task type and model, and we use the discrepancies between predicted and observed Exp3 statistics as a diagnostic of non-i.i.d.\ effects such as learning across attempts, priming from previous failures, or systematic prompt misalignment.
+
+\subsection{Cost and Human Baseline Estimation}
+Our framework explicitly tracks the computational cost of solving CAPTCHAs with large models. For each API call we log the number of input and output tokens reported by the provider, as well as per-call latency. Using provider-specific pricing schedules (in USD per thousand tokens) specified in the configuration file, we compute the total dollar cost and average cost per puzzle for each combination of experiment, model, and task type. Aggregate summaries are written both per task type and overall, and we additionally provide a standalone script that consumes the token summaries and produces human-readable cost reports.
+
+To contextualise these costs, we also measure how quickly and accurately humans solve the same tasks. Human participants are asked to solve a subset of the benchmark drawn uniformly across task types using a simple interface that mimics the original CAPTCHA interaction (clicking, selecting grid cells, or choosing options). For each participant we record correctness and wall-clock time per puzzle; aggregating over participants yields a human Pass@1 and time-per-puzzle for each task type. Comparing these human baselines against the model curves in both accuracy and cost/latency space allows us to identify regimes where model-based CAPTCHA solving is either clearly infeasible (too expensive or too slow relative to humans) or, conversely, competes with or surpasses human performance.
+
+
+\section{Results and Analysis}
+\subsection{Overview}
+Placeholder
+
+\subsection{Cost and Latency Analysis}
+Placeholder
+
+\subsection{Iterative Strategy Effectiveness}
+Placeholder
+
+\subsection{Error Analysis}
+Placeholder
+
+\subsection{Statistical Cross Validation}
+Placeholder
+
+
+\section{Defense-Oriented CAPTCHA Design}
+\subsection{Extracting Hardness Factors}
+Placeholder
+
+\subsection{Principles and Operational Touchpoints}
+Placeholder
+
+\section{Related Work}
+Placeholder
+
+\section{Discussion}
+Placeholder
+
+\section{Conclusion}
+Placeholder

@@ -34,6 +34,11 @@ Implications:
   - Given q̂: p̃ ≈ 1 − (1 − q̂)^(1/k)
   - Given Â and k: solve [1 − (1 − p)^k] / p = Â numerically (monotone in p). When k is large and Â ≈ 1/p, then p ≈ 1/Â.
 
+In the implementation used by this repository (see `exp2_to_exp3_predict.py` and `test_statistic.ipynb`),
+these baseline formulas are adopted as the default mapping between Exp2 and Exp3. Finite-pool and
+heterogeneity models are used only as optional robustness checks and diagnostics, not as part of the
+primary prediction pipeline.
+
 ## Time/Cost Mapping
 
 If per‑attempt duration/cost is i.i.d. with mean μ:
@@ -100,4 +105,3 @@ Across many runs for fixed (T, M, k), the MLE of p under the truncated geometric
 - Practical inversion recipes to recover p from Exp3 summaries (q̄ or Ā) and quantify uncertainty.
 - Assessment of finite‑pool, heterogeneity, and dependence effects; guidance on which assumption set fits each task type best.
 - A principled approach to map Exp2 → Exp3 (and vice versa) for success rates, attempts, and time/cost, with diagnostics and confidence intervals.
-

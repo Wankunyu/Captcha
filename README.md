@@ -274,6 +274,8 @@ figures/
 * `run_eval.py`: Provider implementations and evaluation logic
 * `run_single_experiment.py`: Experiment orchestration
 * `visualize_results.py`: Visualization system documentation
+* `STATISTICAL_LINK_EXP2_EXP3.md`: Theoretical link between Exp2 (Pass@1) and Exp3 (until-correct) under the baseline truncated-geometric model
+* `exp2_to_exp3_predict.py` + `test_statistic.ipynb`: Practical implementation of Exp2 → Exp3 predictions using the baseline formulas \(q = 1 - (1-p)^k\), \(A = [1 - (1-p)^k]/p\), with optional finite-pool and calibration diagnostics
 * `prompts_optimized.yaml`: Task-specific optimized prompts
 
 ---
