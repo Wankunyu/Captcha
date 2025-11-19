@@ -3,19 +3,19 @@
   "provider": "anthropic",
   "model": "claude-sonnet-4-5",
   "overall": {
-    "total_questions": 180,
-    "total_tokens_in": 639633,
-    "total_tokens_out": 10600,
-    "total_tokens": 650233,
-    "cost_usd": 2.077899
+    "total_questions": 303,
+    "total_tokens_in": 1199783,
+    "total_tokens_out": 17124,
+    "total_tokens": 1216907,
+    "cost_usd": 3.856209
   },
   "by_task_type": {
     "Bingo": {
-      "count": 10,
-      "tokens_in": 21844,
-      "tokens_out": 570,
-      "total_tokens": 22414,
-      "cost_usd": 0.074082
+      "count": 20,
+      "tokens_in": 44042,
+      "tokens_out": 1140,
+      "total_tokens": 45182,
+      "cost_usd": 0.149226
     },
     "Click_Order": {
       "count": 10,
@@ -25,53 +25,53 @@
       "cost_usd": 0.050628
     },
     "Connect_Icon": {
-      "count": 10,
-      "tokens_in": 26672,
-      "tokens_out": 520,
-      "total_tokens": 27192,
-      "cost_usd": 0.087816
+      "count": 20,
+      "tokens_in": 98646,
+      "tokens_out": 1040,
+      "total_tokens": 99686,
+      "cost_usd": 0.311538
     },
     "Coordinates": {
-      "count": 10,
-      "tokens_in": 65034,
+      "count": 18,
+      "tokens_in": 130031,
       "tokens_out": 468,
-      "total_tokens": 65502,
-      "cost_usd": 0.202122
+      "total_tokens": 130499,
+      "cost_usd": 0.397113
     },
     "Dart_Count": {
-      "count": 10,
-      "tokens_in": 112185,
-      "tokens_out": 520,
-      "total_tokens": 112705,
-      "cost_usd": 0.344355
+      "count": 20,
+      "tokens_in": 279716,
+      "tokens_out": 1040,
+      "total_tokens": 280756,
+      "cost_usd": 0.854748
     },
     "Dice_Count": {
-      "count": 10,
-      "tokens_in": 21936,
-      "tokens_out": 520,
-      "total_tokens": 22456,
-      "cost_usd": 0.073608
+      "count": 11,
+      "tokens_in": 24163,
+      "tokens_out": 572,
+      "total_tokens": 24735,
+      "cost_usd": 0.081069
     },
     "Geometry_Click": {
-      "count": 10,
-      "tokens_in": 10008,
-      "tokens_out": 640,
-      "total_tokens": 10648,
-      "cost_usd": 0.039624
+      "count": 15,
+      "tokens_in": 14175,
+      "tokens_out": 960,
+      "total_tokens": 15135,
+      "cost_usd": 0.056925
     },
     "Image_Matching": {
-      "count": 10,
-      "tokens_in": 91621,
-      "tokens_out": 520,
-      "total_tokens": 92141,
-      "cost_usd": 0.282663
+      "count": 19,
+      "tokens_in": 170799,
+      "tokens_out": 988,
+      "total_tokens": 171787,
+      "cost_usd": 0.527217
     },
     "Image_Recognition": {
-      "count": 10,
-      "tokens_in": 10118,
-      "tokens_out": 659,
-      "total_tokens": 10777,
-      "cost_usd": 0.040239
+      "count": 20,
+      "tokens_in": 20292,
+      "tokens_out": 1306,
+      "total_tokens": 21598,
+      "cost_usd": 0.080466
     },
     "Misleading_Click": {
       "count": 10,
@@ -81,11 +81,11 @@
       "cost_usd": 0.05361
     },
     "Object_Match": {
-      "count": 10,
-      "tokens_in": 45205,
-      "tokens_out": 260,
-      "total_tokens": 45465,
-      "cost_usd": 0.139515
+      "count": 20,
+      "tokens_in": 92091,
+      "tokens_out": 676,
+      "total_tokens": 92767,
+      "cost_usd": 0.286413
     },
     "Patch_Select": {
       "count": 10,
@@ -102,39 +102,39 @@
       "cost_usd": 0.30423
     },
     "Pick_Area": {
-      "count": 10,
-      "tokens_in": 19814,
-      "tokens_out": 576,
-      "total_tokens": 20390,
-      "cost_usd": 0.068082
+      "count": 20,
+      "tokens_in": 21040,
+      "tokens_out": 1280,
+      "total_tokens": 22320,
+      "cost_usd": 0.08232
     },
     "Place_Dot": {
-      "count": 10,
-      "tokens_in": 12150,
-      "tokens_out": 640,
-      "total_tokens": 12790,
-      "cost_usd": 0.04605
+      "count": 20,
+      "tokens_in": 24300,
+      "tokens_out": 1280,
+      "total_tokens": 25580,
+      "cost_usd": 0.0921
     },
     "Rotation_Match": {
-      "count": 10,
-      "tokens_in": 25436,
-      "tokens_out": 522,
-      "total_tokens": 25958,
-      "cost_usd": 0.084138
+      "count": 20,
+      "tokens_in": 60171,
+      "tokens_out": 1042,
+      "total_tokens": 61213,
+      "cost_usd": 0.196143
     },
     "Select_Animal": {
-      "count": 10,
-      "tokens_in": 21276,
-      "tokens_out": 560,
-      "total_tokens": 21836,
-      "cost_usd": 0.072228
+      "count": 20,
+      "tokens_in": 42506,
+      "tokens_out": 1120,
+      "total_tokens": 43626,
+      "cost_usd": 0.144318
     },
     "Unusual_Detection": {
-      "count": 10,
-      "tokens_in": 19722,
-      "tokens_out": 587,
-      "total_tokens": 20309,
-      "cost_usd": 0.067971
+      "count": 20,
+      "tokens_in": 41199,
+      "tokens_out": 1174,
+      "total_tokens": 42373,
+      "cost_usd": 0.141207
     }
   }
 }

@@ -3,75 +3,75 @@
   "provider": "fireworks",
   "model": "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct",
   "overall": {
-    "total_questions": 180,
-    "total_tokens_in": 844083,
-    "total_tokens_out": 5170,
-    "total_tokens": 849253,
-    "cost_usd": 0.190248
+    "total_questions": 303,
+    "total_tokens_in": 1238326,
+    "total_tokens_out": 43371,
+    "total_tokens": 1281697,
+    "cost_usd": 0.310598
   },
   "by_task_type": {
     "Bingo": {
-      "count": 10,
-      "tokens_in": 135360,
-      "tokens_out": 192,
-      "total_tokens": 135552,
-      "cost_usd": 0.029948
+      "count": 20,
+      "tokens_in": 168746,
+      "tokens_out": 6555,
+      "total_tokens": 175301,
+      "cost_usd": 0.042893
     },
     "Click_Order": {
       "count": 10,
       "tokens_in": 4864,
-      "tokens_out": 767,
-      "total_tokens": 5631,
-      "cost_usd": 0.001745
+      "tokens_out": 2897,
+      "total_tokens": 7761,
+      "cost_usd": 0.003619
     },
     "Connect_Icon": {
-      "count": 10,
-      "tokens_in": 15353,
-      "tokens_out": 188,
-      "total_tokens": 15541,
-      "cost_usd": 0.003543
+      "count": 20,
+      "tokens_in": 64914,
+      "tokens_out": 362,
+      "total_tokens": 65276,
+      "cost_usd": 0.0146
     },
     "Coordinates": {
-      "count": 10,
-      "tokens_in": 47110,
-      "tokens_out": 186,
-      "total_tokens": 47296,
-      "cost_usd": 0.010528
+      "count": 18,
+      "tokens_in": 98882,
+      "tokens_out": 385,
+      "total_tokens": 99267,
+      "cost_usd": 0.022093
     },
     "Dart_Count": {
-      "count": 10,
-      "tokens_in": 80208,
-      "tokens_out": 188,
-      "total_tokens": 80396,
-      "cost_usd": 0.017811
+      "count": 20,
+      "tokens_in": 202334,
+      "tokens_out": 14697,
+      "total_tokens": 217031,
+      "cost_usd": 0.057447
     },
     "Dice_Count": {
-      "count": 10,
-      "tokens_in": 16946,
-      "tokens_out": 185,
-      "total_tokens": 17131,
-      "cost_usd": 0.003891
+      "count": 11,
+      "tokens_in": 18743,
+      "tokens_out": 210,
+      "total_tokens": 18953,
+      "cost_usd": 0.004308
     },
     "Geometry_Click": {
-      "count": 10,
-      "tokens_in": 3343,
-      "tokens_out": 313,
-      "total_tokens": 3656,
-      "cost_usd": 0.001011
+      "count": 15,
+      "tokens_in": 4494,
+      "tokens_out": 2641,
+      "total_tokens": 7135,
+      "cost_usd": 0.003313
     },
     "Image_Matching": {
-      "count": 10,
-      "tokens_in": 65181,
-      "tokens_out": 200,
-      "total_tokens": 65381,
-      "cost_usd": 0.014516
+      "count": 19,
+      "tokens_in": 124465,
+      "tokens_out": 439,
+      "total_tokens": 124904,
+      "cost_usd": 0.027769
     },
     "Image_Recognition": {
-      "count": 10,
-      "tokens_in": 7896,
-      "tokens_out": 284,
-      "total_tokens": 8180,
-      "cost_usd": 0.001987
+      "count": 20,
+      "tokens_in": 15786,
+      "tokens_out": 628,
+      "total_tokens": 16414,
+      "cost_usd": 0.004026
     },
     "Misleading_Click": {
       "count": 10,
@@ -81,18 +81,18 @@
       "cost_usd": 0.001747
     },
     "Object_Match": {
-      "count": 10,
-      "tokens_in": 104552,
-      "tokens_out": 188,
-      "total_tokens": 104740,
-      "cost_usd": 0.023167
+      "count": 20,
+      "tokens_in": 161363,
+      "tokens_out": 10592,
+      "total_tokens": 171955,
+      "cost_usd": 0.044821
     },
     "Patch_Select": {
       "count": 10,
       "tokens_in": 13387,
-      "tokens_out": 618,
-      "total_tokens": 14005,
-      "cost_usd": 0.003489
+      "tokens_out": 622,
+      "total_tokens": 14009,
+      "cost_usd": 0.003492
     },
     "Path_Finder": {
       "count": 10,
@@ -102,39 +102,39 @@
       "cost_usd": 0.053381
     },
     "Pick_Area": {
-      "count": 10,
-      "tokens_in": 55761,
-      "tokens_out": 326,
-      "total_tokens": 56087,
-      "cost_usd": 0.012554
+      "count": 20,
+      "tokens_in": 7460,
+      "tokens_out": 650,
+      "total_tokens": 8110,
+      "cost_usd": 0.002213
     },
     "Place_Dot": {
-      "count": 10,
-      "tokens_in": 5810,
-      "tokens_out": 323,
-      "total_tokens": 6133,
-      "cost_usd": 0.001562
+      "count": 20,
+      "tokens_in": 11620,
+      "tokens_out": 648,
+      "total_tokens": 12268,
+      "cost_usd": 0.003127
     },
     "Rotation_Match": {
-      "count": 10,
-      "tokens_in": 16399,
-      "tokens_out": 180,
-      "total_tokens": 16579,
-      "cost_usd": 0.003766
+      "count": 20,
+      "tokens_in": 43674,
+      "tokens_out": 477,
+      "total_tokens": 44151,
+      "cost_usd": 0.010028
     },
     "Select_Animal": {
-      "count": 10,
-      "tokens_in": 12152,
-      "tokens_out": 170,
-      "total_tokens": 12322,
-      "cost_usd": 0.002823
+      "count": 20,
+      "tokens_in": 24253,
+      "tokens_out": 342,
+      "total_tokens": 24595,
+      "cost_usd": 0.005637
     },
     "Unusual_Detection": {
-      "count": 10,
-      "tokens_in": 11200,
-      "tokens_out": 357,
-      "total_tokens": 11557,
-      "cost_usd": 0.002778
+      "count": 20,
+      "tokens_in": 24780,
+      "tokens_out": 721,
+      "total_tokens": 25501,
+      "cost_usd": 0.006086
     }
   }
 }

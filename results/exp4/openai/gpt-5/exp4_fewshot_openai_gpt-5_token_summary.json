@@ -4,39 +4,39 @@
   "model": "gpt-5",
   "overall": {
     "total_questions": 32,
-    "total_tokens_in": 0,
-    "total_tokens_out": 0,
-    "total_tokens": 0,
-    "cost_usd": 0.0
+    "total_tokens_in": 77605,
+    "total_tokens_out": 67671,
+    "total_tokens": 145276,
+    "cost_usd": 0.773716
   },
   "by_task_type": {
     "Click_Order": {
       "count": 8,
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "total_tokens": 0,
-      "cost_usd": 0.0
+      "tokens_in": 21168,
+      "tokens_out": 13592,
+      "total_tokens": 34760,
+      "cost_usd": 0.16238
     },
     "Dice_Count": {
       "count": 8,
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "total_tokens": 0,
-      "cost_usd": 0.0
+      "tokens_in": 24104,
+      "tokens_out": 38656,
+      "total_tokens": 62760,
+      "cost_usd": 0.41669
     },
     "Patch_Select": {
       "count": 8,
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "total_tokens": 0,
-      "cost_usd": 0.0
+      "tokens_in": 14325,
+      "tokens_out": 4295,
+      "total_tokens": 18620,
+      "cost_usd": 0.060856
     },
     "Place_Dot": {
       "count": 8,
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "total_tokens": 0,
-      "cost_usd": 0.0
+      "tokens_in": 18008,
+      "tokens_out": 11128,
+      "total_tokens": 29136,
+      "cost_usd": 0.13379
     }
   }
 }
