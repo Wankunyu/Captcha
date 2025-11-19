@@ -12,3 +12,4 @@ wandb/
 *.pt
 *.npy
 .DS_Store
+Draft/

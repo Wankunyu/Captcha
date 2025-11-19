@@ -251,12 +251,23 @@ def main():
         prov = r['provider']; model = r['model']; pm = r['provider_model']; t = r['task_type']
         n = int(r.get('n', 1) or 1)
         p_hat = float(r['p_hat'])
+
+        # Difficulty parameter λ = -ln(1 - p), using a clipped p to avoid log(0)
+        p_clipped = float(np.clip(p_hat, 1e-9, 1.0 - 1e-9))
+        lam = -math.log(1.0 - p_clipped)
+
+        # Baseline i.i.d. prediction expressed in (k, λ) form: q_iid(k) = 1 - exp(-k λ)
+        q_iid = 1.0 - math.exp(-args.k * lam)
+
+        # Final q_pred / A_pred (may include finite-pool correction if --pool-size is set)
         q_pred = predict_q_from_exp2(p_hat, n, args.k, args.pool_size, args.alpha0, args.beta0)
         A_pred = predict_A_from_exp2(p_hat, n, args.k, args.pool_size, args.alpha0, args.beta0)
-        rows.append([prov, model, pm, t, n, p_hat, q_pred, A_pred])
+
+        rows.append([prov, model, pm, t, n, p_hat, lam, q_iid, q_pred, A_pred])
 
     pred_df = pd.DataFrame(rows, columns=[
-        'provider','model','provider_model','task_type','n','p_hat','q_pred','A_pred'
+        'provider','model','provider_model','task_type',
+        'n','p_hat','lambda','q_iid','q_pred','A_pred'
     ])
 
     # Optional calibration on observed Exp3

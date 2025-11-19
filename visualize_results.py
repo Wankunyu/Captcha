@@ -32,7 +32,8 @@ class CAPTCHAVisualizer:
     DEFAULT_MODEL_NAMES = {
         'openai/gpt-5': 'GPT-5',
         'openai/gpt-5-chat-latest': 'GPT-5-Chat',
-        'openai/gpt4o': 'GPT-4o',
+        'openai/gpt-5.1_medium': 'GPT-5.1 (Medium)',
+        'openai/gpt-5.1_none': 'GPT-5.1 (None)',
         'anthropic/claude-sonnet-4-5': 'Claude Sonnet 4.5',
         'anthropic/claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
         'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
