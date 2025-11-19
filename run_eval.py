@@ -520,7 +520,7 @@ class OpenAIProvider(ModelProvider):
     """
 
     CHAT_MODELS = {"gpt-5-chat-latest"}
-    REASONING_MODELS = {"gpt-5"}
+    REASONING_MODELS = {"gpt-5", "gpt-5.1"}
 
     def __init__(self, model: str, api_key: str, **kwargs):
         super().__init__(model, api_key, **kwargs)
@@ -539,7 +539,7 @@ class OpenAIProvider(ModelProvider):
             self.is_reasoning_family = True
         else:
             raise RuntimeError(
-                f"OpenAIProvider: 不支持的模型 {model}。当前仅支持 gpt-5-chat-latest 与 gpt-5 (reasoning 模型)。"
+                f"OpenAIProvider: 不支持的模型 {model}。当前仅支持 gpt-5-chat-latest、gpt-5 与 gpt-5.1 (reasoning 模型)。"
             )
 
         # Default effort aligns with GPT-5 high reasoning configuration
@@ -1758,9 +1758,12 @@ def build_tasks(
                 if pid not in excluded_set and os.path.splitext(pid)[0] not in excluded_stems
             ]
 
-        random.shuffle(puzzle_ids)
-        if max_per_type:
-            puzzle_ids = puzzle_ids[:max_per_type]
+        # 采样逻辑：若该类型题目数 > max_per_type，则等概率抽样 max_per_type 道；
+        # 否则包含该类型全部题目（并随机打乱顺序）。
+        if isinstance(max_per_type, int) and max_per_type > 0 and len(puzzle_ids) > max_per_type:
+            puzzle_ids = random.sample(puzzle_ids, k=max_per_type)
+        else:
+            random.shuffle(puzzle_ids)
 
         for pid in puzzle_ids:
             entry = gt[pid]
@@ -2850,8 +2853,9 @@ def run_until_type_correct(
     provider: str,
     model: str,
     types: List[str],
-    max_attempts_per_type: int = 6,      # 每个题型最多尝试次数（=最多换多少题）
-    max_pool_per_type: int = 50,         # 每类最多预取多少题作为“候选池”（≥ max_attempts_per_type）
+    max_attempts_per_type: int = 6,      # 每个题型最多尝试次数（抽样“有放回”）
+    max_pool_per_type: int = 50,         # 兼容参数：若不使用全量题库则限定候选池大小
+    use_full_dataset_pool: bool = True,  # 是否从该类型“全量题库”构建候选池（随后有放回抽样）
     secrets_file: str = "./secrets.yaml",
     timeout_sec: float = 120.0,
     prompts_file: Optional[str] = None,
@@ -2871,7 +2875,8 @@ def run_until_type_correct(
     collect_reasoning: bool = False
 ) -> Dict[str, Any]:
     """
-    新实验：按“题型”为单位，若一道题做错则换下一道，直到该题型首次做对或达到最大尝试次数。
+    新实验：按“题型”为单位，有放回抽样尝试题目；若一道题做错则继续抽样下一道，
+    直到该题型首次做对或达到最大尝试次数。
     进度指示：
       - 每进入一个题型时打印“开始评测某题型（最多N次）”
       - 每次尝试前打印“[Type] Attempt a/b • PID=...”
@@ -2923,11 +2928,14 @@ def run_until_type_correct(
     for t in types:
         print(f"\n========== [{t}] 开始评测（最多 {max_attempts_per_type} 次尝试） ==========", flush=True)
 
-        # 构建题池
+        # 构建题池（候选集）
+        # 当 use_full_dataset_pool=True 时，使用该类型“全量题库”作为候选集；
+        # 否则仍按 max_pool_per_type 限制候选集大小。
+        effective_max = None if use_full_dataset_pool else max_pool_per_type
         pool_tasks = build_tasks(
             dataset_root=dataset_root,
             types=[t],
-            max_per_type=max_pool_per_type,
+            max_per_type=effective_max,
             prompts_cfg=prompts_cfg,
             prompt_prefix=prompt_prefix,
             prompt_suffix=prompt_suffix,
@@ -2935,15 +2943,18 @@ def run_until_type_correct(
         )
         random.shuffle(pool_tasks)
 
+        if not pool_tasks:
+            print(f"[{t}] ⚠️ 没有可用题目，跳过该类型")
+            continue
+
         attempts = 0
         cumulative = 0.0
         success = 0
         first_success_pid = ""
         last_err = ""
 
-        for task in pool_tasks:
-            if attempts >= max_attempts_per_type:
-                break
+        while attempts < max_attempts_per_type:
+            task = random.choice(pool_tasks)  # 抽样有放回
 
             attempts += 1
             schema = build_json_schema(task.type)
