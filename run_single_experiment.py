@@ -237,6 +237,7 @@ def run_experiment_3(
     model: str = "gemini-2.5-flash",
     max_attempts_per_type: int = 5,
     max_pool_per_type: int = 15,
+    use_full_dataset_pool: bool = True,
     secrets_file: str = "./secrets.yaml",
     prompts_file: str = "./prompts_optimized.yaml",
     prompt_mode: str = "auto",
@@ -281,6 +282,7 @@ def run_experiment_3(
     print(f"Model: {model}")
     print(f"Max attempts per type: {max_attempts_per_type}")
     print(f"Prompts file: {prompts_file}")
+    print(f"Use full dataset pool: {use_full_dataset_pool}")
     print("="*80 + "\n")
 
     # 默认类型
@@ -316,6 +318,7 @@ def run_experiment_3(
         model=model,
         max_attempts_per_type=max_attempts_per_type,
         max_pool_per_type=max_pool_per_type,
+        use_full_dataset_pool=use_full_dataset_pool,
         secrets_file=secrets_file,
         timeout_sec=timeout_sec,
         prompts_file=prompts_file,
@@ -530,7 +533,9 @@ def main():
     parser.add_argument("--thinking", action="store_true",
                        help="启用 thinking mode")
     parser.add_argument("--thinking-budget", type=int, default=-1,
-                       help="Thinking budget (默认: -1, 无限制)")
+                       help="Thinking budget (默认: -1, 使用模型默认策略)")
+    parser.add_argument("--reasoning-effort", choices=["none", "low", "medium", "high"], default=None,
+                       help="OpenAI reasoning effort 等级（针对 GPT-5/GPT-5.1 等 reasoning 模型）")
     parser.add_argument("--error-analysis", action="store_true",
                        help="启用错误分析")
     parser.add_argument("--prompts-file", default="./prompts_optimized.yaml",
@@ -549,11 +554,20 @@ def main():
                        help="token 统计输出目录 (默认: ./results)")
     parser.add_argument("--collect-reasoning", action="store_true",
                        help="要求模型输出 reasoning 字段（可能增加耗时和成本）")
+    parser.add_argument("--no-full-pool", action="store_true",
+                       help="Exp3: 禁用全量题库候选池（默认使用全量题库）。关闭后由 --max-per-type 限定候选集大小。")
 
     args = parser.parse_args()
 
     # 准备参数
-    thinking_options = {"budget": args.thinking_budget} if args.thinking else {}
+    thinking_options = {}
+    if args.thinking and args.thinking_budget >= 0:
+        thinking_options["thinking_budget"] = args.thinking_budget
+        thinking_options["budget_tokens"] = args.thinking_budget
+    if args.reasoning_effort:
+        thinking_options["effort"] = args.reasoning_effort
+    if not thinking_options:
+        thinking_options = None
 
     # 运行对应的实验
     if args.experiment == 1:
@@ -594,6 +608,7 @@ def main():
             provider=args.provider,
             model=args.model,
             max_pool_per_type=args.max_per_type,
+            use_full_dataset_pool=(not args.no_full_pool),
             prompts_file=args.prompts_file,
             out_csv=args.out_csv,
             thinking=args.thinking,
