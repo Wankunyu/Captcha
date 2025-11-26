@@ -63,7 +63,7 @@ providers:
 
 pricing:
   openai:
-    gpt-5-chat-latest:
+    gpt-5.1-medium:
       in_per_1k: 0.0025
       out_per_1k: 0.010
   gemini:
@@ -99,13 +99,13 @@ viz = quick_visualize(
 ```python
 # Configure preferences
 SELECTED_EXPERIMENT = 'exp2'
-SELECTED_MODEL = "openai/gpt-5-chat-latest"
+SELECTED_MODEL = "openai/gpt-5"
 EXPERIMENTS_TO_COMPARE = ['exp1', 'exp2', 'exp4']
 
 # Custom display names for publication
 CUSTOM_MODEL_NAMES = {
     'openai/gpt-5': 'GPT-5 (Reasoning)',
-    'openai/gpt-5-chat-latest': 'GPT-5 Chat',
+    'openai/gpt-5.1_medium': 'GPT-5.1 (Medium)',
     'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
 }
 
@@ -127,7 +127,7 @@ viz.plot_exp3_analysis(model_filter=SELECTED_MODEL)
 2. **Grouped Bar Chart**: Multi-experiment comparison
 3. **Scatter Plot**: Optimization resistance analysis (Exp1 vs Exp2)
 4. **Box Plot**: Cross-model stability analysis
-5. **Exp3 Analysis**: 4-panel Until-Correct comprehensive analysis
+5. **Exp3 Analysis**: 4-panel expected until-correct analysis (Success@k and expected attempts)
 6. **Cost-Performance Frontier**: Cost vs Pass@1 trade-offs
 7. **Time-Performance Scatter**: Latency vs accuracy
 8. **Slope Chart**: Per-task improvement visualization
@@ -157,7 +157,7 @@ All charts export to **PDF format** for publication quality.
 
 ```python
 provider = "openai"
-model = "gpt-5-chat-latest"
+model = "gpt-5.1-medium"
 
 result = run_experiment_1(
     types=["Dice_Count", "Click_Order", "Patch_Select"],
@@ -178,7 +178,7 @@ result = run_experiment_1(
 # Experiment 1: Baseline
 python run_single_experiment.py 1 \
   --provider openai \
-  --model gpt-5-chat-latest \
+  --model gpt-5.1-medium \
   --max-per-type 10
 
 # Experiment 3: Until-Correct

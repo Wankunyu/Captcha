@@ -1,0 +1,646 @@
+%%
+%% This is file `sample-sigconf-authordraft.tex',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% samples.dtx  (with options: `all,proceedings,bibtex,authordraft')
+%% 
+%% IMPORTANT NOTICE:
+%% 
+%% For the copyright see the source file.
+%% 
+%% Any modified versions of this file must be renamed
+%% with new filenames distinct from sample-sigconf-authordraft.tex.
+%% 
+%% For distribution of the original source see the terms
+%% for copying and modification in the file samples.dtx.
+%% 
+%% This generated file may be distributed as long as the
+%% original source files, as listed above, are part of the
+%% same distribution. (The sources need not necessarily be
+%% in the same archive or directory.)
+%%
+%%
+%% Commands for TeXCount
+%TC:macro \cite [option:text,text]
+%TC:macro \citep [option:text,text]
+%TC:macro \citet [option:text,text]
+%TC:envir table 0 1
+%TC:envir table* 0 1
+%TC:envir tabular [ignore] word
+%TC:envir displaymath 0 word
+%TC:envir math 0 word
+%TC:envir comment 0 0
+%%
+%% The first command in your LaTeX source must be the \documentclass
+%% command.
+%%
+%% For submission and review of your manuscript please change the
+%% command to \documentclass[manuscript, screen, review]{acmart}.
+%%
+%% When submitting camera ready or to TAPS, please change the command
+%% to \documentclass[sigconf]{acmart} or whichever template is required
+%% for your publication.
+%%
+%%
+% \documentclass[sigconf,authordraft]{acmart}
+\documentclass[sigconf, review]{acmart}
+
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+% \AtBeginDocument{%
+%   \providecommand\BibTeX{{%
+%     Bib\TeX}}}
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+% \setcopyright{acmlicensed}
+% \copyrightyear{2018}
+% \acmYear{2018}
+% \acmDOI{XXXXXXX.XXXXXXX}
+%% These commands are for a PROCEEDINGS abstract or paper.
+% \acmConference[Conference acronym 'XX]{Make sure to enter the correct
+%   conference title from your rights confirmation email}{June 03--05,
+%   2018}{Woodstock, NY}
+%%
+%%  Uncomment \acmBooktitle if the title of the proceedings is different
+%%  from ``Proceedings of ...''!
+%%
+%%\acmBooktitle{Woodstock '18: ACM Symposium on Neural Gaze Detection,
+%%  June 03--05, 2018, Woodstock, NY}
+% \acmISBN{978-1-4503-XXXX-X/2018/06}
+
+
+%%
+%% Submission ID.
+%% Use this when submitting an article to a sponsored event. You'll
+%% receive a unique submission ID from the organizers
+%% of the event, and this ID should be used as the parameter to this command.
+%%\acmSubmissionID{123-A56-BU3}
+
+%%
+%% For managing citations, it is recommended to use bibliography
+%% files in BibTeX format.
+%%
+%% You can then either use BibTeX with the ACM-Reference-Format style,
+%% or BibLaTeX with the acmnumeric or acmauthoryear sytles, that include
+%% support for advanced citation of software artefact from the
+%% biblatex-software package, also separately available on CTAN.
+%%
+%% Look at the sample-*-biblatex.tex files for templates showcasing
+%% the biblatex styles.
+%%
+
+%%
+%% The majority of ACM publications use numbered citations and
+%% references.  The command \citestyle{authoryear} switches to the
+%% "author year" style.
+%%
+%% If you are preparing content for an event
+%% sponsored by ACM SIGGRAPH, you must use the "author year" style of
+%% citations and references.
+%% Uncommenting
+%% the next command will enable that style.
+%%\citestyle{acmauthoryear}
+
+
+%%
+%% end of the preamble, start of the body of the document source.
+\begin{document}
+
+%%
+%% The "title" command has an optional parameter,
+%% allowing the author to define a "short title" to be used in page headers.
+
+% \title{From Evaluation to Defense: Building CAPTCHA Strategies to Withstand Multimodal LLMs}
+\title{Cognition: From Evaluation to Defense against Multimodal LLM CAPTCHA Solvers}
+
+%%
+%% The "author" command and its associated commands are used to define
+%% the authors and their affiliations.
+%% Of note is the shared affiliation of the first two authors, and the
+%% "authornote" and "authornotemark" commands
+%% used to denote shared contribution to the research.
+% \author{Ben Trovato}
+% \authornote{Both authors contributed equally to this research.}
+% \email{trovato@corporation.com}
+% \orcid{1234-5678-9012}
+% \author{G.K.M. Tobin}
+% \authornotemark[1]
+% \email{webmaster@marysville-ohio.com}
+% \affiliation{%
+%   \institution{Institute for Clarity in Documentation}
+%   \city{Dublin}
+%   \state{Ohio}
+%   \country{USA}
+% }
+
+% \author{Lars Th{\o}rv{\"a}ld}
+% \affiliation{%
+%   \institution{The Th{\o}rv{\"a}ld Group}
+%   \city{Hekla}
+%   \country{Iceland}}
+% \email{larst@affiliation.org}
+
+% \author{Valerie B\'eranger}
+% \affiliation{%
+%   \institution{Inria Paris-Rocquencourt}
+%   \city{Rocquencourt}
+%   \country{France}
+% }
+
+% \author{Aparna Patel}
+% \affiliation{%
+%  \institution{Rajiv Gandhi University}
+%  \city{Doimukh}
+%  \state{Arunachal Pradesh}
+%  \country{India}}
+
+% \author{Huifen Chan}
+% \affiliation{%
+%   \institution{Tsinghua University}
+%   \city{Haidian Qu}
+%   \state{Beijing Shi}
+%   \country{China}}
+
+% \author{Junjie Xiong}
+% \affiliation{%
+%   \institution{The Kumquat Consortium}
+%   \city{New York}
+%   \country{USA}}
+% \email{junjiexiong@mst.edu}
+
+
+\author{Anonymous Authors}
+\setcopyright{none}
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+
+%%
+%% By default, the full list of authors will be used in the page
+%% headers. Often, this list is too long, and will overlap
+%% other information printed in the page headers. This command allows
+%% the author to define a more concise list
+%% of authors' names for this purpose.
+% \renewcommand{\shortauthors}{Trovato et al.}
+
+%%
+%% The abstract is a short summary of the work to be presented in the
+%% article.
+\begin{abstract}
+  This paper studies how modern multimodal large language models (MLLMs) undermine the security guarantees of visual CAPTCHA. We identify the attack surface where an adversary can cheaply automate CAPTCHA solving using off-the-shelf models. We evaluate seven leading commercial and open-source MLLMs across 18 real-world CAPTCHA task types, measuring single-shot accuracy, success under limited retries, end-to-end latency, and per-solve cost. We further analyze the impact of task-specific prompt engineering and few-shot demonstrations on solver effectiveness. We reveal that MLLMs can reliably solve recognition-oriented and low-interaction CAPTCHA tasks at human-like cost and latency, whereas tasks requiring fine-grained localization, multi-step spatial reasoning, or cross-frame consistency remain significantly harder for current models. By examining the reasoning traces of such MLLMs, we investigate the underlying mechanisms of why models succeed/fail on specific CAPTCHA puzzles and use these insights to derive defense-oriented guidelines for selecting and strengthening CAPTCHA tasks. We conclude by discussing implications for platform operators deploying CAPTCHA as part of their abuse-mitigation pipeline.
+  
+ % As such, guidelines for selecting and strengthening CAPTCHA tasks could meaningfully reinforce platform security in the face of rapidly improving MLLMs. We discuss some implications for platform operators deploying CAPTCHA as part of their abuse-mitigation pipeline.
+
+\end{abstract}
+
+%%
+%% The code below is generated by the tool at http://dl.acm.org/ccs.cfm.
+%% Please copy and paste the code instead of the example below.
+%%
+% \begin{CCSXML}
+% <ccs2012>
+%  <concept>
+%   <concept_id>00000000.0000000.0000000</concept_id>
+%   <concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+%   <concept_significance>500</concept_significance>
+%  </concept>
+%  <concept>
+%   <concept_id>00000000.00000000.00000000</concept_id>
+%   <concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+%   <concept_significance>300</concept_significance>
+%  </concept>
+%  <concept>
+%   <concept_id>00000000.00000000.00000000</concept_id>
+%   <concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+%   <concept_significance>100</concept_significance>
+%  </concept>
+%  <concept>
+%   <concept_id>00000000.00000000.00000000</concept_id>
+%   <concept_desc>Do Not Use This Code, Generate the Correct Terms for Your Paper</concept_desc>
+%   <concept_significance>100</concept_significance>
+%  </concept>
+% </ccs2012>
+% \end{CCSXML}
+
+% \ccsdesc[500]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+% \ccsdesc[300]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+% \ccsdesc{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+% \ccsdesc[100]{Do Not Use This Code~Generate the Correct Terms for Your Paper}
+
+\ccsdesc[500]{Security and privacy~Web application security}
+
+
+%%
+%% Keywords. The author(s) should pick words that accurately describe
+%% the work being presented. Separate the keywords with commas.
+\keywords{CAPTCHA security, Responsible Web AI, Multimodal Large Language Model vulnerabilities, Human-centric security design}
+%% A "teaser" image appears between the author and affiliation
+%% information and the body of the document, and typically spans the
+%% page.
+
+% \received{20 February 2007}
+% \received[revised]{12 March 2009}
+% \received[accepted]{5 June 2009}
+
+%%
+%% This command processes the author and affiliation and title
+%% information and builds the first part of the formatted document.
+\maketitle
+
+\section{Introduction}
+% \textcolor{red}{For the special tracks, submissions are limited to 8 content pages, which should include all figures and tables, but excluding supplementary material and references. In addition, you can include 2 additional pages of supplementary material. The total number of pages with supplementary material and references must not exceed 12 pages.}
+
+The acronym \textit{CAPTCHA} stands for \textit{Completely Automated Public Turing test to tell Computers and Humans Apart}, which is a program created by Carnegie Mellon University researchers in 2000 \cite{10.1145/966389.966390}. Visual CAPTCHA challenges are an essential security mechanism in the modern web ecosystem. On the one hand, online services rely on CAPTCHAs to distinguish legitimate human users from automated scripts, thereby protecting registration flows, content submission portals, and high-value resources from widespread abuse. On the other hand, visual CAPTCHAs are deliberately designed as self-contained puzzles that require a combination of visual perception and simple reasoning, such as recognizing objects, selecting regions, following geometric rules, or counting items across panels. Each CAPTCHA instance, therefore, couples one or more images, a natural language instruction, and a uniquely verifiable answer that humans can easily solve but machines have typically struggled with. Moreover, even small variations in layout, object choice, or task semantics can result in distinct challenge types, reflecting the design principle that automated solvers can not reliably interpret or solve these tasks at scale.
+
+The security of CAPTCHA systems has long been studied in both academia and industry~\cite{Sivakorn2016, laperdrix2020browser, 10646606}. Early attacks demonstrated that traditional text-based CAPTCHA could be bypassed through optical character recognition~\cite{nopecha_developers_2025}, segmentation tricks~\cite{theyka2025turnstilesolver}, or targeted model training~\cite{dessant2020buster}, leading many providers to shift toward more visually complex challenges. As CAPTCHA evolves, the emergence of reasoning-based CAPTCHA introduces semantic, interactive, and multi-modal designs. These designs require solvers with both strong image comprehension and advanced logical reasoning capabilities~\cite{ding2025illusioncaptcha}. This shift motivates researchers to explore MLLMs as a CAPTCHA solver~\cite{teoh2025captchas, deng2024oedipus}, including early multimodal models evaluated under fixed templates or a curated synthetic training dataset. Commercial CAPTCHA-solving services, often referred to as CAPTCHA farms~\cite{verifiedvisitors_captcha_farms}, have also begun combining automation with human labor to improve throughput~\cite{twocaptcha_service, captchacoder_service, decaptcher_service}. These observations have raised growing concerns about whether AI systems can jointly interpret images and instructions, which could further undermine the reliability of visual CAPTCHA as a security barrier.
+
+Despite these developments~\cite{teoh2025captchas, deng2024oedipus, ding2025illusioncaptcha}, the broader security implications of modern MLLMs for real-world CAPTCHA deployments remain insufficiently understood. Existing studies typically examine only a narrow range of challenge formats or rely on synthetic evaluation settings that fail to capture the heterogeneity of production CAPTCHA types~\cite{zhang2020robust, Plesner_2024}. As a result, it is still unclear why state-of-the-art MLLMs succeed on some tasks yet consistently struggle on others, nor how their internal reasoning patterns contribute to systematic errors~\cite{captchaworld25}. Understanding these limitations is crucial because MLLM failure modes can reveal the structural characteristics of the CAPTCHA task, which are inherently difficult to resolve automatically, and they can inform more robust design strategies. Motivated by these gaps, we investigate not only the solving capabilities of MLLMs but also the thought processes they exhibit during failures, enabling us to infer principled guidelines for constructing CAPTCHA challenges that remain resilient against increasingly capable automated solvers.
+
+In this paper, we conduct a comprehensive evaluation of how multimodal LLMs perform on a wide range of visual CAPTCHA tasks. Our experiments cover \textcolor{black}{18} real-world challenge types and multiple prompting strategies. We find that several popular CAPTCHA formats can be solved at striking rates, while others remain difficult due to structural properties revealed in our analysis. We also identify a practical attack setting in which an attacker with only black-box access to LLMs can use repeated queries to reach high success rates under typical retry budgets. These raise questions about the reliability of current human-verification systems. Our discoveries are summarized below.
+
+First, we discover that \textcolor{red}{todo} 
+
+In addition, we find that \textcolor{red}{todo} 
+
+We summarize contributions as follows:
+
+1. By revealing multiple attack surfaces, we demonstrate the \textcolor{red}{todo} 
+
+2. We conduct comprehensive experiments to collect and statistically analyze \textcolor{red}{todo} 
+
+3. We evaluate multiple reputable providers and open-source repositories, \textcolor{red}{todo} 
+
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/framework.jpg}
+  \caption{Overall framework of the evaluation.}
+  \label{fig:framework}
+\end{figure}
+
+\section{Framework}
+\label{sec:frameworkf}
+
+This section describes our framework for evaluating CAPTCHA robustness against MLLMs (Figure~\ref{fig:framework}). We introduce the problem formulation and outline the attack strategy and modeling assumptions used in this study.
+
+\subsection{Problem Formulation}
+We consider a generic web service that uses visual CAPTCHAs as part of its abuse-mitigation pipeline, for example, before creating new accounts, submitting content, or accessing high-value resources. Whenever a user reaches such a protected step, the service displays a CAPTCHA widget in the browser.
+
+Each CAPTCHA challenge has three pieces of information, which we will refer to throughout the paper:
+
+\begin{itemize}
+  \item $X$: one or more images shown in the CAPTCHA widget (a single picture, a grid of tiles, or a composed layout) that serves as the textual prompt in our experiments;
+  \item $q$: the human-readable instruction on the page (e.g., ``click all squares with traffic lights'');
+  \item $y$: the unique correct answer stored and checked on the server side.
+\end{itemize}
+
+Only the images $X$ and the instruction $q$ are visible in the browser. The ground-truth answer $y$ is never revealed to the client; the server only returns a pass/fail signal after the user submits an answer. 
+
+Benign users simply see the CAPTCHA, solve it by hand, and continue their normal interaction with the service. The malicious users (i.e., \emph{attacker}), in contrast, controls an automated client (or a script that drives a browser) with the goal of solving CAPTCHAs at scale so that large numbers of requests can be automated. In this setting, the web service together with its CAPTCHA deployment plays the role of the \emph{victim}.
+
+On the client side we assume that the attacker has full control. They can capture the images $X$ as rendered in the browser (e.g., via screenshots or direct access to image URLs), read the instruction $q$, and programmatically submit answers. However, the attacker cannot inspect or modify the server-side verification logic and never directly observes $y$.
+
+The attacker also leverages one or more multimodal LLMs as automated CAPTCHA solvers. These models are accessed through black-box APIs, either from commercial providers or self-hosted open-source models. From the attacker’s perspective, each API call is simple: given the images $X$ and a textual prompt derived from $q$, the model returns a short text answer. The attacker cannot access gradients or internal activations and cannot modify model parameters; the models function purely as off-the-shelf oracles.
+
+\subsection{Attack Strategy and Modeling Assumptions}
+The attacker employs several prompting regimes that mirror our experimental settings. (i) \emph{direct} prompts that forward the original instruction $q$ (Exp1); (ii) \emph{optimized} prompts, where the attacker designs a task-specific template with clearer rules and stricter output format constraints (Exp2); and (iii) \emph{few-shot} prompts, where a small fixed set of labeled examples is prepended for selected difficult types (Exp4). For each model--task-type pair, the prompt template is fixed during evaluation. e do not consider per-instance adaptive prompt search.
+
+Real services typically allow users to request a new CAPTCHA after a failure, but cap the total number of attempts in a session. We therefore assume that the attacker can adopt an \emph{until-correct} strategy with a maximum of $k$ attempts per task type: after each query, if the answer fails verification and the attempt count is still below $k$, the attacker requests another instance of the \emph{same CAPTCHA type} and queries the model again; otherwise they stop (Exp3). All attempts within this sequence use the same task-type-specific prompt template and fixed hyperparameters, and differ only in the sampled instance and the model’s internal stochasticity. The attacker is willing to tolerate per-session latencies on the order of seconds to tens of seconds and moderate per-call cost, as long as the overall success rate and throughput make the attack operationally useful.
+
+
+Our analysis makes the following simplifying assumptions. First, conditional on a fixed model $m$, task type $t$, prompt template, and hyperparameters, we treat each attempt as an independent and identically distributed Bernoulli trial. Second, we do \emph{not} consider stronger capabilities such as compromising the web service, exploiting implementation bugs in the CAPTCHA widget, combining MLLMs with human CAPTCHA farms, or retraining models directly on the target CAPTCHA distribution. These are important directions but orthogonal to our focus on black-box, API-level MLLM solvers.
+
+
+
+\section{Methods and Experiments}
+\label{sec:methods}
+\subsection{Dataset and Tasks}
+
+\subsubsection{Data Source and Preprocessing}
+
+We conduct all experiments on the recently released Open CaptchaWorld dataset~\cite{captchaworld25}. This dataset systematically collects a wide range of visual CAPTCHA formats from both real-world services and synthetic environments, covering 20 task types and more than 300 instances. For each instance, it provides the image(s), a natural-language task description, and the ground-truth answer. However, the dataset is not evaluation-ready out of the box: it contains inconsistent label conventions, heterogeneous task structures, and several CAPTCHA types that cannot be executed under a unified MLLM-based pipeline.
+
+% On top of the raw dataset, we perform light-weight but necessary cleaning and refinement, including:
+On top of the raw dataset, we perform the necessary processing to support our standardized analysis, including: (a) aligning ground-truth labels with the corresponding samples to ensure correctness; (b) removing two task categories that are incompatible with our experimental pipeline; and (c) normalizing task metadata so that it is compatible with our unified interface and evaluation scripts. Detailed information about the dataset including exact task definitions, dataset statistics, cleaning rules and illustrative examples is deferred to the appendix (Appendix~\ref{app:dataset-details}). The main text only retains the abstract problem formulation that is directly relevant to our methods.
+
+
+
+\subsubsection{Task Types}
+
+We model each CAPTCHA instance as a triplet $(X, q, y)$, where $X$ is one or more images (including single images, concatenated multi-image layouts, and grid layouts), $q$ is a natural-language instruction which manifests itself as a prompt in experiments, and $y$ is a structured answer that may contain text, option indices, coordinates, or other structured fields. In this work we focus on 18 representative visual task types drawn from the dataset and they can be organized into four task families
+\textbf{Counting and Aggregation}: Dice\_Count, Dart\_Count.
+\textbf{Pointing and Path-based Localization}: Geometry\_Click, Place\_Dot, Pick\_Area, Misleading\_Click, Click\_Order, Path\_Finder.
+\textbf{Grid Selection and Matching}: Bingo, Patch\_Select, Image\_Recognition, Select\_Animal, Unusual\_Detection, Object\_Match, Image\_Matching.
+\textbf{Relational and Transformation Puzzles}: Coordinates, Connect\_Icon, Rotation\_Match.
+
+%Following the task definitions of CaptchaWorld, we evaluate 18 task types in total, which can be grouped into the following task families:
+
+
+In our analysis we always take task type as the basic unit and do not further aggregate results at the task family level. Different CAPTCHA types are highly heterogeneous in both visual structure and interaction patterns, and aggressive clustering would obscure fine-grained differences. From an attack--defense perspective, real systems are typically tied to one specific type or a small set of variants; reporting results by task type therefore better matches how both deployers and attackers actually interact with CAPTCHA services.
+
+\subsection{Evaluation Metrics}
+
+We define metrics from three perspectives: accuracy, retry behavior, and time cost. They are reported at two granularities containing overall across all tasks and per task type.
+
+\paragraph{Pass@1.}
+For each sample, let $\hat{y}_i$ denote the answer produced by the first model invocation on the $i$-th sample. The overall Pass@1 is defined as
+\begin{equation}
+  \mathrm{Pass@1} = \frac{1}{N}\sum_{i=1}^{N} \mathbb{1}\{\hat{y}_i = y_i\},
+\end{equation}
+where $N$ is the total number of evaluation samples. For a single task type $t$, we analogously define
+\begin{equation}
+  \mathrm{Pass@1}(t) = \frac{1}{N_t}\sum_{i: \, \mathrm{task}(i) = t} \mathbb{1}\{\hat{y}_i = y_i\},
+\end{equation}
+where $N_t$ is the number of samples with task type $t$. Each task has a unique correct answer, and the main difficulty lies in instruction understanding and visual perception rather than in the structure of the output space. Classical retrieval-style metrics such as F1 or mAP are therefore not directly appropriate. In contrast, Pass@1 aligns with how real CAPTCHA services validate submissions and matches the evaluation practice adopted in prior CAPTCHA-solving work~\cite{todo}. %literature (we elaborate on related work in Section~\ref{sec:related-work}).
+
+\paragraph{E2E Latency.} For the $j$-th attempt within the $\ell$-th solving session, let $\tau_\ell^{(j)}$ denote the end-to-end (E2E) latency from sending the request to receiving a complete, parseable answer. We report: (a) the distribution of single-shot E2E latency $\tau_\ell^{(j)}$, characterizing the delay of a single invocation; and (b) in Exp3, the cumulative time $\sum_j \tau_\ell^{(j)}$ and its mean per session, characterizing the total waiting time when up to $k$ attempts are allowed \emph{type}. We deliberately use E2E time instead of time-to-first-token (TTFT) as our primary time metric. First, outputs in our setting are extremely short and the system does not consume responses in streaming mode, so TTFT and E2E latency are numerically very close on the same task. Second, from the perspective of the attack itself, what genuinely matters is the total time between sending a request and knowing whether the verification has passed. E2E time directly captures this quantity.
+
+
+In real systems, attackers or automated scripts often have the option to retry CAPTCHA a limited number of times. Instead of explicitly running a full “until-correct” experiment for every model, we adopt the following strategy. We first obtain the single-shot success probability from Exp2 for each model--task-type pair. Then in Section~\ref{subsec:statlink}, we plug these probabilities into an i.i.d.\ Bernoulli model and derive the expected success rate and expected number of attempts under at most $k$ tries. The resulting $\mathrm{Success@k}$ and average attempt count are thus not computed directly from Exp3’s raw outcomes, but are theoretical approximations derived from Exp2 via statistical modeling under a set of assumptions. Exp3’s explicit runs are mainly used to cross-validate these modeled quantities.
+
+
+\subsection{Models, Inference Interface, and Image Handling}
+\label{subsec:models}
+
+We evaluate a range of multimodal large language models from several major providers, covering both closed-source flagship and representative open-source models, as summarized in Table~\ref{tab:eval-models}. In Table~\ref{tab:eval-models}, the names of the GPT series models are followed by some special parameters, such as "Medium" and "None", indicating that the API parameter \texttt{reasoning\_effort} is set to \texttt{"medium"} or \texttt{"none"}, respectively. This parameter controls the level of internal reasoning the model applies when solving CAPTCHA tasks.
+
+%which means that the API parameter the API parameter \texttt{reasoning\_effort} is set to \texttt{"medium"} or \texttt{"none"}. 
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Provider} & \textbf{Model} & \textbf{Snapshots} \\
+\midrule
+OpenAI      & GPT-5.1 (Medium)             & 2025-11-13 \\
+OpenAI      & GPT-5.1 (None)               & 2025-11-13 \\
+OpenAI      & GPT-5 (Medium)               & 2025-08-07 \\
+Anthropic   & Claude Sonnet 4.5            & 2025-09-29 \\
+Google      & Gemini-2.5-Pro               & 2025-01 \\
+Google      & Gemini-2.5-Flash             & 2025-01 \\
+Fireworks   & Qwen-3-VL-235B-A22b-Instruct & 2025-09-24\\
+\bottomrule
+\end{tabular}
+\caption{Multimodal models evaluated in our study (all measured in Nov.\ 2025).}
+\label{tab:eval-models}
+\end{table}
+
+The selection is guided by three considerations: (a) \emph{representativeness}---the set covers widely deployed general-purpose multimodal models, so that our findings are informative for real-world systems; (b) \emph{capability bandwidth}---the models span from medium-scale open-source systems to closed-source flagships, enabling us to characterize performance--cost trade-offs along the frontier; and (c) \emph{pricing clarity}---all providers publish token-level price tables, which allows us to consistently estimate financial costs and compare them to human crowd-sourcing (Section~\ref{subsec:cost}).
+
+To ensure comparability across models, we abstract a unified inference interface:
+\begin{equation}
+  \mathrm{Invoke}(M, \mathcal{X}, q; \theta) \rightarrow (a, \mathrm{meta}),
+\end{equation}
+where $\theta$ includes shared configuration parameters such as temperature, top-$p$, and maximum output length; $a$ is the raw textual output of the model; and $\mathrm{meta}$ records metadata such as provider/model identifiers, token counts, and timestamps.
+
+For each task type, we constrain the output format so that it matches the ground truth, e.g., a single option index or a comma-separated list of coordinates. For APIs that support JSON schema, we use strict validation; for those that do not, we enforce JSON-only outputs via prompting and treat any additional text as a formatting error. When relevant, we prompt the model to output a solution rationale, which we log for later analysis and discussion.
+
+For image handling, we adhere as closely as possible to CaptchaWorld's original image configuration, following a ``zero-copy'' principle. We read the original bytes, detect the MIME type via magic numbers, and submit the image as a base64-encoded data URL. For Anthropic models, when the estimated base64 size exceeds 5\,MB, we convert images to JPEG on the fly and reduce quality to satisfy API limits; in all other cases we avoid re-encoding or rescaling.
+
+For models that support explicit reasoning modes, we provide an optional ``reasoning text collection'' switch: when enabled, the prompt instructs the model to first output its reasoning process and then the final answer. The intermediate reasoning is stored separately for qualitative analysis and, by default, is not counted towards accuracy metrics.
+
+\subsection{Evaluation Pipeline}
+\label{subsec:pipeline}
+
+Building on the unified interface above, we design four complementary evaluation paradigms, Exp1--Exp4. All experiments share a common logging and visualization pipeline that consistently records token usage, cost estimates, E2E latency, and error messages.
+
+\subsubsection{Exp1: Ground-Truth Prompt Baseline}
+
+Exp1 uses CaptchaWorld’s original human-readable instruction $q_{\text{gt}}$. For each sample, we perform a single invocation:
+\begin{equation}
+  (\hat{y}, \mathrm{meta}) = \mathrm{Invoke}(M, \mathcal{X}, q_{\text{gt}}; \theta).
+\end{equation}
+We parse the output to obtain the structured answer $\hat{y}$ and compare it with the true label $y$ to compute Pass@1, both overall and per task type.
+
+This experiment corresponds to the realistic scenario where one directly feeds the webpage-presented CAPTCHA to an MLLM without any prior tuning or prompt engineering. It is the most natural and lowest-cost baseline in our framework.
+
+\subsubsection{Exp2: Optimized Prompts}
+
+Exp2 introduces task-specific prompt optimization on the same dataset. For each task type, we design a structured prompt template that mainly includes: (a) a more precise and unified description of task rules; (b) strict constraints on the output format (e.g., only outputting an index or coordinates); and (c) reminders targeting common failure modes. Apart from replacing $q_{\text{gt}}$ with the optimized prompt $q_{\text{opt}}$, all settings are identical to Exp1.
+
+By comparing Exp1 and Exp2, both overall and per task type, we quantify the effect of prompt engineering on visual CAPTCHA solving performance and identify task categories that are most sensitive to prompt design. Exp2 largely eliminates ambiguity in the original instructions as a confounding factor, helping us isolate intrinsically hard task types for MLLMs and informing subsequent discussions of defense strategies.
+
+\subsubsection{Exp3: Conceptual Until-Correct Setting}
+
+Exp3 simulates the behavior of attackers or automated scripts when a limited number of retries is allowed within the same CAPTCHA \emph{type}. Given a maximum number of attempts $k$, for each model–task-type pair we consider a solving session that proceeds as follows: (I) initialize the attempt counter $j = 1$; (II) draw a new instance $(\mathcal{X}^{(j)}, q_{\text{opt}}, y^{(j)})$ of this task type, invoke the model, obtain an answer, and check correctness; (III) if the answer is correct or $j = k$, stop; otherwise set $j \leftarrow j+1$ and repeat step (II) on another instance of the \emph{same} type.
+
+Exp3 formalizes the commonly used “retry until success under a limited budget” strategy in real systems. It corresponds to a \emph{conceptual} until-correct evaluation scenario: under a budget of at most $k$ attempts, the attacker may repeatedly call the model until success or budget exhaustion. Directly running this evaluation with full statistics for every model would require many calls, incur high time and monetary costs, and be sensitive to random fluctuations. Therefore, in this work we do not explicitly execute a full Exp3 experiment for all models. Instead, using the statistical modeling approach in Section~\ref{subsec:statlink}, we derive the expected success rate and expected number of attempts for Exp3 from Exp2’s results. Hence Exp3 is best viewed as an evaluation paradigm that is “virtually expanded’’ via statistical modeling; we primarily report its \emph{theoretical expectations} rather than per-sample empirical outcomes. The subset of real Exp3 runs is used mainly to cross-validate our modeling predictions.
+
+\subsubsection{Exp4: Few-shot on Difficult Task Types}
+
+Exp4 focuses on task types where models perform particularly poorly. Based on Exp2, we select task types whose Pass@1 is significantly below the overall average \textcolor{red}{[TODO: specify selection criteria]}, and construct two labeled few-shot examples for each such type. These examples are removed from the evaluation pool to avoid data leakage, and their answers are drawn from a fixed list to ensure reproducibility.
+
+\subsection{Statistical Link between Exp2 and Exp3}
+\label{subsec:statlink}
+
+Our goal is to extrapolate from single-shot accuracy in Exp2 to the finite-retry regime of Exp3 in a simple and transparent way. To that end we model the outcome of each attempt as an independent Bernoulli trial.
+
+\paragraph{Modeling assumption.}
+Fix a model $m$ and a CAPTCHA task type $t$.
+Within this $(m,t)$ pair, each evaluation attempt corresponds to running the same prompt template and decoding logic on a CAPTCHA instance drawn from the same CaptchaWorld task pool.
+We keep all inference hyperparameters (temperature, top-$p$, maximum output length) fixed, and we disable any stateful interaction such as conversation memory or tool calls that could carry information across attempts.
+Under this controlled setup, the only stochasticity comes from the random draw of the instance within type $t$ and the model’s internal sampling.
+We therefore treat the correctness of each attempt as a Bernoulli random variable with a type-specific success probability $p_{m,t}$, and we assume that attempts are independent and identically distributed (i.i.d.) conditional on $(m,t)$.
+Different CAPTCHA types are evaluated separately and are not pooled together.
+
+\paragraph{Estimating single-shot success from Exp2.}
+In Exp2, for task type $t$ and model $m$ we observe $N_t$ single-shot outcomes on distinct instances, and we compute
+\[
+  \mathrm{Pass@1}(m,t)
+  \;=\;
+  \frac{1}{N_t}\sum_{i:\,\mathrm{task}(i)=t}
+  \mathbb{1}\{\hat{y}_i = y_i\}.
+\]
+Under the i.i.d.\ Bernoulli assumption, $\mathrm{Pass@1}(m,t)$ is simply the empirical mean of $N_t$ Bernoulli samples and provides a natural estimator of the single-shot success probability, \[\hat p_{m,t} \;\approx\; p_{m,t}.\]
+
+\paragraph{Finite-retry model for Exp3.}
+Consider now an ``until-correct'' strategy on a sequence of at most $k$ attempts for CAPTCHA type $t$, where each attempt uses the same model and prompt template but a fresh instance of type $t$. Under the i.i.d.\ Bernoulli model with success probability $p_{m,t}$, the probability of failing $k$ times in a row is $(1-p_{m,t})^k$, hence the probability of \emph{at least one} success within $k$ attempts is
+\begin{equation}
+  q_k(m,t)
+  \;=\;
+  1 - (1 - p_{m,t})^k.
+  \label{eq:qk}
+\end{equation}
+Let $A$ denote the (random) number of attempts actually used under this strategy, where we stop either at the first success or when the budget $k$ is exhausted.
+The expected number of attempts can then be written as
+\begin{equation}
+  A_k(m,t)
+  \;=\;
+  \mathbb{E}[A]
+  \;=\;
+  \frac{1 - (1 - p_{m,t})^k}{p_{m,t}}.
+  \label{eq:Ak}
+\end{equation}
+Intuitively, $q_k(m,t)$ captures how likely the model is to eventually solve a CAPTCHA of type $t$ given up to $k$ retries, while $A_k(m,t)$ captures the expected number of calls that an attacker needs to make before stopping.
+
+In our analysis we obtain plug-in estimates of these quantities by substituting $p_{m,t}$ with the corresponding Exp2 estimator $\hat p_{m,t}=\mathrm{Pass@1}(m,t)$.
+This yields predicted $\mathrm{Success@}k$ and expected attempt counts for each model--task-type pair without explicitly running a full Exp3 experiment.
+
+\paragraph{Empirical cross-validation with Exp3.}
+Real systems may deviate from the i.i.d.\ assumption: some instances can be systematically unsolvable for a given model, repeated attempts on the same instance may be weakly correlated, and finite sample sizes introduce additional variability.
+To assess how well the simple model above captures our setting, we run a subset of explicit Exp3 experiments and compare the predicted quantities with empirical ones.
+
+For each model--task-type pair where Exp3 is executed, we compute:
+(i) the empirical success rate within $k$ attempts (fraction of instances solved at least once), and
+(ii) the empirical mean number of attempts used per instance.
+We then compare these empirical statistics with $q_k(\hat p_{m,t})$ and $A_k(\hat p_{m,t})$ from Equations~\eqref{eq:qk}--\eqref{eq:Ak}, and we highlight in the results section those task types where the deviations are most pronounced.
+
+Overall, we find that the i.i.d.\ Bernoulli model provides a good first-order approximation for most task types and models, while the observed deviations serve as a useful indicator of heterogeneity and dependence within certain CAPTCHA families.
+This justifies using Equations~\eqref{eq:qk} and~\eqref{eq:Ak} as our main tool for extrapolating from Exp2 to the conceptual until-correct regime of Exp3.
+
+
+\subsection{Cost and Human Baseline Estimation}
+\label{subsec:cost}
+
+We estimate the monetary cost of each call based on publicly available provider price tables. Using provider tools, we obtain the number of input and output tokens for each model API call. Let $c_{\mathrm{in}}$ and $c_{\mathrm{out}}$ denote the prices (per thousand prompt and completion tokens, respectively) for a given model, and let $t_{i}^{\mathrm{in}}$ and $t_{i}^{\mathrm{out}}$ be the input and output token counts for the $i$-th sample. The cost of that invocation is then
+\begin{equation}
+  \mathrm{cost}_{i} = \frac{t_{i}^{\mathrm{in}}}{1000} \cdot c_{\mathrm{in}} 
+                    + \frac{t_{i}^{\mathrm{out}}}{1000} \cdot c_{\mathrm{out}}.
+\end{equation}
+
+We consistently use the publicly posted prices on the evaluation date showing in Appendix \ref{app:api-pricing}, and compute, for each CAPTCHA sample, the average cost within its task type. Combining this with $q_k$ derived in Section~\ref{subsec:statlink}, we obtain the theoretical average cost per \emph{successful} sample, i.e., the expected expenditure required to obtain one success under an until-correct strategy.
+
+To compare against real-world human CAPTCHA solving, we draw on empirical studies of CAPTCHA crowd-sourcing and underground markets \textcolor{red}{[TODO: cite Usenix/WWW/S\&P and related work]}. These studies generally find that crowd workers attain roughly $\mathrm{80}\%\sim\mathrm{90}\%$ one-shot accuracy on common visual CAPTCHAs, with per-sample solving times on the order of a few to tens of seconds, and market prices on the order of a few US cents per CAPTCHA.
+
+On this basis, we discuss how MLLMs’ Pass@1 on CaptchaWorld compares to these human baselines, and whether MLLMs have reached or surpassed typical crowd-sourcing performance. In terms of time and cost per “successful sample”, we compare the theoretical indicators derived from $q_k$ and $A_k$ (Section~\ref{subsec:statlink}) with empirical metrics from human crowd markets. We further analyze the performance--cost Pareto frontier induced by different combinations of models and strategies, and the resulting practical threat level to existing visual CAPTCHA schemes.
+
+This comparison allows us to more precisely answer a central question: given current prices and performance levels, how strong is the \emph{actual} threat posed by multimodal LLMs to today’s visual CAPTCHA systems? The corresponding quantitative results also provide a foundation for the targeted defense recommendations discussed in later sections.
+
+
+
+\section{Evaluation Results and Discussion}
+
+In this section we present a quantitative study of how modern multimodal language models handle real world style visual CAPTCHA tasks under the four experimental paradigms described in Section~\ref{sec:methods}. We first provide an overview of accuracy patterns across task types and models, then examine the impact of task-specific prompt optimization, analyze the conceptual until correct regime, and finally evaluate few shot prompting on difficult task types and the associated time and cost trade offs. We conclude the section with an analysis of what affects the effects of these tasks under current model capabilities.
+
+\subsection{Overall Performance Patterns}
+
+Let us begin with a global view of model accuracy on CaptchaWorld. Figure~\ref{fig:heatmap-exp1} and Figure~\ref{fig:heatmap-exp2} show heatmaps of Pass@1 across task types and models for Exp1 and Exp2. Rows correspond to the 18 task types sorted by average Pass@1, and columns correspond to the evaluated models.
+
+Across all models and tasks, average Pass@1 in Exp1 ranges from \textcolor{red}{[TODO: min Pass@1]} to \textcolor{red}{[TODO: max Pass@1]}, with an overall mean of approximately \textcolor{red}{[TODO: overall baseline Pass@1]} percent. Certain task types such as \textcolor{red}{[TODO: examples of easy tasks, e.g., Dice\_Count, Rotation\_Match]} are consistently solved with high accuracy by most models, while types such as \textcolor{red}{[TODO: examples of hard tasks, e.g., Misleading\_Click, Unusual\_Detection]} remain challenging and often fall well below the 60 percent line that we use as a conservative CAPTCHA safety threshold.
+
+The cross model stability plots in Figure~\ref{fig:stability-exp1} and Figure~\ref{fig:stability-exp2} further show that task difficulty is largely consistent across models. For most task types the spread of Pass@1 across models is moderate and the median accuracy follows a similar ordering. Only a small number of task types display large variance where some models succeed while others perform poorly. This stability suggests that the observed difficulty ordering is primarily driven by task properties rather than by idiosyncrasies of specific model families.
+
+\subsection{Effect of Prompt Optimization}
+
+We now quantify the impact of task specific prompt optimization by comparing Exp1 and Exp2. Figure~\ref{fig:bars-exp1-exp2} summarizes average Pass@1 per task type and per experiment for each model, while Figure~\ref{fig:slope-exp1-exp2} visualizes per task changes in Pass@1 using a slope chart.
+
+Overall, moving from raw ground truth instructions in Exp1 to optimized prompts in Exp2 yields a gain of approximately \textcolor{red}{[TODO: overall gain]} percentage points in average Pass@1 across all task types and models. At the per model level, the absolute gain ranges from about \textcolor{red}{[TODO: min gain]} to \textcolor{red}{[TODO: max gain]} percentage points, with the largest improvement observed for \textcolor{red}{[TODO: model with strongest gain, e.g., Gemini 2.5 Flash]}.
+
+The optimization resistance scatter plots in Figure~\ref{fig:resistance-exp1-exp2} reveal a heterogeneous pattern at the task level. A subset of tasks show substantial improvements where Exp2 increases Pass@1 by more than \textcolor{red}{[TODO: threshold, e.g., 10]} percentage points, for example \textcolor{red}{[TODO: improved tasks]}. These tasks typically benefit from clearer specification of index conventions, stricter output format constraints, or more explicit instructions about which visual signal should be treated as the ground truth. In contrast, several tasks remain in the low accuracy regime even after optimization. For these optimization resistant tasks, denoted as the red region in Figure~\ref{fig:resistance-exp1-exp2}, prompt engineering alone is insufficient to close the gap to the CAPTCHA safety threshold, which suggests that the dominant failure modes are due to visual or reasoning limitations rather than ambiguity in instructions.
+
+We also observe a small number of task types where optimized prompts slightly degrade performance. These cases often correspond to tasks with already high baseline accuracy, where additional constraints occasionally overfit to a particular interpretation and conflict with the built in priors of some models. In our experiments the magnitude of such degradations is limited to about \textcolor{red}{[TODO: degradation size]} percentage points and does not qualitatively change the risk assessment.
+
+\subsection{Conceptual Until-Correct Behavior}
+
+Exp3 is designed to approximate the common practical setting in which an attacker is allowed a bounded number of retries on the same CAPTCHA type. As described in Section~\ref{subsec:statlink}, our primary analysis treats Exp3 as a conceptual until correct regime. We map Exp2 Pass@1 to predicted the expected Success@k using the independent attempt model with \ref{eq: A-k} and \ref{eq: q-k}, and use a subset of actual Exp3 runs to validate these predictions.
+
+Figure~\ref{fig:exp3-analysis} summarizes per task type statistics for Exp3, including empirical success probability within $k$ attempts, average number of attempts, and cumulative time until success. For each model and task type, we compare the predicted $q_k$ and $A_k$ from Exp2 with the empirical values from Exp3. The scatter plots in Figure~\ref{fig:exp2-exp3-link} show that for most task types the independent attempt model provides a good first order approximation. Points cluster around the diagonal within a tolerance of about \textcolor{red}{[TODO: typical error range]} percentage points for success probabilities and \textcolor{red}{[TODO: typical error range]} attempts for $A_k$.
+
+However, we also identify systematic deviations for certain task types. In some cases the observed Success@k is lower than predicted, which suggests that either a subset of items within the type is effectively unsolvable for a given model, or that successive attempts on the same type are not independent. In other cases Success@k is slightly higher than predicted, which may indicate that models benefit from incidental priming or that the effective pool size of items is small. We further quantify these effects using the finite pool and heterogeneity models outlined in Appendix~\ref{app:stat-link}, which improve the fit for a minority of task types but do not substantially change the overall risk picture.
+
+From a security perspective, the key takeaway is that even moderate single shot success probabilities can translate into very high Success@k under realistic retry budgets. For example, a task type with Exp2 Pass@1 of \textcolor{red}{[TODO: example p]} percent reaches a theoretical Success@k of \textcolor{red}{[TODO: example qk]} percent at $k=\textcolor{red}{[TODO: k]}$, and our empirical Exp3 runs confirm success rates of the same order of magnitude. This amplification effect is central to assessing the practical risk posed by MLLM based CAPTCHA solvers.
+
+\subsection{Few Shot Prompting on Difficult Task Types}
+
+Exp4 targets the most challenging task types identified from Exp2. We first generate a ranked list of recommended CAPTCHA types using the procedure in Section~\ref{subsec:cost}. Specifically, we select task types whose average Pass@1 in Exp2 falls below the 60 percent threshold and rank them by a combined difficulty and stability score. The top \textcolor{red}{[TODO: number of selected types]} task types form the difficult subset for Exp4.
+
+For each selected task type we construct two labeled few shot examples and prepend them to the main instruction at inference time. To avoid data leakage, these examples are removed from the evaluation pool and their answers are drawn from a fixed catalog. Figure~\ref{fig:heatmap-exp4} and Figure~\ref{fig:bars-exp2-exp4} compare Pass@1 on difficult task types between Exp2 and Exp4.
+
+Few shot prompting yields consistent but moderate gains. On average across models and difficult task types, Pass@1 increases by about \textcolor{red}{[TODO: average few-shot gain]} percentage points. For certain types that require complex spatial reasoning or multi step pattern matching, for example \textcolor{red}{[TODO: example types]}, the improvement can reach \textcolor{red}{[TODO: larger few-shot gain]} percentage points. Nevertheless, several CAPTCHA types remain below the safety threshold even with few shot guidance. These residual hard cases are the most promising candidates for future CAPTCHA design.
+
+We also inspect how few shot prompting interacts with different model families. Some models, such as \textcolor{red}{[TODO: example model]}, benefit strongly from few shot examples, while others show limited additional gains on top of already optimized prompts. This suggests that the value of few shot prompting depends on how well the underlying model can align its internal representations with the structured output schema once given a few canonical demonstrations.
+
+\subsection{Time and Cost Trade Offs}
+
+Beyond accuracy, practical attacks must consider time and monetary cost. Using the token usage and pricing information described in Section~\ref{subsec:cost}, we compute per sample and per successful solve cost for each model and experiment.
+
+The cost performance frontier in Figure~\ref{fig:frontier} plots Pass@1 against cost per question for Exp1, Exp2, and Exp4. For each model, Exp2 typically shifts the operating point upward at a small additional cost, while Exp4 further increases cost due to longer prompts and few shot examples. For example, for \textcolor{red}{[TODO: example model]}, the average cost per question increases from \textcolor{red}{[TODO: cost exp1]} USD in Exp1 to \textcolor{red}{[TODO: cost exp2]} USD in Exp2 and \textcolor{red}{[TODO: cost exp4]} USD in Exp4, while Pass@1 moves from \textcolor{red}{[TODO: acc exp1]} to \textcolor{red}{[TODO: acc exp2]} and \textcolor{red}{[TODO: acc exp4]} percent.
+
+The time performance scatter plots in Figure~\ref{fig:time-performance} show a similar pattern. Most operating points lie in a region where average end to end latency per attempt is on the order of \textcolor{red}{[TODO: latency range]} seconds, and experiments with higher accuracy tend to incur slightly higher latency due to additional context. When combined with the amplification effect of retries in Exp3, these numbers indicate that achieving high Success@k requires only modest additional wall clock time for many model and task combinations.
+
+Finally, we compare the estimated cost and latency per successful solve with reported ranges from human CAPTCHA solving markets. While precise values depend on the chosen model and strategy, our measurements suggest that for \textcolor{red}{[TODO: subset of models]} the cost per successful CAPTCHA solve is already comparable to or lower than prevailing crowd worker prices, and end to end latency is well within the few second range. This alignment strengthens the argument that MLLM based solvers are becoming a realistic alternative to human CAPTCHA farms.
+
+\subsection{Error Analysis and Hardness Factor Extraction}
+
+Putting the above results together, we derive a set of recommended CAPTCHA task types that remain relatively robust against current MLLMs. Table~\ref{tab:captcha-recommendations}, derived from the recommendation procedure in Figure~\ref{fig:captcha-recommendation}, lists the top \textcolor{red}{[TODO: number of recommended types]} task types that satisfy three criteria. First, they maintain low average Pass@1 in Exp2 across all evaluated models. Second, they remain below the safety threshold even under Exp4 few shot prompting. Third, their cross model variability is small, so that difficulty is not dominated by a single weak model.
+
+The resulting set is dominated by task families that require holistic scene understanding, multi step reasoning, or subtle discrimination between visually similar options. Examples include \textcolor{red}{[TODO: example types and families]}. In contrast, tasks that reduce to simple counting, reading, or single step matching are largely compromised and no longer suitable as the sole basis for CAPTCHA defense.
+
+These findings provide concrete guidance for the design of future visual CAPTCHA schemes. Rather than proposing entirely new task families, our analysis suggests that carefully selected instances from existing families can already offer significantly stronger robustness against off the shelf MLLMs, especially when combined with rate limiting and other system level defenses.
+
+
+
+\subsection{Case study and Discussion}
+\textcolor{red}{In this section, we present a concrete case study to further illustrate ...}
+
+
+
+
+
+
+
+\section{Defense-Oriented CAPTCHA Design}
+
+\section{Related Work}
+\label{sec:related-work}
+
+\textbf{CAPTCHA Solvers:}  CAPTCHA mechanisms and their corresponding solvers have continuously evolved in response to each other's advancement~\cite{ousat2024matter,searles2023modern}. Traditional text- and image-based CAPTCHAs were weakened by deep-learning methods employing convolutional models and segmentation-based techniques~\cite{sivakorn2016robot,tian2020generic,shi2020text}. More advanced architectures, including generative adversarial network-based solvers and transformer-based recognizers, further improved solvers robustness against noisy and diverse schemes~\cite{ye2018yet,zhao2023geesolver}. Besides visual recognition, reinforcement-learning approaches showed that even behavior-based CAPTCHAs can be bypassed by agents learning human-like interaction pattern~\cite{akrout2019hacking, tsingenopoulos2022captcha}. However, the emergence of reasoning-based CAPTCHAs introduces semantics, interactive, and multi-modal designs, necessitating solvers with advanced logical-reasoning capabilities alongside strong image-comprehension skills~\cite{gao2021research,wu2025mca,captchaworld25}.
+
+\textbf{MLLM in CAPTCHA:} With the advent of multimodal LLMs and vision-language models (VLMs), recent work has begun to threat CAPTCHA solving as general interactive reasoning tasks. Teoh et al. propose Halligan, a generalized visual CAPTCHA solver built around an agentic VLM that plans browser actions and achieves high success rates across widely deployed CAPTCHA schemes~\cite{teoh2025captchas}. Deng et al. presents Oedipus, which casts CAPTCHA solving as LLM-guided multi-step reasoning over challenge instructions and candidate visual cues, combining chain-of-thought prompting with perception modules~\cite{deng2024oedipus}. In parallel, Ding et al. design IllusionCAPTCHA which introduces visual illusions that cause state-of-the-art VLM and LLM-based agents to hover near random-guest performance, which illustrates that the carefully crafted perception traps can systematically mislead LLM/VLM CAPTCHA solvers~\cite{ding2025illusioncaptcha}.
+
+Building on this trend, subsequent research has shifted from proposing individual solvers to systematically benchmarking multimodal agents~\cite{captchaworld25, wu2025mca}, analyzing their failure modes~\cite{song2025reasoning}, and designing LLM-aware CAPTCHA defenses~\cite{li2025mi}. However, these efforts largely focus on accuracy and query statistics while overlooking the practical time budgets for CAPTCHA solving, MLLMs deep reasoning (i.e., thinking) capability, and deep analysis on why these models would fail at specific CAPTCHA puzzles. Our work complements these early efforts by explicitly incorporating solving latency as a core metric, examining the reasoning traces of state-of-the-art MLLMs on diverse CAPTCHA types, and deriving concrete, defense-oriented design guidelines.
+
+
+
+% \section{Discussion}
+% Placeholder
+
+\section{Conclusion}
+Placeholder
+
+%%
+%% The acknowledgments section is defined using the "acks" environment
+%% (and NOT an unnumbered section). This ensures the proper
+%% identification of the section in the article metadata, and the
+%% consistent spelling of the heading.
+% \begin{acks}
+% To Robert, for the bagels and explaining CMYK and color spaces.
+% \end{acks}
+
+%%
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sample-base}
+
+
+%%
+%% If your work has an appendix, this is the place to put it.
+\appendix
+
+\section{Dataset Details}
+\label{app:dataset-details}
+
+Placeholder
+
+
+\section{Model API Pricing}
+\label{app:api-pricing}
+
+Placeholder
+
+\section{Thinking Process}
+\label{app:thinking-process}
+
+Placeholder
+
+\end{document}
+\endinput
+%%
+%% End of file `sample-sigconf-authordraft.tex'.

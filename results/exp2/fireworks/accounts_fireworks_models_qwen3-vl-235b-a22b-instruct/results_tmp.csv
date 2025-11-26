@@ -1,0 +1,4 @@
+provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
+fireworks,accounts/fireworks/models/qwen3-vl-235b-a22b-instruct,Misleading_Click,10,0.400,3197.1,3197.1,6881,323,7204,0.001798,0.000180
+fireworks,accounts/fireworks/models/qwen3-vl-235b-a22b-instruct,Object_Match,20,0.250,8988.7,8988.7,161863,400,162263,0.035962,0.001798
+fireworks,accounts/fireworks/models/qwen3-vl-235b-a22b-instruct,Pick_Area,20,0.100,2340.8,2340.8,7600,659,8259,0.002252,0.000113

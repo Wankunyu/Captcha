@@ -1,0 +1,4 @@
+provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
+gemini,gemini-2.5-pro,Misleading_Click,10,0.400,9607.3,9607.3,4600,248,4848,0.008230,0.000823
+gemini,gemini-2.5-pro,Object_Match,20,0.950,9659.2,9659.2,35980,286,36266,0.047835,0.002392
+gemini,gemini-2.5-pro,Pick_Area,20,0.050,16947.5,16947.5,8860,537,9397,0.016445,0.000822

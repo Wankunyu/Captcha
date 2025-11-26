@@ -27,7 +27,6 @@ available, Exp3 observations for comparison.
 from __future__ import annotations
 
 import argparse
-import math
 from math import comb
 from pathlib import Path
 from typing import Optional, Tuple
@@ -195,8 +194,20 @@ def main():
     ap.add_argument("--pool-size", type=int, default=None, help="Pool size (N) per type in Exp3; if omitted, no finite-pop correction")
     ap.add_argument("--alpha0", type=float, default=1.0, help="Beta prior alpha for EB shrinkage")
     ap.add_argument("--beta0", type=float, default=1.0, help="Beta prior beta for EB shrinkage")
-    ap.add_argument("--provider", default=None, help="Optional provider filter")
-    ap.add_argument("--model", default=None, help="Optional model filter (provider/model)")
+    ap.add_argument(
+        "--provider",
+        dest="providers",
+        action="append",
+        default=None,
+        help="Optional provider filter(s); repeat or use comma-separated values (e.g., --provider openai,gemini)",
+    )
+    ap.add_argument(
+        "--model",
+        dest="models",
+        action="append",
+        default=None,
+        help="Optional model filter(s) in provider/model form; repeat or comma-separate to include multiple models in one run",
+    )
     ap.add_argument("--calibrate", action="store_true", help="Fit simple logit-linear calibration on available Exp3")
     args = ap.parse_args()
 
@@ -206,10 +217,26 @@ def main():
 
     df = viz.data.copy()
 
-    if args.provider:
-        df = df[df['provider'] == args.provider]
-    if args.model:
-        df = df[df['provider_model'] == args.model]
+    def _normalize_multi(values):
+        """Expand repeated/CSV CLI inputs into a unique list."""
+        if values is None:
+            return None
+        if isinstance(values, str):
+            values = [values]
+        items = []
+        for v in values:
+            if v is None:
+                continue
+            items.extend([s.strip() for s in str(v).split(",") if s.strip()])
+        return sorted(set(items)) or None
+
+    providers_filter = _normalize_multi(args.providers)
+    models_filter = _normalize_multi(args.models)
+
+    if providers_filter:
+        df = df[df['provider'].isin(providers_filter)]
+    if models_filter:
+        df = df[df['provider_model'].isin(models_filter)]
 
     # Exp2 summary (per provider/model/task_type): n and pass (Pass@1)
     exp2 = df[df['experiment'] == 'exp2'].copy()
@@ -248,27 +275,32 @@ def main():
     # Predict
     rows = []
     for _, r in exp2_grp.iterrows():
-        prov = r['provider']; model = r['model']; pm = r['provider_model']; t = r['task_type']
+        prov = r['provider']
+        model = r['model']
+        pm = r['provider_model']
+        t = r['task_type']
         n = int(r.get('n', 1) or 1)
         p_hat = float(r['p_hat'])
-
-        # Difficulty parameter λ = -ln(1 - p), using a clipped p to avoid log(0)
-        p_clipped = float(np.clip(p_hat, 1e-9, 1.0 - 1e-9))
-        lam = -math.log(1.0 - p_clipped)
-
-        # Baseline i.i.d. prediction expressed in (k, λ) form: q_iid(k) = 1 - exp(-k λ)
-        q_iid = 1.0 - math.exp(-args.k * lam)
 
         # Final q_pred / A_pred (may include finite-pool correction if --pool-size is set)
         q_pred = predict_q_from_exp2(p_hat, n, args.k, args.pool_size, args.alpha0, args.beta0)
         A_pred = predict_A_from_exp2(p_hat, n, args.k, args.pool_size, args.alpha0, args.beta0)
 
-        rows.append([prov, model, pm, t, n, p_hat, lam, q_iid, q_pred, A_pred])
+        rows.append([prov, model, pm, t, n, p_hat, q_pred, A_pred])
 
-    pred_df = pd.DataFrame(rows, columns=[
-        'provider','model','provider_model','task_type',
-        'n','p_hat','lambda','q_iid','q_pred','A_pred'
-    ])
+    pred_df = pd.DataFrame(
+        rows,
+        columns=[
+            'provider',
+            'model',
+            'provider_model',
+            'task_type',
+            'n',
+            'p_hat',
+            'q_pred',
+            'A_pred',
+        ],
+    )
 
     # Optional calibration on observed Exp3
     if args.calibrate and exp3_obs is not None and not exp3_obs.empty:

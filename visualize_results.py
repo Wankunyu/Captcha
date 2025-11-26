@@ -20,8 +20,17 @@ except Exception:
     adjust_text = None
 
 # Set font and chart style
-plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams.update({
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Calibri', 'DejaVu Sans', 'Arial'],
+    'axes.unicode_minus': False,
+    'font.size': 12,           # 全局基准字号
+    'axes.titlesize': 14,      # 标题字号
+    'axes.labelsize': 13,      # 轴标签字号
+    'xtick.labelsize': 11,     # x轴刻度字号
+    'ytick.labelsize': 11,     # y轴刻度字号
+    'legend.fontsize': 11,     # 图例字号
+})
 sns.set_style("whitegrid")
 sns.set_palette("husl")
 
@@ -30,23 +39,22 @@ class CAPTCHAVisualizer:
 
     # Default model display name mapping
     DEFAULT_MODEL_NAMES = {
-        'openai/gpt-5': 'GPT-5',
-        'openai/gpt-5-chat-latest': 'GPT-5-Chat',
+        'openai/gpt-5': 'GPT-5 (Medium)',
         'openai/gpt-5.1_medium': 'GPT-5.1 (Medium)',
         'openai/gpt-5.1_none': 'GPT-5.1 (None)',
         'anthropic/claude-sonnet-4-5': 'Claude Sonnet 4.5',
         'anthropic/claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
         'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
         'gemini/gemini-2.5-pro': 'Gemini 2.5 Pro',
-        'fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct': 'Qwen3-VL-235B',
+        'fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct': 'Qwen3-VL-235B-A22B-Instruct',
     }
 
     # Default experiment display name mapping
     DEFAULT_EXP_NAMES = {
-        'exp1': 'Exp1 (Baseline)',
-        'exp2': 'Exp2 (Optimized)',
-        'exp3': 'Exp3 (Until-Correct)',
-        'exp4': 'Exp4 (Few-Shot)',
+        'exp1': 'Exp1 (Original Prompts)',
+        'exp2': 'Exp2 (Optimized Prompts)',
+        # Exp3 plots use expected until-correct behaviour derived from Exp2
+        'exp3': 'Exp3 (Until-Correct, Expected)',
     }
 
     # Task family (category) mapping for radar plots and grouped summaries
@@ -80,7 +88,8 @@ class CAPTCHAVisualizer:
 
     def __init__(self, results_dir: str = "./results", error_dir: str = "./error_analysis",
                  model_names: Optional[Dict[str, str]] = None,
-                 exp_names: Optional[Dict[str, str]] = None):
+                 exp_names: Optional[Dict[str, str]] = None,
+                 exclude_models: Optional[List[str]] = None):
         """
         Initialize CAPTCHA visualizer
 
@@ -89,9 +98,12 @@ class CAPTCHAVisualizer:
             error_dir: Error analysis directory path
             model_names: Custom model display names (overrides defaults)
             exp_names: Custom experiment display names (overrides defaults)
+            exclude_models: Provider/model identifiers to exclude from charts
         """
         self.results_dir = Path(results_dir)
         self.error_dir = Path(error_dir)
+        default_exclude = ["openai/gpt-5-chat-latest"]
+        self.exclude_models = set(exclude_models if exclude_models is not None else default_exclude)
 
         # Merge custom names with defaults
         self.model_names = self.DEFAULT_MODEL_NAMES.copy()
@@ -103,6 +115,8 @@ class CAPTCHAVisualizer:
             self.exp_names.update(exp_names)
 
         self.data = self._load_all_data()
+        if self.exclude_models and not self.data.empty:
+            self.data = self.data[~self.data['provider_model'].isin(self.exclude_models)].copy()
         self.task_types = sorted(self.data['task_type'].unique()) if not self.data.empty else []
 
     def _get_display_name(self, identifier: str, name_type: str = 'model') -> str:
@@ -264,17 +278,59 @@ class CAPTCHAVisualizer:
             figsize: Figure size
             save_path: Save path (None=don't save)
         """
-        pivot = self._get_accuracy_pivot(experiment)
+        # Base pivot: rows = task_type, columns = models, values = Pass@1 (%)
+        pivot_base = self._get_accuracy_pivot(experiment)
 
-        if pivot.empty:
+        if pivot_base.empty:
             print(f"[WARNING] Cannot plot heatmap: {experiment} has no data")
             return None
 
-        # Add average difficulty column
-        pivot['Average'] = pivot.mean(axis=1)
+        # 1) 按任务计算跨模型平均难度，并按平均值排序（行方向）
+        pivot_tasks = pivot_base.copy()
+        pivot_tasks['Average'] = pivot_tasks.mean(axis=1)
+        pivot_tasks = pivot_tasks.sort_values('Average')
 
-        # Sort by average difficulty (hardest at top)
-        pivot = pivot.sort_values('Average')
+        # 2) 计算“Overall”行：每个模型列使用原始样本量加权的整体 Pass@1
+        #    而不是简单平均各任务的百分比
+        overall_vals: dict[str, float] = {}
+
+        # 原始数据（0-1 概率 + n）子集
+        df_exp = self.data[self.data['experiment'] == experiment].copy()
+        if 'n' in df_exp.columns:
+            df_exp['n'] = pd.to_numeric(df_exp['n'], errors='coerce').fillna(0)
+        else:
+            df_exp['n'] = 1
+
+        # 映射：显示名 -> provider_model
+        disp_to_pm: dict[str, str] = {}
+        if not df_exp.empty:
+            for pm in df_exp['provider_model'].unique():
+                disp = self._get_display_name(pm, 'model')
+                disp_to_pm[disp] = pm
+
+        # 逐模型列计算加权总体 Pass@1（0–100）
+        for col in pivot_tasks.columns:
+            if col == 'Average':
+                continue
+            pm = disp_to_pm.get(col)
+            if not pm:
+                overall_vals[col] = float('nan')
+                continue
+            df_m = df_exp[df_exp['provider_model'] == pm]
+            if df_m['n'].sum() <= 0:
+                overall_vals[col] = float('nan')
+                continue
+            w_pass = (df_m['pass'] * df_m['n']).sum() / df_m['n'].sum() * 100.0
+            overall_vals[col] = w_pass
+
+        # 全局平均（所有模型 + 所有任务，加权）
+        if df_exp['n'].sum() > 0:
+            overall_vals['Average'] = (df_exp['pass'] * df_exp['n']).sum() / df_exp['n'].sum() * 100.0
+        else:
+            overall_vals['Average'] = float('nan')
+
+        overall_row = pd.Series(overall_vals, name='Overall')
+        pivot = pd.concat([pivot_tasks, overall_row.to_frame().T], axis=0)
 
         # Plot heatmap
         fig, ax = plt.subplots(figsize=figsize)
@@ -303,9 +359,9 @@ class CAPTCHAVisualizer:
         ax.set_xlabel('Model', fontsize=13, fontweight='bold')
         ax.set_ylabel('Task Type (Sorted by Difficulty)', fontsize=13, fontweight='bold')
 
-        # Highlight recommended CAPTCHA zone (accuracy < 60%)
+        # Highlight recommended CAPTCHA zone (accuracy < 40%)
         for i, (task, row) in enumerate(pivot.iterrows()):
-            if row['Average'] < 60:
+            if row['Average'] < 40:
                 ax.add_patch(plt.Rectangle((len(pivot.columns)-1, i), 1, 1,
                                           fill=False, edgecolor='red', lw=3))
 
@@ -323,7 +379,7 @@ class CAPTCHAVisualizer:
         return fig
 
     def plot_cost_performance_frontier(self,
-                                       experiments: List[str] = ('exp1', 'exp2', 'exp4'),
+                                       experiments: List[str] = ('exp1', 'exp2'),
                                        model_filter: Optional[str] = None,
                                        log_x: bool = True,
                                        figsize: Tuple[int, int] = (12, 8),
@@ -378,7 +434,23 @@ class CAPTCHAVisualizer:
                     xs, ys = zip(*frontier)
                     ax.plot(xs, ys, color=colors[i % len(colors)], linestyle='-', alpha=0.6)
 
-        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5, label='CAPTCHA Threshold (60%)')
+        # Add task type labels for all experiments
+        # Use drop_duplicates to label each task_type only at its last (usually optimized) position
+        if not df.empty:
+            label_df = df.copy()
+            label_df['pass_pct'] = label_df['pass'] * 100
+            label_df = label_df.dropna(subset=['cost_per_question', 'pass_pct'])
+            # Keep last occurrence of each task_type (usually the optimized experiment)
+            label_df = label_df.drop_duplicates(subset=['task_type'], keep='last')
+            for _, row in label_df.iterrows():
+                ax.annotate(
+                    row['task_type'],
+                    xy=(row['cost_per_question'], row['pass_pct']),
+                    xytext=(3, 3), textcoords='offset points',
+                    fontsize=8, alpha=0.75, color='#333333'
+                )
+
+        ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5, label='CAPTCHA Threshold (40%)')
         ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Cost per Question (USD)', fontsize=12, fontweight='bold')
         ax.set_ylim(-5, 105)
@@ -390,7 +462,7 @@ class CAPTCHAVisualizer:
         if model_filter:
             title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
         ax.set_title(title, fontsize=16, fontweight='bold', pad=16)
-        ax.legend(loc='lower right', fontsize=10, framealpha=0.9)
+        ax.legend(loc='upper right', bbox_to_anchor=(1.02, 1), fontsize=10, framealpha=0.9)
 
         plt.tight_layout()
         if save_path:
@@ -400,7 +472,7 @@ class CAPTCHAVisualizer:
         return fig
 
     def plot_time_performance_scatter(self,
-                                       experiments: List[str] = ('exp1', 'exp2', 'exp3', 'exp4'),
+                                       experiments: List[str] = ('exp1', 'exp2'),
                                        model_filter: Optional[str] = None,
                                        metric: str = 'avg_e2e_ms',
                                        figsize: Tuple[int, int] = (12, 8),
@@ -439,7 +511,23 @@ class CAPTCHAVisualizer:
                        label=self._get_display_name(exp, 'experiment'),
                        color=colors[i % len(colors)], edgecolors='black', linewidths=0.8)
 
-        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        # Add task type labels for all experiments
+        # Use drop_duplicates to label each task_type only at its last (usually optimized) position
+        if not df.empty:
+            label_df = df.copy()
+            label_df = label_df.dropna(subset=[metric])
+            label_df['pass_pct'] = label_df['pass'] * 100
+            # Keep last occurrence of each task_type (usually the optimized experiment)
+            label_df = label_df.drop_duplicates(subset=['task_type'], keep='last')
+            for _, row in label_df.iterrows():
+                ax.annotate(
+                    row['task_type'],
+                    xy=(row[metric] / 1000.0, row['pass_pct']),
+                    xytext=(3, 3), textcoords='offset points',
+                    fontsize=8, alpha=0.75, color='#333333'
+                )
+
+        ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
         ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Average E2E Time (s)', fontsize=12, fontweight='bold')
         ax.set_ylim(-5, 105)
@@ -449,7 +537,7 @@ class CAPTCHAVisualizer:
         if model_filter:
             title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
         ax.set_title(title, fontsize=16, fontweight='bold', pad=16)
-        ax.legend(loc='lower left', fontsize=10, framealpha=0.9)
+        ax.legend(loc='upper right', bbox_to_anchor=(1.02, 1), fontsize=10, framealpha=0.9)
 
         plt.tight_layout()
         if save_path:
@@ -508,7 +596,7 @@ class CAPTCHAVisualizer:
         ax.set_title('Improvement Slope', fontsize=16, fontweight='bold', pad=16)
         if model_filter:
             ax.set_title(f"Improvement Slope\nModel: {self._get_display_name(model_filter, 'model')}", fontsize=16, fontweight='bold', pad=16)
-        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
         ax.set_ylim(-5, 105)
         ax.grid(alpha=0.3, axis='y')
         ax.legend(fontsize=10)
@@ -577,8 +665,8 @@ class CAPTCHAVisualizer:
 
         # Move radial tick labels away from crowded areas
         ax.set_rlabel_position(225)
-        ax.set_yticks([20, 40, 60, 80, 100])
-        ax.set_yticklabels(['20', '40', '60', '80', '100'])
+        ax.set_yticks([0, 20, 40, 60, 80, 100])
+        ax.set_yticklabels(['0', '20', '40', '60', '80', '100'])
 
         title = f"Task Family Radar - {self._get_display_name(experiment, 'experiment')}"
         if model_filter:
@@ -647,8 +735,8 @@ class CAPTCHAVisualizer:
                                ha='center', va='bottom', fontsize=8)
 
         # Add CAPTCHA recommendation threshold line
-        ax.axhline(y=60, color='red', linestyle='--', linewidth=2,
-                  label='CAPTCHA Threshold (60%)', alpha=0.7)
+        ax.axhline(y=40, color='red', linestyle='--', linewidth=2,
+                  label='CAPTCHA Threshold (40%)', alpha=0.7)
 
         ax.set_ylabel('Pass@1 (%)', fontsize=13, fontweight='bold')
         ax.set_xlabel('Task Type (Sorted by Difficulty)', fontsize=13, fontweight='bold')
@@ -717,14 +805,14 @@ class CAPTCHAVisualizer:
         # Plot scatter plot
         fig, ax = plt.subplots(figsize=figsize)
 
-        # Assign colors based on position
+        # Assign colors based on position (threshold = 40%)
         colors = []
         for idx, row in comparison.iterrows():
-            if row['baseline'] < 60 and row['optimized'] < 60:
+            if row['baseline'] < 40 and row['optimized'] < 40:
                 colors.append('#d32f2f')  # Red: Recommended CAPTCHA zone
-            elif row['baseline'] < 60 and row['optimized'] >= 60:
+            elif row['baseline'] < 40 and row['optimized'] >= 40:
                 colors.append('#ffa726')  # Orange: Significant improvement
-            elif row['baseline'] >= 60 and row['optimized'] < 60:
+            elif row['baseline'] >= 40 and row['optimized'] < 40:
                 colors.append('#7e57c2')  # Purple: Abnormal degradation
             else:
                 colors.append('#78909c')  # Gray: Easy task type
@@ -762,10 +850,10 @@ class CAPTCHAVisualizer:
         lims = [0, 105]
         ax.plot(lims, lims, 'k--', alpha=0.4, linewidth=1.5, label='No Change (y=x)')
 
-        # CAPTCHA recommendation zone (red box)
-        ax.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
-        ax.axvline(x=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
-        ax.fill_between([0, 60], 0, 60, alpha=0.1, color='red',
+        # CAPTCHA recommendation zone (red box, threshold = 40%)
+        ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        ax.axvline(x=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        ax.fill_between([0, 40], 0, 40, alpha=0.1, color='red',
                        label='Recommended CAPTCHA Zone')
 
         # Labels and title
@@ -848,7 +936,7 @@ class CAPTCHAVisualizer:
                        for task in sorted_tasks]
 
         # Set colors based on median
-        colors = ['#ef5350' if median_acc[task] < 60 else '#90a4ae'
+        colors = ['#ef5350' if median_acc[task] < 40 else '#90a4ae'
                  for task in sorted_tasks]
 
         bp = ax.boxplot(data_to_plot,
@@ -865,8 +953,8 @@ class CAPTCHAVisualizer:
             patch.set_alpha(0.7)
 
         # CAPTCHA threshold line
-        ax.axhline(y=60, color='red', linestyle='--', linewidth=2,
-                  label='CAPTCHA Threshold', alpha=0.7)
+        ax.axhline(y=40, color='red', linestyle='--', linewidth=2,
+                  label='CAPTCHA Threshold (40%)', alpha=0.7)
 
         ax.set_ylabel('Pass@1 (%) across Models', fontsize=13, fontweight='bold')
         ax.set_xlabel('Task Type (Sorted by Median Difficulty)',
@@ -894,14 +982,24 @@ class CAPTCHAVisualizer:
 
     def plot_exp3_analysis(self, model_filter: Optional[str] = None,
                           figsize: Tuple[int, int] = (20, 12),
-                          save_path: Optional[str] = None):
+                          save_path: Optional[str] = None,
+                          k: int = 3):
         """
-        Plot comprehensive Experiment 3 (Until-Correct) analysis with 4 subplots
+        Plot comprehensive Experiment 3 (Until-Correct) analysis with 4 subplots.
+
+        NOTE: This chart now uses the *expected* Exp3 behaviour derived from Exp2:
+          - Pass@1 from Exp2 gives p̂ per task type
+          - Expected Exp3 success: q = 1 - (1 - p̂)^k
+          - Expected attempts: A = [1 - (1 - p̂)^k] / p̂  (truncated geometric)
+          - Expected cumulative time: Exp2 avg_e2e_ms * A
+
+        Actual Exp3 logs are only used for choosing k (if desired); by default k=10.
 
         Args:
             model_filter: Only show specific model
             figsize: Figure size
             save_path: Save path
+            k: Max attempts per type in the Exp3 protocol
 
         Returns:
             Figure object
@@ -910,38 +1008,49 @@ class CAPTCHAVisualizer:
             print("[WARNING] Cannot plot Exp3 analysis: No data")
             return None
 
-        # Filter Exp3 data
-        df = self.data[self.data['experiment'] == 'exp3'].copy()
+        # --------- Build expected Exp3 stats from Exp2 ---------
+
+        # Use Exp2 as baseline (Pass@1 + avg time per attempt)
+        exp2 = self.data[self.data['experiment'] == 'exp2'].copy()
         if model_filter:
-            df = df[df['provider_model'] == model_filter]
+            exp2 = exp2[exp2['provider_model'] == model_filter]
 
-        if df.empty:
-            print("[WARNING] No Exp3 data available")
+        if exp2.empty:
+            print("[WARNING] No Exp2 data available for Exp3 expectation")
             return None
 
-        # Check if required columns exist
-        if 'avg_attempts' not in df.columns or 'avg_e2e_ms' not in df.columns:
-            print("[WARNING] Exp3 data missing required columns (avg_attempts, avg_e2e_ms)")
-            return None
+        # Aggregate per task type: p̂ and average per-attempt time from Exp2
+        exp2_stats = exp2.groupby('task_type').agg({
+            'pass': 'mean',          # Pass@1 -> p_hat
+            'avg_e2e_ms': 'mean',    # single-attempt latency per item
+            'n': 'sum'
+        }).reset_index()
+
+        # Clip p to avoid numerical issues
+        p = np.clip(exp2_stats['pass'].to_numpy(), 1e-9, 1 - 1e-9)
+
+        # Expected Until-Correct success within k attempts
+        q_exp = 1.0 - (1.0 - p) ** max(k, 0)
+
+        # Expected attempts A = [1 - (1-p)^k] / p  (truncated geometric)
+        A_exp = (1.0 - (1.0 - p) ** max(k, 0)) / p
+
+        # Expected cumulative time and per-attempt time
+        avg_e2e_ms_exp2 = exp2_stats['avg_e2e_ms'].to_numpy()
+        cum_e2e_ms_exp = avg_e2e_ms_exp2 * A_exp  # expected total time across attempts
+
+        # Build task-level DataFrame compatible with existing plotting code
+        task_stats = exp2_stats.copy()
+        task_stats['pass'] = q_exp
+        task_stats['avg_attempts'] = A_exp
+        task_stats['cum_e2e_ms'] = cum_e2e_ms_exp
+        task_stats['pass_pct'] = task_stats['pass'] * 100
+        task_stats['cum_time_sec'] = task_stats['cum_e2e_ms'] / 1000.0
+        task_stats['avg_time_per_attempt_sec'] = task_stats['avg_e2e_ms'] / 1000.0
 
         # Create figure with 4 subplots
         fig = plt.figure(figsize=figsize)
         gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.3)
-
-        # Aggregate by task type (in case multiple runs/files were merged)
-        task_stats = df.groupby('task_type').agg({
-            'pass': 'mean',
-            'avg_attempts': 'mean',
-            'avg_e2e_ms': 'mean',   # derived avg per attempt in loader
-            'cum_e2e_ms': 'mean',   # cumulative time across attempts
-            'n': 'sum'
-        }).reset_index()
-
-        task_stats['pass_pct'] = task_stats['pass'] * 100
-        # Cumulative time until success (seconds)
-        task_stats['cum_time_sec'] = task_stats['cum_e2e_ms'] / 1000.0
-        # Average time per attempt (seconds)
-        task_stats['avg_time_per_attempt_sec'] = task_stats['avg_e2e_ms'] / 1000.0
 
         # Sort by average attempts (descending)
         task_stats = task_stats.sort_values('avg_attempts', ascending=False)
@@ -981,47 +1090,47 @@ class CAPTCHAVisualizer:
             ax2.text(row['cum_time_sec'] + 1, i, f"{row['cum_time_sec']:.1f}s",
                     va='center', fontsize=9)
 
-        # ===== Subplot 3: Pass@1 vs Until-Correct Success Rate =====
+        # ===== Subplot 3: Expected Success@k and Attempts =====
         ax3 = fig.add_subplot(gs[1, 0])
+        # Sort by expected success (descending)
+        ts_sorted = task_stats.sort_values('pass_pct', ascending=False)
+        x = np.arange(len(ts_sorted))
 
-        # Get Exp1 data for comparison (Pass@1)
-        exp1_data = self.data[self.data['experiment'] == 'exp1'].copy()
-        if model_filter:
-            exp1_data = exp1_data[exp1_data['provider_model'] == model_filter]
+        # Bar: expected Success@k (%)
+        bars3 = ax3.bar(
+            x,
+            ts_sorted['pass_pct'],
+            color='#70ad47',
+            alpha=0.85,
+            label=f'Expected Success@k (k={k})'
+        )
+        ax3.set_ylabel('Success@k (%)', fontsize=11, fontweight='bold')
+        ax3.set_xlabel('Task Type', fontsize=11, fontweight='bold')
+        ax3.set_xticks(x)
+        ax3.set_xticklabels(ts_sorted['task_type'], rotation=45, ha='right', fontsize=9)
+        ax3.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
+        ax3.grid(axis='y', alpha=0.3)
+        ax3.set_ylim(0, 110)
 
-        if not exp1_data.empty:
-            exp1_pass = exp1_data.groupby('task_type')['pass'].mean() * 100
-            exp3_pass = task_stats.set_index('task_type')['pass_pct']
+        # Secondary axis: expected attempts A_k
+        ax3b = ax3.twinx()
+        ax3b.plot(
+            x,
+            ts_sorted['avg_attempts'],
+            color='#d32f2f',
+            marker='o',
+            linewidth=2,
+            label='Expected Attempts A_k'
+        )
+        ax3b.set_ylabel('Expected Attempts (A_k)', fontsize=11, fontweight='bold')
+        ax3b.set_ylim(0, max(5, ts_sorted['avg_attempts'].max() + 1))
 
-            # Merge data
-            comparison = pd.DataFrame({
-                'Pass@1 (Exp1)': exp1_pass,
-                'Until-Correct (Exp3)': exp3_pass
-            }).fillna(0)
-
-            comparison = comparison.sort_values('Pass@1 (Exp1)')
-
-            x = np.arange(len(comparison))
-            width = 0.35
-
-            bars_exp1 = ax3.bar(x - width/2, comparison['Pass@1 (Exp1)'], width,
-                               label='Pass@1 (Exp1 Baseline)', color='#7eb3d6', alpha=0.9)
-            bars_exp3 = ax3.bar(x + width/2, comparison['Until-Correct (Exp3)'], width,
-                               label='Until-Correct (Exp3)', color='#70ad47', alpha=0.9)
-
-            ax3.set_ylabel('Success Rate (%)', fontsize=11, fontweight='bold')
-            ax3.set_xlabel('Task Type', fontsize=11, fontweight='bold')
-            ax3.set_title('Pass@1 vs Until-Correct Success Rate', fontsize=13, fontweight='bold')
-            ax3.set_xticks(x)
-            ax3.set_xticklabels(comparison.index, rotation=45, ha='right', fontsize=9)
-            ax3.axhline(y=60, color='red', linestyle='--', linewidth=2, alpha=0.5)
-            ax3.legend(fontsize=10)
-            ax3.grid(axis='y', alpha=0.3)
-            ax3.set_ylim(0, 110)
-        else:
-            ax3.text(0.5, 0.5, 'Exp1 data not available for comparison',
-                    ha='center', va='center', fontsize=12, transform=ax3.transAxes)
-            ax3.set_title('Pass@1 vs Until-Correct Success Rate', fontsize=13, fontweight='bold')
+        # Combine legends
+        lines_labels = [ax3.get_legend_handles_labels(), ax3b.get_legend_handles_labels()]
+        handles = sum((hl[0] for hl in lines_labels), [])
+        labels = sum((hl[1] for hl in lines_labels), [])
+        ax3.legend(handles, labels, fontsize=10, loc='lower right', framealpha=0.9)
+        ax3.set_title(f'Expected Exp3 Metrics (k={k})', fontsize=13, fontweight='bold')
 
         # ===== Subplot 4: Time Efficiency (Time per Attempt) =====
         ax4 = fig.add_subplot(gs[1, 1])
@@ -1058,7 +1167,7 @@ class CAPTCHAVisualizer:
         return fig
 
     def generate_captcha_recommendation(self, experiment: str = 'exp2',
-                                       threshold: float = 60.0,
+                                       threshold: float = 40.0,
                                        top_n: int = 8) -> pd.DataFrame:
         """
         Generate CAPTCHA recommended task type list
@@ -1125,8 +1234,11 @@ class CAPTCHAVisualizer:
 
         figures = []
 
-        # 1. Heatmap (for each experiment)
-        for exp in available_exps:
+        # Filter out Exp4 from global plotting (focus on Exp1/Exp2 baselines and optional Exp3)
+        baseline_exps = [e for e in available_exps if e in ('exp1', 'exp2', 'exp3')]
+
+        # 1. Heatmap (for each remaining experiment)
+        for exp in baseline_exps:
             try:
                 fig = self.plot_heatmap(
                     experiment=exp,
@@ -1138,12 +1250,13 @@ class CAPTCHAVisualizer:
             except Exception as e:
                 print(f"[WARNING] Heatmap {exp} generation failed: {e}")
 
-        # 2. Grouped bar chart (compare experiments)
-        if len(available_exps) >= 2:
+        # 2. Grouped bar chart (compare experiments, baseline only uses Exp1/Exp2/Exp4)
+        compare_exps = [e for e in baseline_exps if e in ('exp1', 'exp2')]
+        if len(compare_exps) >= 2:
             for model in available_models:
                 try:
                     fig = self.plot_comparison_bars(
-                        experiments=available_exps,
+                        experiments=compare_exps,
                         model_filter=model,
                         save_path=str(output_path / f"comparison_{model.replace('/', '_')}.pdf")
                     )
@@ -1154,7 +1267,7 @@ class CAPTCHAVisualizer:
                     print(f"[WARNING] Bar chart {model} generation failed: {e}")
 
         # 3. Scatter plot (exp1 vs exp2)
-        if 'exp1' in available_exps and 'exp2' in available_exps:
+        if 'exp1' in baseline_exps and 'exp2' in baseline_exps:
             for model in available_models:
                 try:
                     fig = self.plot_optimization_resistance(
@@ -1183,7 +1296,7 @@ class CAPTCHAVisualizer:
                 except Exception as e:
                     print(f"[WARNING] Box plot {exp} generation failed: {e}")
 
-        # 5. Exp3 comprehensive analysis (if available)
+        # 5. Exp3 comprehensive analysis (only when Exp3 results exist)
         if 'exp3' in available_exps:
             for model in available_models:
                 try:
@@ -1211,11 +1324,11 @@ class CAPTCHAVisualizer:
             except Exception as e:
                 print(f"[WARNING] Frontier {model} generation failed: {e}")
 
-        # 7. Time–Performance scatter per model
+        # 7. Time–Performance scatter per model (baseline experiments only)
         for model in available_models:
             try:
                 fig = self.plot_time_performance_scatter(
-                    experiments=available_exps,
+                    experiments=[e for e in available_exps if e in ('exp1', 'exp2', 'exp4')],
                     model_filter=model,
                     save_path=str(output_path / f"time_perf_{model.replace('/', '_')}.pdf")
                 )
@@ -1225,35 +1338,9 @@ class CAPTCHAVisualizer:
             except Exception as e:
                 print(f"[WARNING] Time–Performance {model} generation failed: {e}")
 
-        # 8. Slope improvement (exp1→exp2) per model if both exist
-        if 'exp1' in available_exps and 'exp2' in available_exps:
-            for model in available_models:
-                try:
-                    fig = self.plot_slope_improvement(
-                        base_exp='exp1', target_exp='exp2', model_filter=model,
-                        save_path=str(output_path / f"slope_exp1_to_exp2_{model.replace('/', '_')}.pdf")
-                    )
-                    if fig:
-                        figures.append(fig)
-                        plt.close(fig)
-                except Exception as e:
-                    print(f"[WARNING] Slope {model} generation failed: {e}")
-
-        # 9. Radar (by task family) for exp2 per model (fallback to exp1)
-        target_exp_for_radar = 'exp2' if 'exp2' in available_exps else ('exp1' if 'exp1' in available_exps else None)
-        if target_exp_for_radar:
-            for model in available_models:
-                try:
-                    fig = self.plot_task_family_radar(
-                        experiment=target_exp_for_radar,
-                        model_filter=model,
-                        save_path=str(output_path / f"radar_{target_exp_for_radar}_{model.replace('/', '_')}.pdf")
-                    )
-                    if fig:
-                        figures.append(fig)
-                        plt.close(fig)
-                except Exception as e:
-                    print(f"[WARNING] Radar {model} generation failed: {e}")
+        # Note: Slope and radar charts are available via dedicated helpers
+        # but are not part of the quick (Mode A) default set to keep parity
+        # with Mode B’s chart bundle.
 
         print(f"\n[COMPLETED] Chart generation finished! Total {len(list(output_path.glob('*.pdf')))} PDF files")
         print(f"[OUTPUT] Save location: {output_path.absolute()}")
@@ -1267,7 +1354,8 @@ class CAPTCHAVisualizer:
 
 def quick_visualize(results_dir: str = "./results",
                    output_dir: str = "./figures",
-                   show: bool = False):
+                   show: bool = False,
+                   exclude_models: Optional[List[str]] = None):
     """
     Quickly generate all visualization charts
 
@@ -1275,8 +1363,12 @@ def quick_visualize(results_dir: str = "./results",
         results_dir: Results directory
         output_dir: Output directory
         show: Whether to display charts (recommend False in Jupyter)
+        exclude_models: Optional list of provider/model identifiers to drop (e.g., ["openai/gpt-5-chat-latest"])
     """
-    viz = CAPTCHAVisualizer(results_dir=results_dir)
+    viz = CAPTCHAVisualizer(
+        results_dir=results_dir,
+        exclude_models=exclude_models or ["openai/gpt-5-chat-latest"]
+    )
 
     if viz.data.empty:
         print("[ERROR] No experiment data found")
@@ -1293,7 +1385,7 @@ def quick_visualize(results_dir: str = "./results",
     if 'exp2' in viz.data['experiment'].values:
         recommendations = viz.generate_captcha_recommendation(
             experiment='exp2',
-            threshold=60.0,
+            threshold=40.0,
             top_n=8
         )
         if not recommendations.empty:

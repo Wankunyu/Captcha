@@ -1090,7 +1090,7 @@ class GeminiProvider(ModelProvider):
                     elif mode == "disabled":
                         budget = 0
                     else:
-                        budget = 1024
+                        budget = 8192
 
                 config["thinking_config"] = self.genai_types.ThinkingConfig(
                     thinking_budget=int(budget)
