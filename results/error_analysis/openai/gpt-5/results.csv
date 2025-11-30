@@ -1,0 +1,6 @@
+provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
+openai,gpt-5,Click_Order,4,0.000,62205.2,62208.0,12232,7784,20016,0.093130,0.023283
+openai,gpt-5,Dice_Count,4,0.000,493126.0,493141.0,13668,24974,38642,0.266825,0.066706
+openai,gpt-5,Patch_Select,4,0.000,34344.5,34346.6,8890,4150,13040,0.052613,0.013153
+openai,gpt-5,Pick_Area,4,0.250,380867.5,380873.5,8616,10587,19203,0.116640,0.029160
+openai,gpt-5,Place_Dot,4,0.000,74385.8,74391.3,10532,9749,20281,0.110655,0.027664
