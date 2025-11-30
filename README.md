@@ -1,4 +1,4 @@
-# CAPTCHA Evaluation Toolkit
+# Cognition: From Evaluation to Defense against Multimodal LLM CAPTCHA Solvers
 
 This repository contains the tooling we use to evaluate visual CAPTCHA tasks across several large language model providers (OpenAI GPT‑5, Google Gemini, Anthropic Claude, etc.). The workflow is built around four experiments that measure different prompting strategies, plus utilities for maintaining the few-shot image corpus.
 
