@@ -34,18 +34,14 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
-# Prefer project loader to keep consistency with notebooks
 from visualize_results import CAPTCHAVisualizer
 
-
-# ---------------------------- math helpers ----------------------------
 
 def g_q(p: float, k: int) -> float:
     return 1.0 - (1.0 - p) ** max(k, 0)
 
 
 def g2_q(p: float, k: int) -> float:
-    # second derivative of g(p)=1-(1-p)^k
     if k < 2:
         return 0.0
     return -k * (k - 1) * (1.0 - p) ** (k - 2)
@@ -97,7 +93,6 @@ def expected_attempts_hypergeom(p_eff: float, k: int, N: int) -> float:
     M = max(0, min(M, N))
     tot = 0.0
     for r in range(0, k):
-        # P(no success in r draws) = C(N-M, r)/C(N, r)
         if r > (N - M):
             p_none = 0.0
         else:
@@ -183,8 +178,6 @@ def apply_calibration(q_pred: np.ndarray, a: float, b: float) -> np.ndarray:
     q = 1.0 / (1.0 + np.exp(-z))
     return np.clip(q, 0.0, 1.0)
 
-
-# ---------------------------- main pipeline ----------------------------
 
 def main():
     ap = argparse.ArgumentParser(description="Predict Exp3 from Exp2 with bias corrections")

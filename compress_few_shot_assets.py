@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-压缩 few-shot 示例涉及的图片资源（在保持像素尺寸不变的前提下）。
+Losslessly compress few-shot image assets while keeping pixel dimensions unchanged.
 
-处理流程：
-1. 读取 few_shot_image_manifest.json，获取全部需要压缩的图片路径。
-2. 对 PNG 使用 zopflipng 做无损压缩；对 JPEG 使用 jpegtran 做无损优化。
-3. 仅在压缩结果更小且尺寸保持一致时才覆盖原文件，并输出汇总报告。
+Workflow:
+1. Read all image paths from few_shot_image_manifest.json.
+2. Use zopflipng for PNG and jpegtran for JPEG to perform lossless optimisation.
+3. Replace originals only when the compressed file is smaller and dimensions match,
+   then emit a JSON summary report.
 """
 
 from __future__ import annotations

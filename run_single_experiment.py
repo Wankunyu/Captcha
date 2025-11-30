@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-单独运行实验的脚本
-可以选择运行实验一、二或三中的任意一个
+Script for running individual experiments.
+Supports experiments 1, 2, 3, and 4.
 """
 
 import sys
 import os
 
-# 确保导入路径正确
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# 导入原始 run_eval.py 中的函数
 from run_eval import (
     run_eval,
     run_until_type_correct,
@@ -24,13 +22,12 @@ from run_eval import (
 )
 
 
-# 导入简化的错误收集器
 try:
     from experiments_helper import SimpleErrorCollector, load_tasks_from_ground_truth
     ERROR_ANALYSIS_AVAILABLE = True
 except ImportError:
     ERROR_ANALYSIS_AVAILABLE = False
-    print("⚠️ experiments_helper 未找到，错误分析功能不可用")
+    print("⚠️ experiments_helper not found, error analysis unavailable")
 
 
 def run_experiment_1(
@@ -51,45 +48,41 @@ def run_experiment_1(
     timeout_sec: float = 600.0
 ):
     """
-    实验一：Ground Truth Prompts
-    使用原始的 prompt，不做任何优化
+    Experiment 1: Ground Truth Prompts
+    Uses original prompts without any optimization.
 
     Args:
-        dataset_root: 数据集根目录
-        types: 要测试的任务类型列表，None 表示使用所有类型
+        dataset_root: Dataset root directory
+        types: List of task types to test, None means all types
         provider: API provider (gemini/openai/anthropic)
-        model: 模型名称
-        max_per_type: 每个类型最多测试多少题
-        secrets_file: secrets.yaml 文件路径
-        thinking: 是否启用 thinking mode
-        thinking_options: thinking 配置选项
-        out_csv: 输出 CSV 路径，None 则自动生成
-        enable_error_analysis: 是否启用错误分析
-        error_analysis_dir: 错误分析输出目录
-        collect_tokens: 是否记录每题 token
-        token_output_dir: token 统计输出目录
-        collect_reasoning: 是否让模型输出 reasoning 字段
+        model: Model name
+        max_per_type: Maximum number of questions per type
+        secrets_file: Path to secrets.yaml
+        thinking: Whether to enable thinking mode
+        thinking_options: Thinking configuration options
+        out_csv: Output CSV path, auto-generated if None
+        enable_error_analysis: Whether to enable error analysis
+        error_analysis_dir: Error analysis output directory
+        collect_tokens: Whether to log token usage per question
+        token_output_dir: Token statistics output directory
+        collect_reasoning: Whether to collect reasoning output
 
     Returns:
-        实验结果字典
+        Experiment results dictionary
     """
     print("\n" + "="*80)
-    print("🔵 实验一：Ground Truth Prompts")
+    print("🔵 Experiment 1: Ground Truth Prompts")
     print("="*80)
     print(f"Provider: {provider}")
     print(f"Model: {model}")
     print(f"Thinking: {thinking}")
     print("="*80 + "\n")
 
-    # 默认类型
     if types is None:
         types = sorted(list(SUPPORTED_TYPES))
 
-    # 默认输出文件
     if out_csv is None:
         out_csv = f"./results/exp1_{provider}_{model.replace('/', '_')}.csv"
-
-
 
     token_prefix = None
     if collect_tokens:
@@ -107,8 +100,8 @@ def run_experiment_1(
         max_per_type=max_per_type,
         out_csv=out_csv,
         secrets_file=secrets_file,
-        prompts_file=None,  # 不使用 prompts 文件
-        prompt_mode="gt",   # 使用 Ground Truth prompts
+        prompts_file=None,
+        prompt_mode="gt",
         thinking=thinking,
         thinking_options=thinking_options or {},
         stream=False,
@@ -124,7 +117,7 @@ def run_experiment_1(
     )
 
     print(f"\n✅ Experiment 1 completed!")
-    print(f"   结果文件: {out_csv}")
+    print(f"   Results file: {out_csv}")
     return result
 
 
@@ -147,31 +140,31 @@ def run_experiment_2(
     timeout_sec: float = 600.0
 ):
     """
-    实验二：Optimized Prompts
-    使用优化后的 prompt
+    Experiment 2: Optimized Prompts
+    Uses optimized prompts for better performance.
 
     Args:
-        dataset_root: 数据集根目录
-        types: 要测试的任务类型列表，None 表示使用所有类型
+        dataset_root: Dataset root directory
+        types: List of task types to test, None means all types
         provider: API provider (gemini/openai/anthropic)
-        model: 模型名称
-        max_per_type: 每个类型最多测试多少题
-        secrets_file: secrets.yaml 文件路径
-        prompts_file: 优化的 prompts 文件路径
-        thinking: 是否启用 thinking mode
-        thinking_options: thinking 配置选项
-        out_csv: 输出 CSV 路径，None 则自动生成
-        enable_error_analysis: 是否启用错误分析
-        error_analysis_dir: 错误分析输出目录
-        collect_tokens: 是否记录每题 token
-        token_output_dir: token 统计输出目录
-        collect_reasoning: 是否让模型输出 reasoning 字段
+        model: Model name
+        max_per_type: Maximum number of questions per type
+        secrets_file: Path to secrets.yaml
+        prompts_file: Path to optimized prompts file
+        thinking: Whether to enable thinking mode
+        thinking_options: Thinking configuration options
+        out_csv: Output CSV path, auto-generated if None
+        enable_error_analysis: Whether to enable error analysis
+        error_analysis_dir: Error analysis output directory
+        collect_tokens: Whether to log token usage per question
+        token_output_dir: Token statistics output directory
+        collect_reasoning: Whether to collect reasoning output
 
     Returns:
-        实验结果字典
+        Experiment results dictionary
     """
     print("\n" + "="*80)
-    print("🟢 实验二：Optimized Prompts")
+    print("🟢 Experiment 2: Optimized Prompts")
     print("="*80)
     print(f"Provider: {provider}")
     print(f"Model: {model}")
@@ -179,18 +172,15 @@ def run_experiment_2(
     print(f"Thinking: {thinking}")
     print("="*80 + "\n")
 
-    # 默认类型
     if types is None:
         types = sorted(list(SUPPORTED_TYPES))
 
-    # 默认输出文件
     if out_csv is None:
         out_csv = f"./results/exp2_{provider}_{model.replace('/', '_')}.csv"
 
-    # 检查 prompts 文件
     if not os.path.exists(prompts_file):
-        print(f"⚠️ 警告：prompts 文件不存在: {prompts_file}")
-        print("   将使用 Ground Truth prompts")
+        print(f"⚠️ Warning: prompts file not found: {prompts_file}")
+        print("   Will use Ground Truth prompts")
         prompts_file = None
 
     token_prefix = None
@@ -226,7 +216,7 @@ def run_experiment_2(
     )
 
     print(f"\n✅ Experiment 2 completed!")
-    print(f"   结果文件: {out_csv}")
+    print(f"   Results file: {out_csv}")
     return result
 
 
@@ -251,32 +241,33 @@ def run_experiment_3(
     timeout_sec: float = 600.0
 ):
     """
-    实验三：Until Correct Strategy
-    迭代纠错，直到做对或达到最大尝试次数
+    Experiment 3: Until Correct Strategy
+    Iterative correction until success or max attempts reached.
 
     Args:
-        dataset_root: 数据集根目录
-        types: 要测试的任务类型列表，None 表示使用所有类型
+        dataset_root: Dataset root directory
+        types: List of task types to test, None means all types
         provider: API provider (gemini/openai/anthropic)
-        model: 模型名称
-        max_attempts_per_type: 每个类型最多尝试次数
-        max_pool_per_type: 每类最多预取多少题作为候选池
-        secrets_file: secrets.yaml 文件路径
-        prompts_file: 优化的 prompts 文件路径（实验二同款）
-        prompt_mode: Prompt 模式（'gt' 使用实验一模式，'auto' 使用实验二模式，'opt' 等）
-        out_csv: 输出 CSV 路径，None 则自动生成
-        log_attempt_rows: 是否记录每次尝试的详细信息
-        thinking: 是否启用 thinking mode
-        thinking_options: thinking 配置选项
-        collect_tokens: 是否记录每次尝试的 token
-        token_output_dir: token 统计输出目录
-        collect_reasoning: 是否让模型输出 reasoning 字段
+        model: Model name
+        max_attempts_per_type: Maximum retry attempts per type
+        max_pool_per_type: Maximum questions to prefetch as candidate pool
+        use_full_dataset_pool: Whether to use full dataset as pool
+        secrets_file: Path to secrets.yaml
+        prompts_file: Path to optimized prompts (same as Exp2)
+        prompt_mode: Prompt mode ('gt' for Exp1 mode, 'auto' for Exp2 mode)
+        out_csv: Output CSV path, auto-generated if None
+        log_attempt_rows: Whether to log details of each attempt
+        thinking: Whether to enable thinking mode
+        thinking_options: Thinking configuration options
+        collect_tokens: Whether to log token usage per attempt
+        token_output_dir: Token statistics output directory
+        collect_reasoning: Whether to collect reasoning output
 
     Returns:
-        实验结果字典
+        Experiment results dictionary
     """
     print("\n" + "="*80)
-    print("🟡 实验三：Until Correct Strategy")
+    print("🟡 Experiment 3: Until Correct Strategy")
     print("="*80)
     print(f"Provider: {provider}")
     print(f"Model: {model}")
@@ -285,18 +276,15 @@ def run_experiment_3(
     print(f"Use full dataset pool: {use_full_dataset_pool}")
     print("="*80 + "\n")
 
-    # 默认类型
     if types is None:
         types = sorted(list(SUPPORTED_TYPES))
 
-    # 默认输出文件
     if out_csv is None:
         out_csv = f"./results/exp3_{provider}_{model.replace('/', '_')}.csv"
 
-    # 检查 prompts 文件
     if prompts_file and not os.path.exists(prompts_file):
-        print(f"⚠️ 警告：prompts 文件不存在: {prompts_file}")
-        print("   将使用 Ground Truth prompts")
+        print(f"⚠️ Warning: prompts file not found: {prompts_file}")
+        print("   Will use Ground Truth prompts")
         prompts_file = None
         prompt_mode = "gt"
 
@@ -310,7 +298,6 @@ def run_experiment_3(
             f"exp3_{provider}_{model.replace('/', '_')}"
         )
 
-    # 运行实验
     result = run_until_type_correct(
         dataset_root=dataset_root,
         types=types,
@@ -334,8 +321,8 @@ def run_experiment_3(
         collect_reasoning=collect_reasoning
     )
 
-    print(f"\n✅ 实验三完成！")
-    print(f"   结果文件: {out_csv}")
+    print(f"\n✅ Experiment 3 completed!")
+    print(f"   Results file: {out_csv}")
     return result
 
 
@@ -361,62 +348,58 @@ def run_experiment_4(
     timeout_sec: float = 600.0
 ):
     """
-    实验四：Optimized Prompts + Few-shot Learning
-    结合实验二的优化prompt和N-shot示例
+    Experiment 4: Optimized Prompts + Few-shot Learning
+    Combines optimized prompts from Exp2 with N-shot examples.
 
     Args:
-        dataset_root: 数据集根目录
-        types: 要测试的任务类型列表，None 表示使用所有类型
+        dataset_root: Dataset root directory
+        types: List of task types to test, None means all types
         provider: API provider (gemini/openai/anthropic)
-        model: 模型名称
-        max_per_type: 每个类型最多测试题数（注意：实际测试样本 = max_per_type - n_shot）
-        secrets_file: secrets.yaml 文件路径
-        prompts_file: 优化的 prompts 文件路径（实验二同款）
-        few_shot_file: few-shot 示例配置文件路径
-        n_shot: few-shot 示例数量
-        thinking: 是否启用 thinking mode
-        thinking_options: thinking 配置选项
-        out_csv: 输出 CSV 路径，None 则自动生成
-        enable_error_analysis: 是否启用错误分析
-        error_analysis_dir: 错误分析输出目录
-        collect_tokens: 是否记录每题 token
-        token_output_dir: token 统计输出目录
-        collect_reasoning: 是否让模型输出 reasoning 字段
+        model: Model name
+        max_per_type: Max questions per type (actual test samples = max_per_type - n_shot)
+        secrets_file: Path to secrets.yaml
+        prompts_file: Path to optimized prompts (same as Exp2)
+        few_shot_file: Path to few-shot examples config
+        few_shot_assets_root: Directory containing few-shot example images
+        n_shot: Number of few-shot examples
+        thinking: Whether to enable thinking mode
+        thinking_options: Thinking configuration options
+        out_csv: Output CSV path, auto-generated if None
+        enable_error_analysis: Whether to enable error analysis
+        error_analysis_dir: Error analysis output directory
+        collect_tokens: Whether to log token usage per question
+        token_output_dir: Token statistics output directory
+        collect_reasoning: Whether to collect reasoning output
 
     Returns:
-        实验结果字典
+        Experiment results dictionary
     """
     print("\n" + "="*80)
-    print("🟣 实验四：Optimized Prompts + Few-shot Learning")
+    print("🟣 Experiment 4: Optimized Prompts + Few-shot Learning")
     print("="*80)
     print(f"Provider: {provider}")
     print(f"Model: {model}")
     print(f"Prompts file: {prompts_file}")
     print(f"Few-shot file: {few_shot_file}")
     print(f"N-shot: {n_shot}")
-    print(f"Note: 每种类型使用前 {n_shot} 个样本作为示例")
+    print(f"Note: Using first {n_shot} samples as examples per type")
     print("="*80 + "\n")
 
-    # 默认类型
     if types is None:
         types = sorted(list(SUPPORTED_TYPES))
 
-    # 默认输出文件
     if out_csv is None:
         out_csv = f"./results/exp4_{provider}_{model.replace('/', '_')}.csv"
 
-    # 检查 prompts 文件
     if not os.path.exists(prompts_file):
-        print(f"⚠️ 警告：prompts 文件不存在: {prompts_file}")
-        print("   将使用 Ground Truth prompts")
+        print(f"⚠️ Warning: prompts file not found: {prompts_file}")
+        print("   Will use Ground Truth prompts")
         prompts_file = None
 
-    # 检查 few-shot 文件
     if not os.path.exists(few_shot_file):
-        raise FileNotFoundError(f"❌ Few-shot 配置文件不存在: {few_shot_file}\n"
-                              f"   请先运行: python prepare_few_shot_examples.py")
+        raise FileNotFoundError(f"❌ Few-shot config file not found: {few_shot_file}\n"
+                              f"   Please run first: python prepare_few_shot_examples.py")
 
-    # Token统计配置
     token_prefix = None
     if collect_tokens:
         token_output_root = token_output_dir or "./results"
@@ -425,14 +408,12 @@ def run_experiment_4(
             f"exp4_fewshot_{provider}_{model.replace('/', '_')}"
         )
 
-    # Few-shot 配置
     few_shot_config = {
         "enabled": True,
         "n_shot": n_shot,
         "include_reasoning": False
     }
 
-    # 运行评测
     result = run_eval(
         dataset_root=dataset_root,
         types=types,
@@ -442,7 +423,7 @@ def run_experiment_4(
         out_csv=out_csv,
         secrets_file=secrets_file,
         prompts_file=prompts_file,
-        prompt_mode="auto",  # 使用优化prompt
+        prompt_mode="auto",
         thinking=thinking,
         thinking_options=thinking_options or {},
         stream=False,
@@ -460,9 +441,9 @@ def run_experiment_4(
         few_shot_assets_root=few_shot_assets_root
     )
 
-    print(f"\n✅ 实验四完成！")
-    print(f"   结果文件: {out_csv}")
-    print(f"   注意：每种类型使用了 {n_shot} 个样本作为示例，剩余样本用于测试")
+    print(f"\n✅ Experiment 4 completed!")
+    print(f"   Results file: {out_csv}")
+    print(f"   Note: Used {n_shot} samples as examples per type, remaining samples for testing")
     return result
 
 
@@ -482,7 +463,7 @@ def _collect_error_analysis(
     collect_tokens: bool = False,
     collect_reasoning: bool = False
 ):
-    """兼容旧代码：委托给 run_eval 单次推理并输出错误分析。"""
+    """Legacy compatibility: delegate to run_eval for single inference with error analysis."""
     analysis_dir = os.path.join(error_analysis_dir, experiment_name)
     os.makedirs(analysis_dir, exist_ok=True)
     summary_csv = os.path.join(analysis_dir, "results.csv")
@@ -511,55 +492,52 @@ def _collect_error_analysis(
     )
 
 
-# ==================== 命令行接口 ====================
-
 def main():
-    """命令行入口"""
+    """Command line interface."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="运行单个 CAPTCHA 实验")
+    parser = argparse.ArgumentParser(description="Run individual CAPTCHA experiment")
     parser.add_argument("experiment", type=int, choices=[1, 2, 3, 4],
-                       help="实验编号：1=GT Prompts, 2=Optimized Prompts, 3=Until Correct, 4=Few-shot")
+                       help="Experiment number: 1=GT Prompts, 2=Optimized Prompts, 3=Until Correct, 4=Few-shot")
     parser.add_argument("--dataset", default="./captcha_data",
-                       help="数据集根目录 (默认: ./captcha_data)")
+                       help="Dataset root directory (default: ./captcha_data)")
     parser.add_argument("--types", nargs="+", default=None,
-                       help="任务类型列表，不指定则使用全部类型")
+                       help="Task type list, omit to use all types")
     parser.add_argument("--provider", default="gemini",
-                       help="Provider (默认: gemini)")
+                       help="Provider (default: gemini)")
     parser.add_argument("--model", default="gemini-2.5-flash",
-                       help="模型名称 (默认: gemini-2.5-flash)")
+                       help="Model name (default: gemini-2.5-flash)")
     parser.add_argument("--max-per-type", type=int, default=15,
-                       help="每个类型最多测试题数 (默认: 15)")
+                       help="Max questions per type (default: 15)")
     parser.add_argument("--thinking", action="store_true",
-                       help="启用 thinking mode")
+                       help="Enable thinking mode")
     parser.add_argument("--thinking-budget", type=int, default=-1,
-                       help="Thinking budget (默认: -1, 使用模型默认策略)")
+                       help="Thinking budget (default: -1, use model default)")
     parser.add_argument("--reasoning-effort", choices=["none", "low", "medium", "high"], default=None,
-                       help="OpenAI reasoning effort 等级（针对 GPT-5/GPT-5.1 等 reasoning 模型）")
+                       help="OpenAI reasoning effort level (for GPT-5/GPT-5.1 reasoning models)")
     parser.add_argument("--error-analysis", action="store_true",
-                       help="启用错误分析")
+                       help="Enable error analysis")
     parser.add_argument("--prompts-file", default="./prompts_optimized.yaml",
-                       help="优化的 prompts 文件 (实验2/3/4使用)")
+                       help="Optimized prompts file (for Exp2/3/4)")
     parser.add_argument("--few-shot-file", default="./few_shot_examples.yaml",
-                       help="Few-shot 示例配置文件 (实验4使用)")
+                       help="Few-shot examples config (for Exp4)")
     parser.add_argument("--few-shot-assets-root", default="./few_shot_assets",
-                       help="Few-shot 示例图片目录 (实验4使用)")
+                       help="Few-shot example images directory (for Exp4)")
     parser.add_argument("--n-shot", type=int, default=2,
-                       help="Few-shot 示例数量 (实验4使用，默认: 2)")
+                       help="Number of few-shot examples (for Exp4, default: 2)")
     parser.add_argument("--out-csv", default=None,
-                       help="输出 CSV 文件路径")
+                       help="Output CSV file path")
     parser.add_argument("--collect-tokens", action="store_true",
-                       help="记录每题 token 消耗")
+                       help="Log token usage per question")
     parser.add_argument("--token-output-dir", default="./results",
-                       help="token 统计输出目录 (默认: ./results)")
+                       help="Token statistics output directory (default: ./results)")
     parser.add_argument("--collect-reasoning", action="store_true",
-                       help="要求模型输出 reasoning 字段（可能增加耗时和成本）")
+                       help="Request reasoning output from model (may increase time and cost)")
     parser.add_argument("--no-full-pool", action="store_true",
-                       help="Exp3: 禁用全量题库候选池（默认使用全量题库）。关闭后由 --max-per-type 限定候选集大小。")
+                       help="Exp3: Disable full dataset candidate pool (default uses full dataset). When disabled, --max-per-type limits candidate set size.")
 
     args = parser.parse_args()
 
-    # 准备参数
     thinking_options = {}
     if args.thinking and args.thinking_budget >= 0:
         thinking_options["thinking_budget"] = args.thinking_budget
@@ -569,7 +547,6 @@ def main():
     if not thinking_options:
         thinking_options = None
 
-    # 运行对应的实验
     if args.experiment == 1:
         run_experiment_1(
             dataset_root=args.dataset,
@@ -639,21 +616,18 @@ def main():
 
 
 if __name__ == "__main__":
-    # 只在直接运行脚本时执行
     if len(sys.argv) > 1:
-        # 命令行模式
         main()
     else:
-        # 直接运行时显示帮助信息
         print("=" * 80)
-        print("单独运行实验脚本")
+        print("Individual Experiment Runner")
         print("=" * 80)
-        print("\n使用方法：")
-        print("\n1. 在 Python/Notebook 中导入:")
+        print("\nUsage:")
+        print("\n1. Import in Python/Notebook:")
         print("   from run_single_experiment import run_experiment_1, run_experiment_2, run_experiment_3")
-        print("\n2. 命令行运行:")
+        print("\n2. Run from command line:")
         print("   python run_single_experiment.py 1 --types Dice_Count --max-per-type 2")
-        print("\n3. 查看帮助:")
+        print("\n3. View help:")
         print("   python run_single_experiment.py --help")
-        print("\n详细文档请查看: QUICK_START.md")
+        print("\nFor detailed documentation, see: QUICK_START.md")
         print("=" * 80)

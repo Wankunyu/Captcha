@@ -1,24 +1,26 @@
 # Cognition: From Evaluation to Defense against Multimodal LLM CAPTCHA Solvers
 
-A comprehensive framework for evaluating visual CAPTCHA tasks across multiple large language model providers (OpenAI GPT-5, Google Gemini, Anthropic Claude, Fireworks Qwen). Features 4 experimental paradigms, 20 task types, and advanced visualization capabilities.
+A comprehensive framework for evaluating visual CAPTCHA tasks across multiple large language model providers (OpenAI GPT-5/5.1, Google Gemini 2.5, Anthropic Claude, Fireworks Qwen). Features 4 experimental paradigms testing 18 distinct task types with advanced visualization and statistical analysis capabilities.
 
 ## Project Structure
 
 | Path | Purpose |
 | --- | --- |
-| `captcha_data/` | Raw CAPTCHA datasets with `ground_truth.json` metadata (20 task types). |
+| `captcha_data/` | Raw CAPTCHA datasets with `ground_truth.json` metadata (18 task types). |
 | `few_shot_assets/` | Compressed few-shot example images grouped by task type. |
 | `few_shot_image_manifest.json` | Auto-generated manifest of all few-shot image paths. |
 | `compress_few_shot_assets.py` | Lossless optimizer for images listed in the manifest. |
 | `run_eval.py` | Core provider implementations (OpenAI, Gemini, Anthropic, Fireworks) and evaluation logic. |
 | `run_single_experiment.py` | CLI entry points for the four experiments. |
 | `experiments_helper.py` | Error analysis utilities with automatic error description generation. |
-| `visualize_results.py` | **NEW** Comprehensive visualization module with 9+ chart types. |
-| `plot.ipynb` | **NEW** Interactive notebook for generating publication-quality PDF charts. |
+| `visualize_results.py` | Comprehensive visualization module with 9+ chart types. |
+| `plot.ipynb` | Interactive notebook for generating publication-quality PDF charts. |
+| `test_statistic.ipynb` | Statistical analysis and Exp2→Exp3 prediction validation. |
+| `exp2_to_exp3_predict.py` | Practical implementation of baseline prediction formulas. |
 | `test.ipynb` | Notebook wrapper for running experiments with reusable path helpers. |
 | `results/exp*/<provider>/<model>/` | Structured outputs (CSV, token logs, cost summaries). |
 | `error_analysis/exp*/<provider>/<model>/` | Structured error dumps with detailed failure analysis. |
-| `figures/` | **NEW** Generated visualization outputs (PDF format). |
+| `figures/` | Generated visualization outputs (PDF format). |
 
 ## Experiments Overview
 
@@ -63,18 +65,31 @@ providers:
 
 pricing:
   openai:
+    gpt-5:
+      in_per_1k: 0.0020
+      out_per_1k: 0.0080
     gpt-5.1-medium:
       in_per_1k: 0.0025
-      out_per_1k: 0.010
+      out_per_1k: 0.0100
+    gpt-5.1-none:
+      in_per_1k: 0.0015
+      out_per_1k: 0.0060
   gemini:
     gemini-2.5-flash:
       in_per_1k: 0.0003
       out_per_1k: 0.0025
+    gemini-2.5-pro:
+      in_per_1k: 0.0010
+      out_per_1k: 0.0050
+  anthropic:
+    claude-sonnet-4-5:
+      in_per_1k: 0.003
+      out_per_1k: 0.015
 ```
 
 Each provider requires valid credentials before initialization.
 
-## Visualization System (NEW)
+## Visualization System
 
 ### Quick Start
 
@@ -92,48 +107,58 @@ viz = quick_visualize(
 
 ### Interactive Notebook (plot.ipynb)
 
-**Mode A: Quick Generation** - Run a single cell to generate all charts
+**Mode A: Quick Generation** - Run `quick_visualize()` to auto-generate all charts
 
-**Mode B: Custom Control** - Configure experiment, model, and display names:
+**Mode B: Custom Control** - Fine-grained control with customizable parameters:
 
 ```python
-# Configure preferences
+# Step 1: Configure preferences
 SELECTED_EXPERIMENT = 'exp2'
 SELECTED_MODEL = "openai/gpt-5"
-EXPERIMENTS_TO_COMPARE = ['exp1', 'exp2', 'exp4']
+EXPERIMENTS_TO_COMPARE = ['exp1', 'exp2']
 
 # Custom display names for publication
 CUSTOM_MODEL_NAMES = {
-    'openai/gpt-5': 'GPT-5 (Reasoning)',
+    'openai/gpt-5': 'GPT-5 (Medium)',
     'openai/gpt-5.1_medium': 'GPT-5.1 (Medium)',
     'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
 }
 
-# Initialize with custom names
+# Step 2: Initialize with custom names
 viz = CAPTCHAVisualizer(
     results_dir="./results",
     model_names=CUSTOM_MODEL_NAMES,
-    exp_names={'exp1': 'Baseline', 'exp2': 'Optimized'}
+    exp_names={'exp1': 'Exp1 (Original Prompts)', 'exp2': 'Exp2 (Optimized Prompts)'}
 )
 
-# Generate specific charts
-viz.plot_heatmap(experiment=SELECTED_EXPERIMENT)
-viz.plot_exp3_analysis(model_filter=SELECTED_MODEL)
+# Step 3: Generate specific charts
+viz.plot_heatmap(experiment=SELECTED_EXPERIMENT, save_path='./figures/heatmap_exp2.pdf')
+viz.plot_comparison_bars(experiments=EXPERIMENTS_TO_COMPARE, model_filter=SELECTED_MODEL)
+viz.plot_optimization_resistance(base_exp='exp1', opt_exp='exp2', model_filter=SELECTED_MODEL)
 ```
+
+**Available chart methods:**
+
+* `plot_heatmap()` - Task difficulty heatmap
+* `plot_comparison_bars()` - Multi-experiment bar chart
+* `plot_optimization_resistance()` - Exp1 vs Exp2 scatter plot
+* `plot_cross_model_stability()` - Box plot analysis
+* `plot_cost_performance_frontier()` - Cost-performance trade-offs
+* `plot_time_performance_scatter()` - Latency-accuracy relationship
 
 ### Available Chart Types
 
-1. **Heatmap**: Task difficulty overview across models
-2. **Grouped Bar Chart**: Multi-experiment comparison
+1. **Heatmap**: Task difficulty overview across models with weighted Overall row
+2. **Grouped Bar Chart**: Multi-experiment side-by-side comparison
 3. **Scatter Plot**: Optimization resistance analysis (Exp1 vs Exp2)
-4. **Box Plot**: Cross-model stability analysis
-5. **Exp3 Analysis**: 4-panel expected until-correct analysis (Success@k and expected attempts)
-6. **Cost-Performance Frontier**: Cost vs Pass@1 trade-offs
-7. **Time-Performance Scatter**: Latency vs accuracy
-8. **Slope Chart**: Per-task improvement visualization
-9. **Radar Chart**: Task family performance (Click/Grid/Matching/Logic)
+4. **Box Plot**: Cross-model stability and variance analysis
+5. **Cost-Performance Frontier**: API cost vs Pass@1 trade-offs with Pareto frontier
+6. **Time-Performance Scatter**: Response latency vs accuracy relationship
+7. **Custom Analysis**: Complete pipeline from Pass@1 → Success@3 → Expected cost per solve
 
 All charts export to **PDF format** for publication quality.
+
+**Note**: The visualization system focuses on the core 6 chart types used in the paper. Additional analysis tools are available through the `CAPTCHAVisualizer` class methods.
 
 ## Few-shot Asset Pipeline
 
@@ -200,25 +225,28 @@ python run_single_experiment.py 4 \
 
 #### OpenAI
 
-* **GPT-5 (Reasoning)**: Uses Responses API, supports `reasoning.effort` ("low"/"medium"/"high"), **no temperature parameter**
-* **GPT-5-Chat**: Uses Chat Completions, non-reasoning model (`thinking=False`)
+* **GPT-5 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium" by default), **no temperature parameter**
+* **GPT-5.1 Medium/None**: Variants with different reasoning effort levels, uses Responses API
+* **GPT-5-Chat-Latest**: Uses Chat Completions, non-reasoning model (`thinking=False`)
 
 #### Anthropic
 
-* Claude Sonnet 4.5, Claude 3.5 Sonnet
-* Thinking modes: structured/freeform with `thinking_budget_tokens`
+* **Claude Sonnet 4.5**, Claude 3.5 Sonnet
+* Extended thinking modes: structured/freeform with `thinking_budget_tokens`
+* Supports up to 64K thinking tokens for complex reasoning
 
 #### Gemini
 
-* gemini-2.5-flash, gemini-2.5-pro
+* **Gemini 2.5 Flash**, **Gemini 2.5 Pro**
 * Thinking budget: -1=dynamic, 0=disabled, N=token limit
-* Raw bytes image format (no base64)
+* Raw bytes image format (no base64 encoding)
+* Supports multimodal reasoning with visual inputs
 
 #### Fireworks
 
-* Qwen3-VL-235B and others
-* OpenAI-compatible API
-* Up to 30 images per request
+* **Qwen3-VL-235B-A22B-Instruct** and other vision-language models
+* OpenAI-compatible API with extended vision capabilities
+* Supports up to 30 images per request
 
 ## Output Organization
 
@@ -262,23 +290,53 @@ figures/
 ## Key Features
 
 * **Zero-Conversion Image Pipeline**: Images loaded as raw bytes, no resizing/format conversion
-* **Automatic Error Analysis**: Auto-generated error descriptions for all failures
-* **Token Tracking**: Per-question and aggregated cost calculations
-* **Exp3 Format Handling**: Automatic conversion of Until-Correct CSV format
-* **Display Name Mapping**: Professional model/experiment names for publication
-* **Missing Data Tolerance**: Gracefully handles incomplete experiments
+* **Automatic Error Analysis**: Auto-generated error descriptions with detailed failure categorization
+* **Token Tracking**: Per-question and aggregated cost calculations across all providers
+* **Exp3 Format Handling**: Automatic conversion of Until-Correct CSV format with attempt tracking
+* **Statistical Prediction Tools**: Baseline formulas for Exp2→Exp3 predictions (q = 1-(1-p)^k, A = [1-(1-p)^k]/p)
+* **Display Name Mapping**: Professional model/experiment names for publication-quality outputs
+* **Missing Data Tolerance**: Gracefully handles incomplete experiments with partial results
+
+## Task Types
+
+The toolkit evaluates 18 CAPTCHA task types across 4 categories:
+
+1. **Click/Coordinate Tasks** (6 types): Dice_Count, Click_Order, Place_Dot, Geometry_Click, Pick_Area, Misleading_Click
+2. **Grid Selection Tasks** (4 types): Patch_Select, Select_Animal, Image_Recognition, Unusual_Detection
+3. **Image Matching Tasks** (4 types): Image_Matching, Object_Match, Path_Finder, Rotation_Match
+4. **Logic/Reasoning Tasks** (4 types): Bingo, Dart_Count, Coordinates, Connect_Icon
+
+## Recent Updates
+
+* **GPT-5 and GPT-5.1 Support**: Full integration with OpenAI's latest reasoning models
+* **Enhanced Statistical Analysis**: Exp2→Exp3 prediction tools with calibration diagnostics
+* **Comprehensive Results**: Full evaluation across 6 major models (GPT-5, GPT-5.1 variants, Gemini 2.5 Flash/Pro, Claude Sonnet 4.5, Qwen3-VL)
+* **Improved Visualization**: 11 generated figures with optimization resistance and cost-performance analysis
+* **Dataset Expansion**: Extended samples across multiple task types for robust evaluation
 
 ## Further Reading
 
-* `CLAUDE.md`: Detailed project overview and development guidelines
-* `run_eval.py`: Provider implementations and evaluation logic
-* `run_single_experiment.py`: Experiment orchestration
-* `visualize_results.py`: Visualization system documentation
-* `STATISTICAL_LINK_EXP2_EXP3.md`: Theoretical link between Exp2 (Pass@1) and Exp3 (until-correct) under the baseline truncated-geometric model
-* `exp2_to_exp3_predict.py` + `test_statistic.ipynb`: Practical implementation of Exp2 → Exp3 predictions using the baseline formulas \(q = 1 - (1-p)^k\), \(A = [1 - (1-p)^k]/p\), with optional finite-pool and calibration diagnostics
-* `prompts_optimized.yaml`: Task-specific optimized prompts
+* [run_eval.py](run_eval.py): Provider implementations and evaluation logic
+* [run_single_experiment.py](run_single_experiment.py): Experiment orchestration and CLI interface
+* [visualize_results.py](visualize_results.py): Visualization system with 9+ chart types
+* [exp2_to_exp3_predict.py](exp2_to_exp3_predict.py): Statistical prediction tools (baseline formulas: q = 1-(1-p)^k, A = [1-(1-p)^k]/p)
+* [test_statistic.ipynb](test_statistic.ipynb): Prediction validation with calibration diagnostics
+* [prompts_optimized.yaml](prompts_optimized.yaml): Task-specific optimized prompts
+
+## Citation
+
+If you use this toolkit in your research, please cite:
+
+```bibtex
+@software{captcha_eval_toolkit,
+  title = {CAPTCHA Evaluation Toolkit},
+  author = {Research Team},
+  year = {2024},
+  url = {https://github.com/yourusername/captcha}
+}
+```
 
 ---
 
-**Version**: 2.0 (with visualization system)
-**Last Updated**: November 2024
+**Version**: 2.1 (GPT-5/5.1 integration with statistical analysis)
+**Last Updated**: November 30, 2024

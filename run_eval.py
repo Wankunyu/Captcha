@@ -1,9 +1,9 @@
-# %%
-# environment needed
-# pip install -U pip setuptools wheel
-# pip install -U pillow pyyaml openai anthropic google-genai tqdm
+    
+                    
+                                     
+                                                                 
 
-# %%
+    
 import os, re, io, json, time, base64, argparse, random, pathlib, mimetypes
 from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional
@@ -21,55 +21,52 @@ except Exception:
 import openai
 import anthropic
 
-# 导入精简的错误收集器
+            
 try:
     from experiments_helper import SimpleErrorCollector, load_tasks_from_ground_truth
     ERROR_COLLECTOR_AVAILABLE = True
 except ImportError:
     ERROR_COLLECTOR_AVAILABLE = False
-    print("⚠️ experiments_helper 未找到，错误分析功能不可用")
+    print("⚠️ experiments_helper not found，error analysis unavailable")
 
 
-# %%
-# 检测相关资源是否存在
+    
+            
 import os, glob
 print("CWD =", os.getcwd())
 print("captcha_data exists?", os.path.isdir("./captcha_data"))
 print("secrets.yaml exists?", os.path.exists("./secrets.yaml"))
 print("sample type dirs:", glob.glob("./captcha_data/*")[:5])
 
-# %%
-# 确认api是否存在
+    
+           
 import yaml, json
 with open("./secrets.yaml","r",encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 print(json.dumps(cfg, indent=2, ensure_ascii=False))
-assert cfg.get("providers",{}).get("openai",{}).get("api_key"), "openai.api_key 缺失！"
+assert cfg.get("providers",{}).get("openai",{}).get("api_key"), "openai.api_key missing！"
 
 
-# %% [markdown]
-# ### 工具：密钥/配置、Prompt覆写、成本估算
+               
+                            
 
-# %%
+    
 IMG_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
 IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
 IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
 
-# Reasoning instruction for cognitive process tracing
+                                                     
 REASONING_INSTRUCTION = """
 For research purposes, please provide a complete trace of your cognitive process when solving this problem. Your response should include:
 
-### Stage 1: Initial Processing
 - **Raw Observation**: Describe everything you perceive/understand from the input
 - **Attention Focus**: What elements draw your attention first and why
 - **Initial Hypotheses**: Your immediate interpretations or assumptions
 
-### Stage 2: Analytical Breakdown
 - **Problem Decomposition**: Break down the task into sub-components
 - **Feature Extraction**: List all relevant features, patterns, or regularities you identify
 - **Uncertainty Mapping**: Explicitly mark any ambiguous or unclear aspects (with confidence levels 0-100%)
 
-### Stage 3: Step-by-Step Reasoning
 Please number each reasoning step and include:
 - The specific operation or inference being made
 - The evidence or logic supporting this step
@@ -77,19 +74,17 @@ Please number each reasoning step and include:
 - Confidence level for this step
 - Any assumptions being made
 
-### Stage 4: Error Analysis and Verification
 - **Potential Failure Points**: Where might your reasoning go wrong?
 - **Consistency Checks**: How do you verify internal consistency?
 - **Alternative Paths**: What other approaches did you consider but not pursue?
 
-### Stage 5: Final Output
 - **Candidate Answers**: List all possibilities considered
 - **Selection Rationale**: Why you chose the final answer
 - **Overall Confidence**: Your certainty level in the final answer
 
 **Important Instructions**:
 - Do not skip steps that seem "obvious" - document everything
-- Include failed attempts and backtracking
+- Include failed attempt and backtracking
 - Show intermediate results even if incorrect
 - Think aloud - as if debugging your own thinking
 - If you're guessing, explicitly state so and explain why
@@ -113,7 +108,7 @@ def _maybe_parse_json(path: str):
         return None
 
 def _stem_glob(type_dir: str, pid: str) -> str | None:
-    """以 pid 去掉扩展名后，尝试同名图片（.png/.jpg...）"""
+    """Try to find image file with same stem (filename without extension) in directory."""
     stem = os.path.splitext(pid)[0]
     for ext in IMG_EXTS:
         cand = os.path.join(type_dir, stem + ext)
@@ -124,12 +119,12 @@ def _stem_glob(type_dir: str, pid: str) -> str | None:
 
 def load_secrets(path: str) -> dict:
     """
-    读取项目内的密钥/配置文件（secrets.yaml 或 secrets.json）。
+    Load secrets/config file (secrets.yaml or secrets.json).
     """
     if not path:
         return {}
     if not os.path.exists(path):
-        raise FileNotFoundError(f"未找到密钥文件: {path}")
+        raise FileNotFoundError(f"Secrets file not found: {path}")
     with open(path, "r", encoding="utf-8") as f:
         if path.endswith(".json"):
             return json.load(f)
@@ -138,21 +133,21 @@ def load_secrets(path: str) -> dict:
 
 def load_prompts(path: Optional[str]) -> Dict[str, str]:
     """
-    读取 Prompt 覆写文件（可选，yaml/json）。返回 {任务类型或'default': 覆写文本}
+    Load prompt override file (yaml/json). Returns {task_type or 'default': prompt_text}.
     """
     if not path:
         return {}
     if not os.path.exists(path):
-        raise FileNotFoundError(f"未找到 prompts 文件: {path}")
+        raise FileNotFoundError(f"not found prompt file: {path}")
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f) if path.endswith(".json") else (yaml.safe_load(f) or {})
-    # 仅保留字符串项
+             
     return {str(k): str(v) for k, v in (data or {}).items() if isinstance(v, str)}
 
 
 def estimate_cost(provider: str, model: str, tokens_in: Optional[int], tokens_out: Optional[int], secrets: dict) -> Optional[float]:
     """
-    基于 secrets.yaml 的 pricing 区段，按“美元/千 token”估算单题成本。
+    Estimate per-question cost based on pricing section in secrets.yaml (USD per 1k tokens).
     """
     try:
         pricing = (secrets.get("pricing") or {}).get(provider, {})
@@ -173,7 +168,7 @@ def estimate_cost(provider: str, model: str, tokens_in: Optional[int], tokens_ou
 
 def extract_json(text: str) -> Optional[dict]:
     """
-    轻量 JSON 提取：清理代码块、尝试直接 loads，失败则回退至“外层大括号”截取。
+    Lightweight JSON extraction：cleancodeblocks、attemptdirectly loads，failedthenfallbackto“outerbrace”extraction。
     """
     if not text:
         return None
@@ -195,41 +190,41 @@ def extract_json(text: str) -> Optional[dict]:
 
 def guess_mime(path: str) -> str:
     """
-    基于文件实际内容（magic bytes）检测 MIME 类型，而不是扩展名。
-    这避免了文件扩展名与实际格式不匹配导致的 API 错误。
+    Detect MIME type based on file content (magic bytes) instead of extension.
+    This avoids API errors from mismatched file extensions.
     """
     try:
         with open(path, "rb") as f:
-            header = f.read(12)  # 读取前12字节以检测所有常见格式
+            header = f.read(12)                    
 
-        # PNG: 89 50 4E 47 0D 0A 1A 0A
+                                      
         if header[:8] == b'\x89PNG\r\n\x1a\n':
             return "image/png"
 
-        # JPEG: FF D8 FF
+                        
         if header[:3] == b'\xff\xd8\xff':
             return "image/jpeg"
 
-        # GIF: GIF87a or GIF89a
+                               
         if header[:6] in (b'GIF87a', b'GIF89a'):
             return "image/gif"
 
-        # WebP: RIFF....WEBP
+                            
         if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
             return "image/webp"
 
-        # BMP: BM
+                 
         if header[:2] == b'BM':
             return "image/bmp"
 
-        # TIFF: II (little-endian) or MM (big-endian)
+                                                     
         if header[:2] in (b'II\x2a\x00', b'MM\x00\x2a'):
             return "image/tiff"
 
     except Exception:
         pass
 
-    # Fallback to extension-based detection
+                                           
     m, _ = mimetypes.guess_type(path)
     if m:
         return m
@@ -245,7 +240,7 @@ def guess_mime(path: str) -> str:
     }.get(ext, "application/octet-stream")
 
 def _is_rect_hit(x: float, y: float, box: dict) -> bool:
-    """点是否命中矩形框（含边界）；box: {x,y,width,height} 或 [[x1,y1],[x2,y2]]"""
+    """Check if point hits rectangle (inclusive); box: {x,y,width,height} or [[x1,y1],[x2,y2]]"""
     if not box:
         return False
     if all(k in box for k in ("x","y","width","height")):
@@ -258,24 +253,24 @@ def _is_rect_hit(x: float, y: float, box: dict) -> bool:
     return False
 
 def _point_dist(p: dict, q: dict) -> float:
-    """两点欧氏距离；p/q: {"x":..,"y":..}"""
+    """Euclidean distance between two points; p/q: {"x":...,"y":...}"""
     return ((float(p["x"]) - float(q["x"]))**2 + (float(p["y"]) - float(q["y"]))**2) ** 0.5
 
 def _clean_indices(xs) -> list:
-    """索引集合去重/转 int/排序"""
+    """Deduplicate/convert to int/sort index set"""
     try:
         return sorted(set(int(i) for i in (xs or [])))
     except Exception:
         return []
 
-def _pair_as_set(pair) -> frozenset:
-    """把一对 (i,j) 统一为无序集合，便于比较"""
-    if isinstance(pair, (list, tuple)) and len(pair) == 2:
-        return frozenset([int(pair[0]), int(pair[1])])
+def _correct_as_set(correct) -> frozenset:
+    """Normalize correct (i,j) to unordered set for comparison"""
+    if isinstance(correct, (list, tuple)) and len(correct) == 2:
+        return frozenset([int(correct[0]), int(correct[1])])
     return frozenset()
 
 def _get_first(d: dict, *keys, default=None):
-    """从字典里按优先级取第一个存在的键"""
+    """Get first existing key from dict by priority"""
     for k in keys:
         if k in d:
             return d[k]
@@ -308,26 +303,26 @@ def _describe_failure(task, parsed, raw: str) -> str:
     if task_type == "Dice_Count":
         gt_sum = _extract_number(gt.get("sum"))
         if not isinstance(parsed, dict):
-            return f"未返回结构化 JSON；GT 点数 = {gt_sum}."
+            return f"Did not return structured JSON; GT count = {gt_sum}."
         pred_value = _extract_number(parsed.get("value"))
         if pred_value is None:
-            return f"缺少有效的 value 字段；GT 点数 = {gt_sum}."
+            return f"Missing valid value field; GT count = {gt_sum}."
         if parsed.get("answer_type") != "number":
-            return f"answer_type 应为 'number'，实际为 {parsed.get('answer_type')!r}；预测值 {pred_value}，GT = {gt_sum}{_format_delta(pred_value, gt_sum)}."
+            return f"answer_type should be 'number', got {parsed.get('answer_type')!r}; predicted {pred_value}, GT = {gt_sum}{_format_delta(pred_value, gt_sum)}."
         if gt_sum is None:
-            return f"预测值 {pred_value}，无法读取 GT 点数。"
+            return f"Predicted value {pred_value}, unable to read GT count."
         if pred_value == gt_sum:
-            return "预测点数与 GT 一致，但未通过验证，可能是字段或类型不匹配。"
+            return "Predicted count matches GT but failed validation, possibly field or type mismatch."
         if pred_value > gt_sum:
-            return f"预测点数 {pred_value} 高于 GT {gt_sum}{_format_delta(pred_value, gt_sum)}，说明模型重复计数或误把非顶面算入。"
-        return f"预测点数 {pred_value} 低于 GT {gt_sum}{_format_delta(pred_value, gt_sum)}，说明模型遗漏了一些顶面。"
+            return f"Predicted count {pred_value} exceeds GT {gt_sum}{_format_delta(pred_value, gt_sum)}, model likely double-counted or included non-top faces."
+        return f"Predicted count {pred_value} below GT {gt_sum}{_format_delta(pred_value, gt_sum)}, model likely missed some top faces."
 
     if task_type == "Click_Order":
         if not isinstance(parsed, dict):
-            return "未返回点击序列。"
+            return "Did not return click sequence."
         pred_pts = parsed.get("points") or []
         if not isinstance(pred_pts, list) or not pred_pts:
-            return "points 列表为空或格式错误。"
+            return "points list empty or malformed."
         gt_pts = gt.get("points_gt") or []
         tol = float(gt.get("tolerance", 40.0))
         messages = []
@@ -336,49 +331,49 @@ def _describe_failure(task, parsed, raw: str) -> str:
             p = pred_pts[idx] if isinstance(pred_pts[idx], dict) else None
             q = gt_pts[idx] if isinstance(gt_pts[idx], dict) else None
             if not p or not q:
-                messages.append(f"第 {idx+1} 个点击缺少坐标。")
+                messages.append(f"Click {idx+1} Missing coordinates.")
                 continue
             dist = _point_dist(p, q)
             if dist > tol:
                 messages.append(
-                    f"第 {idx+1} 个点击距离目标 {dist:.1f}px (> tolerance {tol}); 预测 ({p.get('x'):.0f},{p.get('y'):.0f}) vs GT ({q.get('x'):.0f},{q.get('y'):.0f})."
+                    f"Click {idx+1} distance from targets {dist:.1f}px (> tolerance {tol}); predicted ({p.get('x'):.0f},{p.get('y'):.0f}) vs GT ({q.get('x'):.0f},{q.get('y'):.0f})."
                 )
         if len(pred_pts) != len(gt_pts):
-            messages.append(f"预测点数 {len(pred_pts)} 与 GT {len(gt_pts)} 不一致。")
+            messages.append(f"Predicted count {len(pred_pts)} vs GT {len(gt_pts)} mismatch.")
         if not messages:
-            messages.append("点击顺序存在误差，但具体差距未识别，检查原始响应：" + (raw[:120] if raw else "(空)"))
+            messages.append("Click order error detected but details unclear, check raw response: " + (raw[:120] if raw else "(empty)"))
         return " ".join(messages)
 
     if task_type == "Patch_Select":
         if not isinstance(parsed, dict):
-            return "未返回选择索引。"
+            return "Did not return selection indices."
         pred = set(int(i) for i in (parsed.get("indices") or []))
         gt_indices = set(int(i) for i in (gt.get("indices_gt") or gt.get("correct_patches") or []))
-        missing = sorted(gt_indices - pred)
+        Missing = sorted(gt_indices - pred)
         extra = sorted(pred - gt_indices)
         parts = []
         if missing:
-            parts.append(f"缺失 {len(missing)} 个正确索引: {missing[:8]}{'...' if len(missing) > 8 else ''}")
+            parts.append(f"Missing {len(missing)} correct indices: {missing[:8]}{'...' if len(missing) > 8 else ''}")
         if extra:
-            parts.append(f"多选 {len(extra)} 个错误索引: {extra[:8]}{'...' if len(extra) > 8 else ''}")
+            parts.append(f"Extra selected {len(extra)} incorrect indices: {extra[:8]}{'...' if len(extra) > 8 else ''}")
         if not parts:
-            parts.append("未识别到差异，检查原始响应格式是否符合要求。")
+            parts.append("No difference detected, check if raw response format meets requirements.")
         return "；".join(parts)
 
     if task_type == "Pick_Area":
         if not isinstance(parsed, dict):
-            return "未返回坐标点。"
+            return "Did not return coordinate point."
         pt = parsed.get("point") or {}
         if "x" not in pt or "y" not in pt:
-            return "预测点缺少 x/y 坐标。"
+            return "Predicted point Missing x/y coordinate."
         x_pred = float(pt.get("x"))
         y_pred = float(pt.get("y"))
         box = gt.get("area_box")
         if not box:
-            return "GT 区域缺失，无法分析。"
+            return "GT area missing, cannot analyze."
         if _is_rect_hit(x_pred, y_pred, box):
-            return "预测点落在 GT 区域内，但仍未通过校验，检查 answer_type 或 JSON 结构。"
-        # 规范化输出区域范围
+            return "Predicted point falls within GT area but still failed validation, check answer_type or JSON structure."
+                   
         if isinstance(box, dict) and all(k in box for k in ("x","y","width","height")):
             x1, y1 = float(box["x"]), float(box["y"])
             x2, y2 = x1 + float(box["width"]), y1 + float(box["height"])
@@ -386,64 +381,64 @@ def _describe_failure(task, parsed, raw: str) -> str:
             (x1, y1), (x2, y2) = box
             x1, y1, x2, y2 = float(x1), float(y1), float(x2), float(y2)
         else:
-            return "GT 区域格式异常，无法分析。"
+            return "GT area format abnormal, cannot analyze."
         return (
-            f"预测点 ({x_pred:.1f},{y_pred:.1f}) 不在 GT 区域内。"
-            f"GT 范围 ≈ [{min(x1,x2):.1f},{min(y1,y2):.1f}] 到 [{max(x1,x2):.1f},{max(y1,y2):.1f}] 像素。"
+            f"Predicted point ({x_pred:.1f},{y_pred:.1f}) not within GT area."
+            f"GT range ≈ [{min(x1,x2):.1f},{min(y1,y2):.1f}] to [{max(x1,x2):.1f},{max(y1,y2):.1f}] pixels."
         )
 
     if task_type in ("Place_Dot", "Geometry_Click", "Misleading_Click"):
         if not isinstance(parsed, dict):
-            return "未返回坐标点。"
+            return "Did not return coordinate point."
         pred_pt = parsed.get("point") or {}
-        gt_pt = gt.get("target_position") or {}
+        gt_pt = gt.get("targets_position") or {}
         tol = float(gt.get("tolerance", 15.0))
         if not ("x" in pred_pt and "y" in pred_pt):
-            return "预测点缺少 x/y 坐标。"
+            return "Predicted point Missing x/y coordinate."
         if not ("x" in gt_pt and "y" in gt_pt):
-            return "GT 坐标缺失，无法分析。"
+            return "GT coordinate missing, cannot analyze."
         dist = _point_dist(pred_pt, gt_pt)
-        return (f"预测坐标 ({pred_pt.get('x'):.1f},{pred_pt.get('y'):.1f}) 距离 GT ({gt_pt.get('x'):.1f},{gt_pt.get('y'):.1f}) 为 {dist:.1f}px，"
-                f"超过容差 {tol}px，说明定位偏离目标区域。")
+        return (f"Predicted coordinate ({pred_pt.get('x'):.1f},{pred_pt.get('y'):.1f}) distance to GT ({gt_pt.get('x'):.1f},{gt_pt.get('y'):.1f}) is {dist:.1f}px，"
+                f"exceeds tolerance {tol}px，indicating position deviates from targets area.")
 
     if task_type == "Image_Matching" or task_type in ("Dart_Count","Coordinates","Connect_Icon","Object_Match"):
         if not isinstance(parsed, dict):
-            return "未返回分类结果。"
+            return "Did not return classification result."
         idx = parsed.get("index")
         gt_idx = gt.get("correct_index")
-        return f"预测 index={idx}，GT={gt_idx}，需检查模型在候选中选择的匹配项是否正确。"
+        return f"Predicted index={idx}，GT={gt_idx}，Need to check if model's selected match item among candidates is correct."
 
     if task_type in ("Image_Recognition","Select_Animal","Unusual_Detection","Path_Finder"):
         if not isinstance(parsed, dict):
-            return "未返回多选结果。"
+            return "Did not return multi-selection result."
         pred = sorted(_clean_indices(parsed.get("indices", [])))
         gt_indices = sorted(_clean_indices(gt.get("indices_gt", [])))
-        missing = sorted(set(gt_indices) - set(pred))
+        Missing = sorted(set(gt_indices) - set(pred))
         extra = sorted(set(pred) - set(gt_indices))
         parts = []
         if missing:
-            parts.append(f"缺失 {len(missing)} 个目标: {missing[:8]}{'...' if len(missing)>8 else ''}")
+            parts.append(f"Missing {len(missing)} targetss: {missing[:8]}{'...' if len(missing)>8 else ''}")
         if extra:
-            parts.append(f"多选 {len(extra)} 个: {extra[:8]}{'...' if len(extra)>8 else ''}")
+            parts.append(f"Extra selected {len(extra)} : {extra[:8]}{'...' if len(extra)>8 else ''}")
         if not parts:
-            parts.append("未识别到具体差异，可能是 JSON 结构不合规。")
+            parts.append("No specific difference identified, possibly non-compliant JSON structure.")
         return "；".join(parts)
 
-    # 默认说明
+          
     raw_preview = (raw[:120] + "...") if raw and len(raw) > 120 else (raw or "")
-    return f"任务类型 {task_type} 未提供专用分析，请检查原始响应: {raw_preview}"
+    return f"Task type {task_type} has no dedicated analysis, please check raw response: {raw_preview}"
 
 
-# %% [markdown]
-# ### CaptchaWorld图像缓存（零转换版）：缓存原始字节与其 base64
+               
+                                            
 
-# %%
+    
 class ImageCache:
     """
-    原图不做任何转换/重编码：
-    - 直接读取文件原始字节并缓存
-    - base64 也缓存，避免重复编码
-    - LRU 淘汰，内存可控
+    Original image without any conversion/re-encoding:
+    - Read raw file bytes directly and cache
+    - Also cache base64 to avoid repeated encoding
+    - LRU eviction for controlled memory usage
     """
     def __init__(self, max_items: int = 512):
         self.max_items = max_items
@@ -462,7 +457,7 @@ class ImageCache:
 
     def get_bytes(self, path: str) -> bytes:
         """
-        返回原始文件字节（不做任何图像学处理）
+        Return raw file bytes (no image processing)
         """
         if path in self._bytes:
             self._touch(path)
@@ -475,7 +470,7 @@ class ImageCache:
 
     def get_b64(self, path: str) -> str:
         """
-        返回原始文件字节的 base64 文本（不含 data: 前缀）
+        Return base64 text of raw file bytes (without data: prefix)
         """
         if path in self._b64:
             self._touch(path)
@@ -489,13 +484,13 @@ class ImageCache:
 
 IMG_CACHE = ImageCache(max_items=512)
 
-# %% [markdown]
-# ### API Provider Module
+               
+                         
 
-# %%
+    
 class ModelProvider:
     """
-    Provider 抽象基类：定义统一的 infer 接口。
+    Provider abstract base class: defines unified infer interface.
     """
     def __init__(self, model:str, api_key:str, **kwargs):
         self.model = model
@@ -509,10 +504,10 @@ class ModelProvider:
         raise NotImplementedError
 
 
-# %% [markdown]
-# #### OpenAI Provider
+               
+                      
 
-# %%
+    
 class OpenAIProvider(ModelProvider):
     """
     OpenAI Provider supporting GPT-5 chat (Chat Completions) and GPT-5 reasoning
@@ -525,7 +520,7 @@ class OpenAIProvider(ModelProvider):
     def __init__(self, model: str, api_key: str, **kwargs):
         super().__init__(model, api_key, **kwargs)
         if not self.api_key:
-            raise RuntimeError("OpenAI: 请在 secrets.yaml 中配置 api_key。")
+            raise RuntimeError("OpenAI: Please configure api_key in secrets.yaml.")
         from openai import OpenAI
 
         self.client = OpenAI(api_key=self.api_key, timeout=self.timeout)
@@ -539,10 +534,10 @@ class OpenAIProvider(ModelProvider):
             self.is_reasoning_family = True
         else:
             raise RuntimeError(
-                f"OpenAIProvider: 不支持的模型 {model}。当前仅支持 gpt-5-chat-latest、gpt-5 与 gpt-5.1 (reasoning 模型)。"
+                f"OpenAIProvider: Unsupported model {model}. Currently only supports gpt-5-chat-latest, gpt-5, and gpt-5.1 (reasoning models)."
             )
 
-        # Default effort aligns with GPT-5 high reasoning configuration
+                                                                       
         self.reasoning_effort = self.thinking_options.get("effort", "medium")
         self.text_verbosity = self.thinking_options.get("verbosity", "medium")
         self.use_strict_schema = bool(
@@ -550,7 +545,7 @@ class OpenAIProvider(ModelProvider):
             or self.thinking_options.get("strict_json_schema", False)
         )
 
-    # ---------- helper builders ----------
+                                           
 
     @staticmethod
     def _system_prompt() -> str:
@@ -669,7 +664,7 @@ class OpenAIProvider(ModelProvider):
         payload.append({"role": "user", "content": user_content})
         return payload
 
-    # ---------- main entry ----------
+                                      
 
     def infer(
         self,
@@ -715,7 +710,7 @@ class OpenAIProvider(ModelProvider):
         )
         return raw, parsed, meta
 
-    # ---------- chat branch ----------
+                                       
 
     def _infer_chat(
         self, messages: List[Dict[str, Any]], stream: bool
@@ -756,7 +751,7 @@ class OpenAIProvider(ModelProvider):
 
         return raw, tokens_in, tokens_out, ttft_ms
 
-    # ---------- reasoning branch (Responses API) ----------
+                                                            
 
     def _infer_responses(
         self,
@@ -830,19 +825,19 @@ class OpenAIProvider(ModelProvider):
 
         return raw, tokens_in, tokens_out, ttft_ms
 
-# %% [markdown]
-# #### Anthropic Provider
+               
+                         
 
-# %%
+    
 class AnthropicProvider(ModelProvider):
     """
-    Anthropic（Claude）：使用 messages.create + json_schema tools。
-    图片以“原始字节的 base64 + MIME”传入，不做转换。
+    Anthropic (Claude): Uses messages.create + json_schema tools.
+    imageas“rawbytes base64 + MIME”passed，nodoconversion。
     """
     def __init__(self, model:str, api_key:str, **kwargs):
         super().__init__(model, api_key, **kwargs)
         if not self.api_key:
-            raise RuntimeError("Anthropic: 请在 secrets.yaml 中配置 api_key。")
+            raise RuntimeError("Anthropic: Please configure api_key in secrets.yaml.")
         import anthropic
         self.client = anthropic.Anthropic(api_key=self.api_key)
         self._thinking_payload = None
@@ -857,32 +852,32 @@ class AnthropicProvider(ModelProvider):
     @staticmethod
     def _img_part(path:str)->dict:
         """
-        准备图片数据供 Anthropic API 使用。
-        如果 base64 数据超过 5MB，自动压缩图片以符合 API 限制。
+        Prepare image data for Anthropic API usage.
+        Automatically compress images if base64 data exceeds 5MB to comply with API limits.
         """
         b64 = IMG_CACHE.get_b64(path)
         mime = guess_mime(path)
 
-        # Anthropic 限制：单个图片不能超过 5MB
-        MAX_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
-        b64_size = len(b64) * 3 // 4  # base64 编码后大小约为原始大小的 4/3
+                                   
+        MAX_SIZE_BYTES = 5 * 1024 * 1024        
+        b64_size = len(b64) * 3 // 4                           
 
         if b64_size > MAX_SIZE_BYTES:
-            # 需要压缩图片
+                    
             try:
                 from PIL import Image
                 import io
 
-                # 读取原始图片
+                        
                 img = Image.open(path)
 
-                # 计算压缩质量（从 85 开始，逐步降低直到符合要求）
+                                            
                 for quality in [85, 75, 65, 55, 45, 35]:
                     buffer = io.BytesIO()
 
-                    # 保存为 JPEG（通常更小）
+                                    
                     if img.mode in ('RGBA', 'LA', 'P'):
-                        # 有透明通道的转换为 RGB
+                                       
                         rgb_img = Image.new('RGB', img.size, (255, 255, 255))
                         rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
                         rgb_img.save(buffer, format='JPEG', quality=quality, optimize=True)
@@ -893,41 +888,41 @@ class AnthropicProvider(ModelProvider):
                     compressed_b64 = base64.b64encode(compressed_bytes).decode('ascii')
 
                     if len(compressed_bytes) <= MAX_SIZE_BYTES:
-                        print(f"  [Anthropic] 图片 {os.path.basename(path)} 压缩: {b64_size / (1024 * 1024):.2f} MB → {len(compressed_bytes) / (1024 * 1024):.2f} MB (quality={quality})")
+                        print(f"  [Anthropic] Image {os.path.basename(path)} compressed: {b64_size / (1024 * 1024):.2f} MB → {len(compressed_bytes) / (1024 * 1024):.2f} MB (quality={quality})")
                         return {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":compressed_b64}}
 
-                # 如果所有质量都不能满足，使用最低质量
-                print(f"  [Anthropic] 警告: 图片 {os.path.basename(path)} 即使以最低质量也无法压缩到 5MB 以下")
+                                    
+                print(f"  [Anthropic] Warning: Image {os.path.basename(path)} cannot be compressed below 5MB even at lowest quality")
                 return {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":compressed_b64}}
 
             except Exception as e:
-                print(f"  [Anthropic] 图片压缩失败: {e}，使用原始图片")
+                print(f"  [Anthropic] Image compression failed: {e}, using original image")
 
         return {"type":"image","source":{"type":"base64","media_type":mime,"data":b64}}
 
     def infer(self, prompt:str, images:List[str], json_schema:Dict[str, Any],
               stream:bool=True, few_shot_examples:Optional[List]=None)->Tuple[str, Optional[Dict[str,Any]], Dict[str,Any]]:
-        # Check if reasoning field is in schema
+                                               
         has_reasoning = "reasoning" in json_schema.get("properties", {})
         reasoning_note = REASONING_INSTRUCTION if has_reasoning else ""
 
         blocks = []
 
-        # 1. Add few-shot examples first (if any)
+                                                 
         if few_shot_examples:
             for example_images, example_text in few_shot_examples:
-                # Add example images
+                                    
                 for img_path in example_images:
                     if os.path.exists(img_path):
                         blocks.append(self._img_part(img_path))
-                # Add example answer text
+                                         
                 blocks.append({"type":"text","text": example_text})
 
-        # 2. Add test images
+                            
         for p in images:
             blocks.append(self._img_part(p))
 
-        # 3. Add test prompt (with prefix if few-shot is used)
+                                                              
         if few_shot_examples:
             final_prompt = "Now solve this new problem:\n\n" + prompt
         else:
@@ -938,8 +933,8 @@ class AnthropicProvider(ModelProvider):
             (f"\n\n{reasoning_note}" if reasoning_note else "")
         )})
 
-        # Anthropic: Use tool calling to enforce JSON schema (most reliable method)
-        # Define a single tool with our JSON schema as input_schema
+                                                                                   
+                                                                   
         tools = [{
             "name": "submit_answer",
             "description": "Submit the answer in the required JSON format",
@@ -961,7 +956,7 @@ class AnthropicProvider(ModelProvider):
                 call_kwargs["thinking"] = self._thinking_payload
             resp = self.client.messages.create(**call_kwargs)
 
-            # Extract JSON from tool_use block
+                                              
             raw = ""
             tool_input = None
             for c in (resp.content or []):
@@ -971,7 +966,7 @@ class AnthropicProvider(ModelProvider):
                         raw = json.dumps(tool_input)
                         break
 
-            # Fallback to text content if no tool_use found
+                                                           
             if not raw:
                 for c in (resp.content or []):
                     if getattr(c, "type", "") == "text":
@@ -988,21 +983,21 @@ class AnthropicProvider(ModelProvider):
         meta = dict(ttft_ms=e2e, e2e_ms=e2e, tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=None)
         return raw, parsed, meta
 
-# %% [markdown]
-# #### Gemini Provider
+               
+                      
 
-# %%
+    
 class GeminiProvider(ModelProvider):
     """
-    Gemini Provider（始终内联原始图像字节，不使用 File API）
-    - 不做任何图像转换/重编码：直接读取磁盘原始字节。
-    - parts 结构为 [ text, {"mime_type":..., "data": <raw bytes>}, ... ]。
-    - 显式设置 request_options.timeout，避免卡死。
+    Gemini Provider (always inline raw image bytes, does not use File API)
+    - No image conversion/re-encoding: directly read raw bytes from disk.
+    - parts structure: [ text, {"mime_type":..., "data": <raw bytes>}, ... ].
+    - Explicitly set request_options.timeout to avoid hanging.
     """
     def __init__(self, model:str, api_key:str, **kwargs):
         super().__init__(model, api_key, **kwargs)
         if not self.api_key:
-            raise RuntimeError("Gemini: 请在 secrets.yaml 中配置 api_key。")
+            raise RuntimeError("Gemini: Please configure api_key in secrets.yaml.")
 
         from google import genai
         from google.genai import types as genai_types
@@ -1016,20 +1011,20 @@ class GeminiProvider(ModelProvider):
     def infer(self, prompt:str, images:List[str], json_schema:Dict[str, Any],
               stream:bool=True, few_shot_examples:Optional[List]=None) -> Tuple[str, Optional[Dict[str,Any]], Dict[str,Any]]:
         """
-        - 直接内联原始字节（零转换）；
-        - Gemini 在多数地区对非流式的响应延时更稳定，这里不使用 stream。
-        - 支持 few-shot learning
+        - Directly inline raw bytes (zero conversion);
+        - Gemini's non-streaming response latency is more stable in most regions, stream not used here.
+        - Supports few-shot learning
         """
-        # Check if reasoning field is in schema
+                                               
         has_reasoning = "reasoning" in json_schema.get("properties", {})
         reasoning_note = REASONING_INSTRUCTION if has_reasoning else ""
 
         user_parts: List[Any] = []
 
-        # 1. Add few-shot examples first (if any)
+                                                 
         if few_shot_examples:
             for example_images, example_text in few_shot_examples:
-                # Add example images
+                                    
                 for img_path in example_images:
                     if os.path.exists(img_path):
                         user_parts.append(
@@ -1038,12 +1033,12 @@ class GeminiProvider(ModelProvider):
                                 mime_type=guess_mime(img_path)
                             )
                         )
-                # Add example answer text
+                                         
                 user_parts.append(
                     self.genai_types.Part.from_text(text=example_text)
                 )
 
-        # 2. Add test images
+                            
         for p in images:
             user_parts.append(
                 self.genai_types.Part.from_bytes(
@@ -1051,7 +1046,7 @@ class GeminiProvider(ModelProvider):
                 )
             )
 
-        # 3. Add test prompt (with prefix if few-shot is used)
+                                                              
         if few_shot_examples:
             final_prompt = "Now solve this new problem:\n\n" + prompt
         else:
@@ -1098,7 +1093,7 @@ class GeminiProvider(ModelProvider):
             except Exception as exc:
                 print(f"[WARN] Gemini thinking_config unavailable: {exc}")
 
-        # 调用（显式超时，避免阻塞）
+                       
         start = time.perf_counter()
         try:
             resp = self.client.models.generate_content(
@@ -1132,13 +1127,13 @@ class GeminiProvider(ModelProvider):
         return raw, parsed, meta
 
 
-# %%
-# (Legacy Gemini File API helper removed; refer to historical commits if needed.)
+    
+                                                                                 
 
-# %% [markdown]
-# #### Fireworks AI Provider
+               
+                            
 
-# %%
+    
 class FireworksProvider(ModelProvider):
     """
     Fireworks AI Provider: OpenAI-compatible API with JSON Schema support.
@@ -1150,7 +1145,7 @@ class FireworksProvider(ModelProvider):
     def __init__(self, model:str, api_key:str, base_url:str=None, **kwargs):
         super().__init__(model, api_key, **kwargs)
         if not self.api_key:
-            raise RuntimeError("Fireworks: 请在 secrets.yaml 中配置 api_key。")
+            raise RuntimeError("Fireworks: Please configure api_key in secrets.yaml.")
         from openai import OpenAI
         self.client = OpenAI(
             api_key=self.api_key,
@@ -1168,16 +1163,16 @@ class FireworksProvider(ModelProvider):
         - JSON Schema structured output
         - Few-shot examples
         """
-        # Check if reasoning field is in schema
+                                               
         has_reasoning = "reasoning" in json_schema.get("properties", {})
         reasoning_note = REASONING_INSTRUCTION if has_reasoning else ""
 
         content = []
 
-        # 1. Add few-shot examples first (if any)
+                                                 
         if few_shot_examples:
             for example_images, example_text in few_shot_examples:
-                # Add example images
+                                    
                 for img_path in example_images:
                     if os.path.exists(img_path):
                         mime = guess_mime(img_path)
@@ -1188,12 +1183,12 @@ class FireworksProvider(ModelProvider):
                                 "detail": "high"
                             }
                         })
-                # Add example answer text
+                                         
                 content.append({"type": "text", "text": example_text})
-            # Add separator for test problem
+                                            
             content.append({"type": "text", "text": "\n\nNow solve this new problem:\n\n"})
 
-        # 2. Add test prompt text
+                                 
         content.append({
             "type": "text",
             "text": (
@@ -1203,7 +1198,7 @@ class FireworksProvider(ModelProvider):
             )
         })
 
-        # 3. Add test images
+                            
         for p in images:
             mime = guess_mime(p)
             content.append({
@@ -1222,13 +1217,13 @@ class FireworksProvider(ModelProvider):
         if self.thinking_enabled:
             print("[WARN] Fireworks provider: thinking flag is not explicitly supported; model may ignore.")
 
-        # Prepare response_format with JSON Schema
+                                                  
         response_format = {
             "type": "json_schema",
             "json_schema": {
                 "name": "captcha_response",
                 "schema": json_schema,
-                "strict": True  # Fireworks supports strict mode
+                "strict": True                                  
             }
         }
 
@@ -1251,24 +1246,24 @@ class FireworksProvider(ModelProvider):
         meta = dict(ttft_ms=e2e, e2e_ms=e2e, tokens_in=tokens_in, tokens_out=tokens_out, cost_usd=None)
         return raw, parsed, meta
 
-# %% [markdown]
-# #### Provider工厂
+               
+                 
 
-# %%
+    
 def make_provider(name:str, model:str, secrets:dict, timeout_sec:float,
                      thinking_enabled: bool = False,
                      thinking_options: Optional[Dict[str, Any]] = None) -> ModelProvider:
     """
-    根据名称创建具体 Provider 实例，并从 secrets 中注入 api_key/base_url。
-    参数：
-        name: provider 名称（openai/anthropic/gemini/fireworks）。
-        model: 模型名称。
-        secrets: 配置字典（load_secrets 返回）。
-        timeout_sec: 超时秒数。
-    返回：
-        ModelProvider 子类实例。
-    异常：
-        ValueError: 未知 provider。
+    Create concrete Provider instance by name and inject api_key/base_url from secrets.
+    Args:
+        name: Provider name (openai/anthropic/gemini/fireworks).
+        model: Model name.
+        secrets: Config dict (returned by load_secrets).
+        timeout_sec: Timeout in seconds.
+    Returns:
+        ModelProvider subclass instance.
+    Raises:
+        ValueError: Unknown provider.
     """
     name_l = name.lower()
     prov_cfg = (secrets.get("providers") or {}).get(name_l, {})
@@ -1296,23 +1291,23 @@ def make_provider(name:str, model:str, secrets:dict, timeout_sec:float,
         return GeminiProvider(model=model, api_key=api_key, **common_kwargs)
     if name_l == "fireworks":
         return FireworksProvider(model=model, api_key=api_key, base_url=prov_cfg.get("base_url"), **common_kwargs)
-    raise ValueError(f"未知 provider: {name}。支持的 providers: openai, anthropic, gemini, fireworks")
+    raise ValueError(f"Unknown provider: {name}. Supported providers: openai, anthropic, gemini, fireworks")
 
 
 
-# %% [markdown]
-# ### 数据集与任务构建
+               
+              
 
-# %%
+    
 @dataclass
 class TaskItem:
     """
-    任务条目：
-    - type: 任务类型名（目录名）
-    - puzzle_id: 题目文件名或标识
-    - prompt: 文本指令（已套用覆写/前后缀）
-    - images: 输入图像绝对路径列表（原图）
-    - gt: Ground Truth（用于评测）
+    Task entry:
+    - type: Task type name (directory name)
+    - puzzle_id: Problem filename or identifier
+    - prompt: Text instruction (with overwrites/pre-post fixes applied)
+    - images: Input image absolute path list (original images)
+    - gt: Ground Truth (for evaluation)
     """
     type: str
     puzzle_id: str
@@ -1322,13 +1317,13 @@ class TaskItem:
 
 
 SUPPORTED_TYPES = {
-    # 静态化的五类
+            
     "Dice_Count",
     "Geometry_Click",
     "Image_Matching",
     "Patch_Select",
     "Place_Dot",
-    # 无交互或已静态化
+              
     "Bingo",
     "Click_Order",
     "Dart_Count",
@@ -1350,20 +1345,20 @@ TYPE_REQUIRE_PER_ITEM = {"Geometry_Click", "Image_Recognition", "Misleading_Clic
                         "Dart_Count", "Image_Matching", "Object_Match", "Pick_Area",
                         "Place_Dot", "Rotation_Match", "Unusual_Detection", "Path_Finder"}
 
-# 明确「不要用 per-item（伪 per-item）」的类型：一律忽略题面文案，按类型/默认模板走
+                                                    
 TYPE_IGNORE_PER_ITEM = {}
-# 例如若你确认 Image_Matching/Coordinates 的 GT 文案完全同质，就填：
-# TYPE_IGNORE_PER_ITEM = {"Image_Matching", "Coordinates"}
+                                                   
+                                                          
 
 
-# —— 细粒度到题号（按需用，不用就留空）——
-# 强制保留某些具体题目的 per-item 文案
+                        
+                         
 ID_REQUIRE_PER_ITEM = {
-    # "Geometry_Click": {"puzzle_0001.jpg", "foo_023.jpg"},
+                                                           
 }
-# 强制忽略某些具体题目的 per-item 文案
+                         
 ID_IGNORE_PER_ITEM = {
-    # "Image_Recognition": {"weird_007.jpg"},
+                                             
 }
 
 
@@ -1373,33 +1368,33 @@ def _is_git_lfs_pointer(text: str) -> bool:
 
 def load_ground_truth(type_dir: str) -> Dict[str, Any]:
     """
-    读取某类任务的 ground_truth.json（拒绝 LFS 指针）。
+    Read ground_truth.json for a task type (reject LFS pointers).
     """
     gt_path = os.path.join(type_dir, "ground_truth.json")
     if not os.path.exists(gt_path):
-        raise FileNotFoundError(f"ground_truth.json 不存在: {gt_path}")
+        raise FileNotFoundError(f"ground_truth.json does not exist: {gt_path}")
     with open(gt_path, "r", encoding="utf-8") as f:
         raw = f.read()
     if _is_git_lfs_pointer(raw):
-        raise RuntimeError(f"{gt_path} 是 Git LFS 指针。请确保你已拉取真实 JSON 文件。")
+        raise RuntimeError(f"{gt_path} is a Git LFS pointer. Please ensure you have pulled the actual JSON file.")
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"解析 ground_truth.json 失败: {gt_path} - {e}")
+        raise RuntimeError(f"Failed to parse ground_truth.json: {gt_path} - {e}")
 
 
 
 def _load_prompts_yaml(path: Optional[str]) -> dict:
-    """向后兼容：prompts.yaml 既可以是 {type: str} 的老格式，也可以是新结构化格式。"""
+    """Backward compatible: prompts.yaml can be old {type: str} format or new structured format."""
     if not path:
         return {}
     import yaml, io
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
-    # 老格式：直接 {type: "text"}，包一层
+                               
     if data and "types" not in data and "default" not in data and "by_id" not in data:
         data = {"version": 0, "types": data}
-    # 规范字段
+          
     data.setdefault("default", {})
     data.setdefault("types", {})
     data.setdefault("templates", {})
@@ -1408,13 +1403,13 @@ def _load_prompts_yaml(path: Optional[str]) -> dict:
 
 def load_few_shot_examples(few_shot_file: str = "./few_shot_examples.yaml") -> Dict[str, List[Dict]]:
     """
-    加载 few-shot 示例配置
+    Load few-shot example configuration
 
     Args:
-        few_shot_file: few-shot 配置文件路径
+        few_shot_file: Few-shot config file path
 
     Returns:
-        字典，key 为任务类型，value 为示例列表
+        dict, key is task type, value is example list
     """
     if not few_shot_file or not os.path.exists(few_shot_file):
         return {}
@@ -1433,7 +1428,7 @@ def _collect_image_paths(base_dir: pathlib.Path, name: str) -> List[str]:
         return []
 
     paths: List[str] = []
-    target = base_dir / name
+    targets = base_dir / name
 
     def add_from_path(path: pathlib.Path) -> None:
         if path.is_dir():
@@ -1443,8 +1438,8 @@ def _collect_image_paths(base_dir: pathlib.Path, name: str) -> List[str]:
         elif path.is_file():
             paths.append(str(path))
 
-    if target.exists():
-        add_from_path(target)
+    if targets.exists():
+        add_from_path(targets)
     else:
         stem = pathlib.Path(name).stem
         for ext in [".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"]:
@@ -1462,25 +1457,25 @@ def build_few_shot_content(
     few_shot_assets_root: Optional[pathlib.Path] = None
 ) -> List:
     """
-    构建 few-shot 示例内容（图片路径列表 + 简洁答案文本）
+    Build few-shot example content (image path list + concise answer text)
 
-    注意：答案数据现在从 few_shot_answers.py 中读取（硬编码），
-    不再依赖 ground_truth.json，避免文件名变更导致的匹配问题。
+    Note: Answer data is now read from few_shot_answers.py (hardcoded),
+    no longer depends on ground_truth.json to avoid matching issues from filename changes.
 
     Args:
-        task_type: 任务类型
-        few_shot_examples: few-shot 配置字典（仅用于指定使用哪些示例）
-        dataset_root: 数据集根目录
-        few_shot_assets_root: few-shot 资源根目录
+        task_type: Task type
+        few_shot_examples: Few-shot config dict (only used to specify which examples to use)
+        dataset_root: Dataset root directory
+        few_shot_assets_root: Few-shot assets root directory
 
     Returns:
-        示例内容列表: [(images_list, answer_text), ...]
+        Example content list: [(images_list, answer_text), ...]
     """
-    # 导入硬编码的答案数据
+                
     try:
         from few_shot_answers import get_all_examples
     except ImportError:
-        print(f"⚠️ 警告：无法导入 few_shot_answers，few-shot 功能不可用")
+        print(f"⚠️ Warning: Cannot import few_shot_answers, few-shot functionality unavailable")
         return []
 
     if task_type not in few_shot_examples:
@@ -1490,65 +1485,65 @@ def build_few_shot_content(
     if not examples_data:
         return []
 
-    # 从硬编码答案中获取该任务类型的所有示例
+                         
     hardcoded_examples = get_all_examples(task_type)
     if not hardcoded_examples:
-        # 如果没有硬编码答案，回退到原有逻辑（从 YAML 读取）
-        print(f"⚠️ 警告：{task_type} 在 few_shot_answers.py 中没有硬编码答案，回退到 YAML")
+                                      
+        print(f"⚠️ Warning: {task_type} has no hardcoded answer in few_shot_answers.py, falling back to YAML")
         hardcoded_examples = examples_data
 
-    # 确定资源根目录
+             
     FEW_SHOT_ASSETS_ROOT = pathlib.Path(os.environ.get("FEW_SHOT_ASSETS_ROOT", "./few_shot_assets")).resolve()
     assets_root = pathlib.Path(few_shot_assets_root or FEW_SHOT_ASSETS_ROOT)
     task_dir_name = task_type.split('(')[0].strip()
     type_dir = assets_root / task_dir_name
     if not type_dir.exists() and dataset_root:
-        # 兼容旧数据结构，回退到原始数据集路径
+                            
         type_dir = pathlib.Path(dataset_root) / task_dir_name
     result = []
 
     for i, yaml_example in enumerate(examples_data, 1):
-        # 从 YAML 中获取文件名
+                       
         filename = yaml_example.get("filename")
         if not filename:
             continue
 
-        # 从硬编码答案中查找匹配的答案数据
+                          
         example = None
         for hc_ex in hardcoded_examples:
             if hc_ex.get("filename") == filename:
                 example = hc_ex
                 break
 
-        # 如果没找到硬编码答案，使用 YAML 中的数据
+                                 
         if example is None:
             example = yaml_example
 
         images: List[str] = []
         seen: set[str] = set()
 
-        # 某些任务类型的 filename 只是 puzzle ID，不对应真实图片文件
-        # 这些任务类型使用 reference_image 和 option_images 作为实际图片
+                                                 
+                                                         
         puzzle_id_only_tasks = ["Dart_Count", "Connect_icon", "Coordinates", "Rotation_Match", "Object_Match"]
 
-        # 主图片（仅对非 puzzle_id_only 任务加载）
+                                      
         if filename and task_type not in puzzle_id_only_tasks:
             for path in _collect_image_paths(type_dir, filename):
                 if path not in seen:
                     images.append(path)
                     seen.add(path)
 
-        # 处理可能的第二张、第三张图片
-        # 不同任务类型使用不同的字段名：
-        # - Click_Order: order_image
-        # - Connect_icon, Coordinates, Dart_Count, Image_Matching, Object_Match, Path_Finder: reference_image
-        # - Rotation_Match: reference_image, object_base_image
-        # - Slide_Puzzle: component_image
+                        
+                         
+                                    
+                                                                                                             
+                                                              
+                                         
         additional_image_fields = [
-            "order_image",           # Click_Order
-            "reference_image",       # Connect_icon, Coordinates, Dart_Count, Image_Matching, Object_Match, Path_Finder, Rotation_Match
-            "object_base_image",     # Rotation_Match
-            "component_image"        # Slide_Puzzle
+            "order_image",                        
+            "reference_image",                                                                                                         
+            "object_base_image",                     
+            "component_image"                      
         ]
 
         for field in additional_image_fields:
@@ -1560,9 +1555,9 @@ def build_few_shot_content(
                             images.append(path)
                             seen.add(path)
 
-        # 处理选择题的选项图片（options 或 option_images）
-        # Connect_icon, Path_Finder: options
-        # Coordinates, Dart_Count, Image_Matching, Object_Match: option_images
+                                             
+                                            
+                                                                              
         option_field = None
         if "options" in example:
             option_field = "options"
@@ -1579,7 +1574,7 @@ def build_few_shot_content(
                                 images.append(path)
                                 seen.add(path)
 
-        # 构建简洁的答案文本（从硬编码数据中读取）
+                              
         answer = example.get("answer")
         if answer is not None:
             answer_text = f"Example {i}: {json.dumps(answer, ensure_ascii=False)}"
@@ -1593,18 +1588,18 @@ def build_few_shot_content(
 
 def _resolve_prompt_cfg(cfg: dict, task_type: str, puzzle_id: str) -> dict:
     """
-    根据类型与题目ID解析配置：
-    优先级：by_id 覆盖 > types[task_type] > default
-    返回 dict: {"mode": "merge|replace|auto|gt", "rules": str|None, "template": str|None, "override": str|None}
+    Parse configuration by type and problem ID:
+    Priority: by_id override > types[task_type] > default
+    Returns dict: {"mode": "merge|replace|auto|gt", "rules": str|None, "template": str|None, "override": str|None}
     """
     by_id = cfg.get("by_id", {})
-    # 支持两种键： "Type/ID" 或在 by_id[Type] 下的 {ID: text}
-    override = by_id.get(f"{task_type}/{puzzle_id}") or \
+                                                   
+    override = by_id.get(f"{task_type}/{puzzle_id}") or\
                (isinstance(by_id.get(task_type), dict) and by_id[task_type].get(puzzle_id))
 
     tcfg = cfg.get("types", {}).get(task_type, {})
     dcfg = cfg.get("default", {})
-    # 兼容老格式：types[task_type] 可能是字符串（即 replace 文本）
+                                                 
     if isinstance(tcfg, str):
         return {"mode": "replace", "rules": None, "template": None, "override": tcfg}
 
@@ -1615,7 +1610,7 @@ def _resolve_prompt_cfg(cfg: dict, task_type: str, puzzle_id: str) -> dict:
     return {"mode": mode, "rules": rules, "template": template, "override": override}
 
 def _render_template(template: str, context: dict) -> str:
-    """极简模板：支持 {{gt_prompt}}, {{type}}, {{pid}} 三个占位符；避免 format 大括号冲突。"""
+    """Minimal template: supports {{gt_prompt}}, {{type}}, {{pid}} three placeholders; avoids format brace conflicts."""
     if not template:
         return ""
     out = template.replace("{{gt_prompt}}", context.get("gt_prompt", ""))
@@ -1627,23 +1622,23 @@ def _choose_prompt(entry: dict,
                    task_type: str,
                    puzzle_id: str,
                    default_prompt: str,
-                   prompts_cfg: dict,           # 结构化 prompts（_load_prompts_yaml 的返回）
+                   prompts_cfg: dict,                                                
                    prefix: str,
                    suffix: str,
                    mode: str = "auto",
                    prompt_cfg: dict | None = None,
-                   **_compat                   # ← 新增：吸收旧参数（如 overrides=...）
+                   **_compat                                                
                    ) -> str:
     """
-    最终 prompt 选择（支持 gt/opt/merge/auto + 结构化 prompts.yaml + 手工策略开关）
-    - 兼容：老的扁平 overrides（{Type: "text", "default": "text", "Type:ID": "text"}）
+    Final prompt selection (supports gt/opt/merge/auto + structured prompts.yaml + manual strategy switch)
+    - Compatible: old flat overrides ({Type: "text", "default": "text", "Type:ID": "text"})
     """
     cfg = prompt_cfg if prompt_cfg is not None else (prompts_cfg or {})
 
-    # 1) per-item 原文
+                    
     base_raw = (entry.get("prompt") or entry.get("question") or entry.get("instruction") or "").strip()
 
-    # 2) GT 模式【完全不受“忽略 per-item”策略影响】；其余模式再看你的手工策略
+                                                  
     if mode == "gt":
         use_per_item = bool(base_raw)
         base = base_raw
@@ -1657,7 +1652,7 @@ def _choose_prompt(entry: dict,
         use_per_item = _should_use_per_item(task_type, puzzle_id, base_raw)
         base = base_raw if use_per_item else ""
 
-    # 3) 结构化解析（by_id/types/default/templates/mode）
+                                                  
     resolved = _resolve_prompt_cfg(cfg, task_type, puzzle_id) if cfg else {}
     cfg_mode = (resolved.get("mode") or "merge")
     if cfg_mode == "replace":
@@ -1666,7 +1661,7 @@ def _choose_prompt(entry: dict,
     override_text = (resolved.get("override") or "").strip() or None
     template_text = (resolved.get("template") or "").strip() or None
 
-    # 4) 兼容旧式“扁平 overrides”参数（若存在就按旧语义参与）
+                                         
     flat = _compat.get("overrides")
     flat_by_id = flat_type = flat_def = None
     if isinstance(flat, dict):
@@ -1674,18 +1669,18 @@ def _choose_prompt(entry: dict,
         flat_type  = flat.get(task_type)
         flat_def   = flat.get("default")
 
-    # 5) 生效模式
+             
     if mode in ("gt","merge","opt"):
         effective_mode = mode
-    else:  # auto
+    else:        
         effective_mode = "merge" if use_per_item else "opt"
 
-    # 6) 组装正文
+             
     if effective_mode == "gt":
         p = base if base else default_prompt
 
     elif effective_mode == "opt":
-        # 优先级：structured override > flat(by_id/type/default) > template > rules > base/default
+                                                                                              
         if override_text:
             p = override_text
         elif flat_by_id or flat_type or flat_def:
@@ -1697,7 +1692,7 @@ def _choose_prompt(entry: dict,
         else:
             p = base or default_prompt
 
-    else:  # merge
+    else:         
         core = base or default_prompt
         extras = []
         if template_text:
@@ -1706,12 +1701,12 @@ def _choose_prompt(entry: dict,
             extras.append(override_text)
         if rules_text:
             extras.append(rules_text)
-        # 扁平 overrides 放最后（作为补充说明）
+                                  
         for x in (flat_by_id, flat_type, flat_def):
             if x: extras.append(x)
         p = core + (("\n\n" + "\n\n".join(extras)) if extras else "")
 
-    # 7) 前后缀
+            
     if prefix:
         p = f"{prefix}\n{p}"
     if suffix:
@@ -1729,7 +1724,7 @@ def build_tasks(
     prompts_cfg: dict | None = None,
     prompt_prefix: str = "",
     prompt_suffix: str = "",
-    prompt_mode: str = "auto", # ← "gt"|"opt"|"merge"|"auto"
+    prompt_mode: str = "auto",                              
     exclude_examples: Optional[Dict[str, List[str]]] = None
 ) -> List[TaskItem]:
     prompts_cfg = prompts_cfg or {}
@@ -1737,18 +1732,18 @@ def build_tasks(
     tasks: List[TaskItem] = []
     for t in types:
         if t not in SUPPORTED_TYPES:
-            print(f"[跳过] 暂未支持的类型: {t}")
+            print(f"[SKIP] Type not yet supported: {t}")
             continue
         type_dir = os.path.join(dataset_root, t)
         try:
             gt = load_ground_truth(type_dir)
         except Exception as e:
-            print(f"[跳过] 读取 GT 失败 {t}: {e}")
+            print(f"[SKIP] Failed to read GT {t}: {e}")
             continue
 
         puzzle_ids = list(gt.keys())
 
-        # 过滤掉用作 few-shot 示例的样本
+                              
         excluded_files = exclude_examples.get(t, [])
         if excluded_files:
             excluded_set = set(excluded_files)
@@ -1758,8 +1753,8 @@ def build_tasks(
                 if pid not in excluded_set and os.path.splitext(pid)[0] not in excluded_stems
             ]
 
-        # 采样逻辑：若该类型题目数 > max_per_type，则等概率抽样 max_per_type 道；
-        # 否则包含该类型全部题目（并随机打乱顺序）。
+                                                            
+                               
         if isinstance(max_per_type, int) and max_per_type > 0 and len(puzzle_ids) > max_per_type:
             puzzle_ids = random.sample(puzzle_ids, k=max_per_type)
         else:
@@ -1768,7 +1763,7 @@ def build_tasks(
         for pid in puzzle_ids:
             entry = gt[pid]
 
-            # === 静态的5类 ===
+                           
             if t == "Dice_Count":
                 default_prompt = ("Count ONLY the pips visible on the TOP faces of all dice. "
                                   "Do NOT count side/hidden faces or reflections. "
@@ -1776,31 +1771,31 @@ def build_tasks(
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img): 
-                    print(f"[跳过] 文件不存在: {img}"); 
+                    print(f"[SKIP] File does not exist: {img}"); 
                     continue
                 tasks.append(TaskItem(t, pid, prompt, [img], {"sum": entry.get("sum")}))
 
             elif t == "Geometry_Click":
-                # 1) 基于 GT 的 type 生成清晰的默认提示语（若该题有 per-item prompt/_choose_prompt 会优先用 per-item）
-                target_type = str((entry.get("answer") or {}).get("type") or "").strip()
-                if target_type.lower().startswith("letter "):
-                    obj = target_type.split(" ", 1)[1].strip() or "target letter"
+                                                                                               
+                targets_type = str((entry.get("answer") or {}).get("type") or "").strip()
+                if targets_type.lower().startswith("letter "):
+                    obj = targets_type.split(" ", 1)[1].strip() or "targets letter"
                     semantic = f"Click the CENTER of letter '{obj}'."
-                elif target_type:
-                    semantic = f"Click the CENTER of the target {target_type}."
+                elif targets_type:
+                    semantic = f"Click the CENTER of the targets {targets_type}."
                 else:
-                    semantic = "Click the CENTER of the specified geometric target."
+                    semantic = "Click the CENTER of the specified geometric targets."
 
                 default_prompt = (
                     f"{semantic}\n"
                     "Return ONLY JSON {\"answer_type\":\"single_point\",\"point\":{\"x\":...,\"y\":...}} (pixels)."
                 )
 
-                # 2) 选择最终 prompt（支持 gt/opt/merge/auto + by-id 覆盖）
+                                                                 
                 prompt = _choose_prompt(
-                    entry=entry,                 # 题目级 GT（含 per-item 'prompt'）
-                    task_type=t,                 # "Geometry_Click"
-                    puzzle_id=pid,               # 文件名，如 dingxiang_000001.jpg
+                    entry=entry,                                              
+                    task_type=t,                                   
+                    puzzle_id=pid,                                           
                     default_prompt=default_prompt,
                     prompts_cfg=prompts_cfg or {},       
                     prefix=prompt_prefix,
@@ -1808,13 +1803,13 @@ def build_tasks(
                     mode=prompt_mode
                 )
 
-                # 3) 图片路径与存在性
+                             
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
 
-                # 4) 规范化 bbox：从 answer.area=[[x0,y0],[x1,y1]] 提取为 [xmin,ymin,xmax,ymax]
+                                                                                       
                 ans = entry.get("answer") or {}
                 area = ans.get("area")
                 bbox = None
@@ -1825,11 +1820,11 @@ def build_tasks(
                     y0, y1 = (y0, y1) if y0 <= y1 else (y1, y0)
                     bbox = [float(x0), float(y0), float(x1), float(y1)]
                 else:
-                    print(f"[跳过] {t}/{pid} 非法 area 格式：{area}")
+                    print(f"[SKIP] {t}/{pid} illegal area format: {area}")
                     continue
 
-                # 5) 写入任务（统一用矩形基线判定；shape 仅做记录/调试）
-                shape = target_type or "region"
+                                                  
+                shape = targets_type or "region"
                 cx = (bbox[0] + bbox[2]) / 2.0
                 cy = (bbox[1] + bbox[3]) / 2.0
                 tol = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2.0
@@ -1842,7 +1837,7 @@ def build_tasks(
                         {
                             "bbox": bbox,
                             "shape": shape,
-                            "target_position": {"x": cx, "y": cy},
+                            "targets_position": {"x": cx, "y": cy},
                             "tolerance": tol,
                         },
                     )
@@ -1851,10 +1846,10 @@ def build_tasks(
 
             elif t == "Image_Matching":
                 ref = entry.get("reference_image")
-                # 支持 option_images 或 options 字段
+                                               
                 options = entry.get("option_images") or entry.get("options", [])
                 if not ref or not options:
-                    print(f"[跳过] {t}/{pid} 缺 reference/option_images")
+                    print(f"[SKIP] {t}/{pid} Missing reference/option_images")
                     continue
                 default_prompt = (
                     "The FIRST image is the REFERENCE, followed by OPTION images indexed 0..N-1 in order. "
@@ -1867,7 +1862,7 @@ def build_tasks(
                 ok = True
                 for p in [img_ref]+imgs_opt:
                     if not os.path.isfile(p): 
-                        print(f"[跳过] 文件不存在: {p}"); 
+                        print(f"[SKIP] File does not exist: {p}"); 
                         ok=False; break
                 if not ok: 
                     continue
@@ -1876,29 +1871,29 @@ def build_tasks(
                                        "num_options": len(options)}))
 
             elif t == "Patch_Select":
-                # 1) 读取图片路径与存在性
+                               
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
 
-                # 2) 基础信息：目标对象 + 网格尺寸
-                target = entry.get("target_object") or "the target object"
+                                     
+                targets = entry.get("targets_object") or "the targets object"
                 gs = entry.get("grid_size", [5, 5])
                 if not (isinstance(gs, (list, tuple)) and len(gs) == 2):
                     gs = [5, 5]
                 R, C = int(gs[0]), int(gs[1])
 
-                # 3) 默认提示：明确网格尺寸与索引规则（0-based、row-major）
+                                                        
                 default_prompt = (
                     f"The image already shows a {R}x{C} grid.\n"
-                    f"Select ALL cells that contain the target: {target}.\n"
+                    f"Select ALL cells that contain the targets: {targets}.\n"
                     f"Indexing is 0-based and row-major: cell_index = r*{C} + c.\n"
                     "Return JSON {\"answer_type\":\"multi_select\",\"indices\":[...]} "
                     "with unique, sorted indices only. No explanations."
                 )
 
-                # 4) 选择最终 prompt（支持 gt/opt/merge/auto + by-id 覆盖）
+                                                                 
                 prompt = _choose_prompt(
                     entry=entry,
                     task_type=t,
@@ -1910,14 +1905,14 @@ def build_tasks(
                     mode=prompt_mode
                 )
 
-                # 5) 兼容字段名：correct_patches / correct_selections
+                                                               
                 indices_gt = entry.get("correct_patches")
                 if indices_gt is None:
                     indices_gt = entry.get("correct_selections", [])
                 if not isinstance(indices_gt, list):
                     indices_gt = []
 
-                # 6) 写入任务（保留 grid_size 便于调试）
+                                            
                 tasks.append(
                     TaskItem(
                         t, pid, prompt, [img],
@@ -1927,9 +1922,9 @@ def build_tasks(
 
 
             elif t == "Place_Dot":
-                # 给模型的默认提示（如果该题没有 per-item 文本）
+                                              
                 default_prompt = (
-                    "Place a dot at the target position and return the CENTER point "
+                    "Place a dot at the targets position and return the CENTER point "
                     "as JSON {\"answer_type\":\"single_point\",\"point\":{\"x\":..,\"y\":..}} in pixels."
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt,
@@ -1938,13 +1933,10 @@ def build_tasks(
 
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
 
-                # --- 兼容两种 GT 写法 ---
-                # 1) target_position: [x, y]
-                # 2) target_position: {"x": x, "y": y}
-                tp = entry.get("target_position")
+                tp = entry.get("targets_position") or entry.get("target_position")
                 if isinstance(tp, dict) and "x" in tp and "y" in tp:
                     gx, gy = float(tp["x"]), float(tp["y"])
                     tp_norm = {"x": gx, "y": gy}
@@ -1952,23 +1944,23 @@ def build_tasks(
                     gx, gy = float(tp[0]), float(tp[1])
                     tp_norm = {"x": gx, "y": gy}
                 else:
-                    print(f"[跳过] {t}/{pid} 非法 target_position：{tp!r}")
+                    print(f"[SKIP] {t}/{pid} illegal targets_position: {tp!r}")
                     continue
 
-                tol = float(entry.get("tolerance", 15.0))  # 没写就给默认值
+                tol = float(entry.get("tolerance", 15.0))           
 
-                # 把规范后的坐标与容差存到 meta，评测时直接用
+                                          
                 tasks.append(
                     TaskItem(t, pid, prompt, [img], {
-                        "target_position": tp_norm,   # 统一成 {"x":..,"y":..}
+                        "targets_position": tp_norm,                        
                         "tolerance": tol
                     })
                 )
 
 
-            # === 可以静态化的13类 ===
+                               
             elif t in ("Select_Animal","Unusual_Detection"):
-                # 多选网格类（或 Path_Finder 的多选变体）
+                                            
                 default_prompt = (
                     "Select ALL grid cells (0-based, row-major) that satisfy the condition. "
                     "Return JSON {\"answer_type\":\"multi_select\",\"indices\":[...]}."
@@ -1976,14 +1968,14 @@ def build_tasks(
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
-                # 兼容多个字段名
+                         
                 indices_gt = _get_first(entry, "correct_selections", "correct_patches", "answer", default=[])
                 tasks.append(TaskItem(t, pid, prompt, [img], {"indices_gt": indices_gt}))
 
             elif t == "Path_Finder":
-                # 若有 ref+options → classify；否则退化为网格多选（少见）
+                                                         
                 default_prompt_cls = (
                     "Choose the option depicting the same physical location as the reference."
                     " Return JSON {\"answer_type\":\"classify\",\"index\":k} (0-based)."
@@ -1992,7 +1984,7 @@ def build_tasks(
                     "Select ALL grid cells (0-based, row-major) that match the reference view."
                     " Return JSON {\"answer_type\":\"multi_select\",\"indices\":[...]}"
                 )
-                # 支持 option_images 或 options 字段
+                                               
                 has_ref_opts = bool(entry.get("reference_image")) and bool(entry.get("option_images") or entry.get("options"))
 
                 default_prompt = default_prompt_cls if has_ref_opts else default_prompt_multi
@@ -2002,33 +1994,33 @@ def build_tasks(
 
                 if has_ref_opts:
                     ref = os.path.join(type_dir, entry["reference_image"])
-                    # 支持 option_images 或 options 字段
+                                                   
                     option_list = entry.get("option_images") or entry.get("options", [])
                     opts = [os.path.join(type_dir, p) for p in option_list]
                     if not (os.path.isfile(ref) and all(os.path.isfile(p) for p in opts)):
-                        print(f"[跳过] {t}/{pid} 缺图像文件")
+                        print(f"[SKIP] {t}/{pid} missing image files")
                         continue
-                    # 支持 correct_option、correct_option_index、correct_index、answer 字段
+                                                                                    
                     corr = int(_get_first(entry, "correct_option","correct_option_index","correct_index","answer", default=0))
                     tasks.append(TaskItem(t, pid, prompt, [ref]+opts, {"correct_index": corr}))
                 else:
                     img = os.path.join(type_dir, pid)
                     if not os.path.isfile(img):
-                        print(f"[跳过] 文件不存在: {img}")
+                        print(f"[SKIP] File does not exist: {img}")
                         continue
                     indices_gt = _get_first(entry, "correct_selections", "correct_patches", "answer", default=[])
                     tasks.append(TaskItem(t, pid, prompt, [img], {"indices_gt": indices_gt}))
 
 
             elif t in ("Dart_Count","Coordinates","Object_Match"):
-                # 静态化为分类题（参考 + 选项），或单图但 GT 给了正确索引
+                                                 
                 default_prompt = (
                     "Choose the correct option and return JSON {\"answer_type\":\"classify\",\"index\":k} (0-based)."
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
-                # 优先读取 reference + options；若没有，就只发单图
+                                                    
                 ref = entry.get("reference_image")
-                # 支持 option_images 或 options 字段
+                                               
                 options = entry.get("option_images") or entry.get("options", [])
                 imgs: List[str] = []
                 if ref and options:
@@ -2036,13 +2028,13 @@ def build_tasks(
                     imgs_opt = [os.path.join(type_dir, p) for p in options]
                     ok = os.path.isfile(img_ref) and all(os.path.isfile(p) for p in imgs_opt)
                     if not ok:
-                        print(f"[跳过] {t}/{pid} 缺图像文件")
+                        print(f"[SKIP] {t}/{pid} missing image files")
                         continue
                     imgs = [img_ref] + imgs_opt
                 else:
                     single = os.path.join(type_dir, pid)
                     if not os.path.isfile(single):
-                        print(f"[跳过] 文件不存在: {single}")
+                        print(f"[SKIP] File does not exist: {single}")
                         continue
                     imgs = [single]
                 correct_idx = _get_first(entry, "correct_option_index","correct_index","answer", default=0)
@@ -2050,32 +2042,32 @@ def build_tasks(
 
             elif t == "Pick_Area":
                 default_prompt = (
-                    "Return a single point (pixel coordinates) that lies INSIDE the target area. "
+                    "Return a single point (pixel coordinates) that lies INSIDE the targets area. "
                     "JSON only: {\"answer_type\":\"single_point\",\"point\":{\"x\":..,\"y\":..}}."
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
                 area = _get_first(entry, "area", "answer", default=None)
                 if isinstance(area, dict) and "area" in area:
                     area = area["area"]
                 if area is None:
-                    print(f"[跳过] {t}/{pid} 缺 area")
+                    print(f"[SKIP] {t}/{pid} missing area")
                     continue
                 tasks.append(TaskItem(t, pid, prompt, [img], {"area_box": area}))
 
             elif t == "Click_Order":
                 default_prompt = (
                     "If provided, use the reference image to follow the required sequence. "
-                    "Click the targets IN ORDER and return JSON "
+                    "Click the targetss IN ORDER and return JSON "
                     "{\"answer_type\":\"click_order\",\"points\":[{\"x\":..,\"y\":..}, ...]} (pixels)."
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 puzzle_img = os.path.join(type_dir, pid)
                 if not os.path.isfile(puzzle_img):
-                    print(f"[跳过] 文件不存在: {puzzle_img}")
+                    print(f"[SKIP] File does not exist: {puzzle_img}")
                     continue
                 images: List[str] = []
                 order_img_name = entry.get("order_image") or entry.get("reference_image") or entry.get("order")
@@ -2084,11 +2076,11 @@ def build_tasks(
                     if os.path.isfile(order_img_path):
                         images.append(order_img_path)
                     else:
-                        print(f"[警告] {t}/{pid} 缺 order_image: {order_img_path}")
+                        print(f"[Warning] {t}/{pid} missing order_image: {order_img_path}")
                 images.append(puzzle_img)
                 pts = _get_first(entry, "answer", "points", default=[])
                 tol = float(_get_first(entry, "tolerance", "tol_px", default=40.0))
-                # 归一化成 [{"x":..,"y":..}, ...]
+                                             
                 points_gt = []
                 for p in pts:
                     if isinstance(p, dict) and "x" in p and "y" in p:
@@ -2096,33 +2088,33 @@ def build_tasks(
                     elif isinstance(p, (list,tuple)) and len(p)==2:
                         points_gt.append({"x":float(p[0]), "y":float(p[1])})
                 if not points_gt:
-                    print(f"[跳过] {t}/{pid} 缺点列")
+                    print(f"[SKIP] {t}/{pid} missing point list")
                     continue
                 tasks.append(TaskItem(t, pid, prompt, images, {"points_gt": points_gt, "tolerance": tol}))
 
             elif t == "Bingo":
                 default_prompt = (
                     "Return exactly two cell indices to swap as JSON "
-                    "{\"answer_type\":\"swap\",\"pair\":[i,j]} (0-based)."
+                    "{\"answer_type\":\"swap\",\"correct\":[i,j]} (0-based)."
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
-                # GT: 列出所有可行的交换对
-                swap_pairs = _get_first(entry, "answer", "swap_pairs", default=[])
-                # 规范化为 [(i,j), ...]
-                norm_pairs = []
-                for p in swap_pairs:
+                                
+                swap_corrects = _get_first(entry, "answer", "swap_corrects", default=[])
+                                   
+                norm_corrects = []
+                for p in swap_corrects:
                     if isinstance(p, (list,tuple)) and len(p)==2:
-                        norm_pairs.append([int(p[0]), int(p[1])])
+                        norm_corrects.append([int(p[0]), int(p[1])])
                     elif isinstance(p, dict) and "i" in p and "j" in p:
-                        norm_pairs.append([int(p["i"]), int(p["j"])])
-                if not norm_pairs:
-                    print(f"[跳过] {t}/{pid} 缺 swap_pairs")
+                        norm_corrects.append([int(p["i"]), int(p["j"])])
+                if not norm_corrects:
+                    print(f"[SKIP] {t}/{pid} missing swap_corrects")
                     continue
-                tasks.append(TaskItem(t, pid, prompt, [img], {"swap_pairs": norm_pairs}))
+                tasks.append(TaskItem(t, pid, prompt, [img], {"swap_corrects": norm_corrects}))
 
 
             elif t == "Misleading_Click":
@@ -2133,16 +2125,16 @@ def build_tasks(
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
-                    print(f"[跳过] 文件不存在: {img}")
+                    print(f"[SKIP] File does not exist: {img}")
                     continue
                 avoid = _get_first(entry, "avoid_area","forbid_area","answer", default=None)
-                # 读取图片尺寸以做“点在图内”的硬性检查
+                                     
                 try:
                     from PIL import Image
                     with Image.open(img) as im:
                         w,h = im.size
                 except Exception:
-                    print(f"[跳过] {t}/{pid} 读取尺寸失败")
+                    print(f"[SKIP] {t}/{pid} failed to read dimensions")
                     continue
                 tasks.append(TaskItem(t, pid, prompt, [img], {"avoid_area": avoid, "image_size": (w,h)}))
 
@@ -2153,23 +2145,23 @@ def build_tasks(
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
 
-                # 路径：优先使用 subfolder（或 images_dir）；文件名来自 images 数组
+                                                                 
                 sub = entry.get("subfolder") or entry.get("images_dir") or ""
                 base_dir = os.path.join(type_dir, sub) if sub else type_dir
 
-                names = entry.get("images") or []  # 形如 ["1.jpg", ..., "9.jpg"]
+                names = entry.get("images") or []                              
                 if names:
                     imgs = [os.path.join(base_dir, n) for n in names]
                 else:
-                    # 兜底：如果声明了子目录但没给 images 列表，就直接枚举该目录下的图片
+                                                           
                     imgs = _list_images_in_dir(base_dir)
 
-                # 过滤出真正存在的文件，至少需要 9 张（九宫格）
+                                          
                 imgs = [p for p in imgs if os.path.isfile(p)]
                 if len(imgs) < 9:
-                    print(f"[跳过] {t}/{pid} 缺图像文件：解析到 {len(imgs)} 张（需 ≥9）")
+                    print(f"[SKIP] {t}/{pid} missing image files: parsed to {len(imgs)} images (need ≥9)")
                     continue
-                imgs = imgs[:9]  # 多于 9 张时取前 9
+                imgs = imgs[:9]               
 
                 indices_gt = _get_first(entry, "correct_selections", "correct_patches", "answer", default=[])
                 tasks.append(TaskItem(t, pid, prompt, imgs, {"indices_gt": indices_gt}))
@@ -2181,19 +2173,19 @@ def build_tasks(
                 )
                 prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
 
-                # GT 明确给了字段：reference_image + options
+                                                     
                 ref_name = entry.get("reference_image") or entry.get("reference")
                 opt_names = entry.get("options") or entry.get("option_images") or entry.get("candidates")
 
                 if not (ref_name and isinstance(opt_names, list) and opt_names):
-                    print(f"[跳过] {t}/{pid} 缺 reference_image/options")
+                    print(f"[SKIP] {t}/{pid} missing reference_image/options")
                     continue
 
                 img_ref = os.path.join(type_dir, ref_name)
                 imgs_opt = [os.path.join(type_dir, n) for n in opt_names]
 
                 if not (os.path.isfile(img_ref) and all(os.path.isfile(p) for p in imgs_opt)):
-                    print(f"[跳过] {t}/{pid} 缺图像文件（reference 或 options 不存在）")
+                    print(f"[SKIP] {t}/{pid} missing image files (reference or options do not exist)")
                     continue
 
                 correct_idx = int(_get_first(entry, "correct_option", "correct_option_index", "answer", default=0))
@@ -2211,21 +2203,21 @@ def build_tasks(
                 obj_name = entry.get("object_base_image") or entry.get("object_image") or entry.get("image") or entry.get("img")
 
                 if not (ref_name and obj_name):
-                    print(f"[跳过] {t}/{pid} 缺 reference_image/object_base_image")
+                    print(f"[SKIP] {t}/{pid} missing reference_image/object_base_image")
                     continue
 
-                img_ref = os.path.join(type_dir, ref_name)  # 例如 direction_3.jpg
-                img_obj = os.path.join(type_dir, obj_name)  # 例如 cat.jpg / sad_cat.jpg 及其若干角度样例
+                img_ref = os.path.join(type_dir, ref_name)                      
+                img_obj = os.path.join(type_dir, obj_name)                                     
 
                 if not (os.path.isfile(img_ref) and os.path.isfile(img_obj)):
-                    print(f"[跳过] {t}/{pid} 缺图像文件（reference 或 object 不存在）")
+                    print(f"[SKIP] {t}/{pid} missing image files (reference or object do not exist)")
                     continue
 
-                # 角度与容差（GT 有统一字段）
-                ang = float(_get_first(entry, "correct_angle", "answer", "target_angle_deg", default=0.0))
+                                 
+                ang = float(_get_first(entry, "correct_angle", "answer", "targets_angle_deg", default=0.0))
                 ang_tol = float(_get_first(entry, "angle_tol_deg", "tolerance_deg", default=5.0))
 
-                # 给模型的输入：两张图（方向参考 + 对象），输出目标角度
+                                              
                 tasks.append(TaskItem(t, pid, prompt, [img_ref, img_obj],
                                     {"correct_angle": ang, "angle_tol_deg": ang_tol}))
 
@@ -2233,21 +2225,21 @@ def build_tasks(
             
             
             else:
-                # 未覆盖到的类型
-                print(f"[跳过] 暂无构建逻辑: {t}/{pid}")
+                         
+                print(f"[SKIP] no build logic yet: {t}/{pid}")
                 continue
 
     return tasks
 
 
 
-# %% [markdown]
-# ### 评测：Pass@1 与 JSON Schema
+               
+                             
 
-# %%
+    
 
 def _clean_indices(xs):
-    """把 indices 归一到升序、去重的 int 列表；传入 None/空时返回 []。"""
+    """Normalize indices to ascending, deduplicated int list; returns [] when passed None/empty."""
     out = []
     for v in (xs or []):
         try:
@@ -2263,7 +2255,7 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
     t = task.type
     gt = task.gt
     try:
-        # === 纯静态的5类 ===
+                        
         if t == "Dice_Count":
             return parsed.get("answer_type")=="number" and int(parsed.get("value")) == int(gt["sum"])
         
@@ -2287,32 +2279,32 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
             return pred == gold
         
         if task.type == "Place_Dot":
-            # 期望模型输出: {"answer_type":"single_point","point":{"x":..,"y":..}}
+                                                                            
             try:
                 pt = parsed["point"]
                 x_pred, y_pred = float(pt["x"]), float(pt["y"])
             except Exception:
                 return False
 
-            # --- 从 meta 取 GT（build 阶段已统一为 {"x":..,"y":..}）---
-            tp = gt.get("target_position")
+                                                              
+            tp = gt.get("targets_position")
             tol = float(gt.get("tolerance", 15.0))
 
             gx = gy = None
             if isinstance(tp, dict) and "x" in tp and "y" in tp:
                 gx, gy = float(tp["x"]), float(tp["y"])
             elif isinstance(tp, (list, tuple)) and len(tp) == 2:
-                # 依然兼容万一 meta 里是数组的情况
+                                     
                 gx, gy = float(tp[0]), float(tp[1])
 
             if gx is None or gy is None:
                 return False
 
-            # 欧氏距离（用平方避免开方）
+                           
             dx, dy = x_pred - gx, y_pred - gy
             return (dx*dx + dy*dy) <= (tol * tol)
 
-        # === 静态化的13类 ===
+                         
         if t in ("Image_Recognition","Select_Animal","Unusual_Detection","Path_Finder"):
             pred = _clean_indices(parsed.get("indices", []))
             gold = _clean_indices(gt.get("indices_gt", []))
@@ -2324,7 +2316,7 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
         if t == "Pick_Area":
             pt = parsed.get("point") or {}
             x,y = float(pt.get("x")), float(pt.get("y"))
-            area = gt.get("area_box")  # [[x1,y1],[x2,y2]] 或 {x,y,w,h}
+            area = gt.get("area_box")                                 
             return _is_rect_hit(x,y,area)
 
         if t == "Click_Order":
@@ -2341,12 +2333,12 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
             return True
 
         if t == "Bingo":
-            pair = parsed.get("pair") or []
-            if not (isinstance(pair, (list,tuple)) and len(pair)==2):
+            correct = parsed.get("correct") or []
+            if not (isinstance(correct, (list,tuple)) and len(correct)==2):
                 return False
-            pred = _pair_as_set(pair)
-            gold_pairs = [ _pair_as_set(p) for p in (gt.get("swap_pairs") or []) ]
-            return pred in gold_pairs
+            pred = _correct_as_set(correct)
+            gold_corrects = [ _correct_as_set(p) for p in (gt.get("swap_corrects") or []) ]
+            return pred in gold_corrects
 
         if t == "Rotation_Match":
             if parsed.get("answer_type")!="rotation":
@@ -2354,20 +2346,20 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
             ang_pred = float(parsed.get("angle"))
             ang_gt   = float(gt.get("correct_angle"))
             tol = float(gt.get("angle_tol_deg", 5.0))
-            # 归一到 [-180,180) 再比较（可选）
+                                    
             diff = abs(((ang_pred - ang_gt + 180) % 360) - 180)
             return diff <= tol
 
         if t == "Misleading_Click":
-            # 1) 在图内
+                    
             pt = parsed.get("point") or {}
             x,y = float(pt.get("x")), float(pt.get("y"))
             w,h = gt.get("image_size",(None,None))
             if w is None or h is None:
-                return False  # 理论上不会；build_tasks 已写入
+                return False                         
             if not (0 <= x < w and 0 <= y < h):
                 return False
-            # 2) 不在禁止区
+                      
             avoid = gt.get("avoid_area")
             if avoid:
                 if _is_rect_hit(x,y,avoid):
@@ -2379,12 +2371,12 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
 
 
 def _with_reasoning(schema: Dict[str, Any], *, include_reasoning: bool) -> Dict[str, Any]:
-    """在现有 schema 上追加可选 reasoning 字段（详细推理过程）。"""
+    """Append optional reasoning field (detailed reasoning process) to existing schema."""
     try:
         if include_reasoning:
             props = schema.setdefault("properties", {})
             if "reasoning" not in props:
-                # 增加到 8192 以支持详细的 5 阶段认知追踪
+                                          
                 props["reasoning"] = {"type": "string", "maxLength": 8192}
         return schema
     except Exception:
@@ -2392,7 +2384,7 @@ def _with_reasoning(schema: Dict[str, Any], *, include_reasoning: bool) -> Dict[
 
 
 def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[str,Any]:
-    # === 纯静态的五类 ===
+                    
     if task_type == "Dice_Count":
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["number"]},
                                               "value":{"type":"integer"}},
@@ -2412,7 +2404,7 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                                               "indices":{"type":"array","items":{"type":"integer"}}},
                 "required":["answer_type","indices"]}, include_reasoning=include_reasoning)
 
-    # === 静态化13类 ===
+                    
     if task_type in ("Image_Recognition","Select_Animal","Unusual_Detection"):
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["multi_select"]},
                                               "indices":{"type":"array","items":{"type":"integer"}}},
@@ -2424,7 +2416,7 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                 "required":["answer_type","index"]}, include_reasoning=include_reasoning)
 
     if task_type == "Pick_Area":
-        # 采用"点内判定"，最稳健
+                      
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["single_point"]},
                                               "point":{"type":"object",
                                                        "properties":{"x":{"type":"number"},"y":{"type":"number"}},
@@ -2440,11 +2432,11 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                 "required":["answer_type","points"]}, include_reasoning=include_reasoning)
 
     if task_type == "Bingo":
-        # 返回一次交换的两个格子索引（九宫格等）
+                             
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["swap"]},
-                                              "pair":{"type":"array","minItems":2,"maxItems":2,
+                                              "correct":{"type":"array","minItems":2,"maxItems":2,
                                                       "items":{"type":"integer"}}},
-                "required":["answer_type","pair"]}, include_reasoning=include_reasoning)
+                "required":["answer_type","correct"]}, include_reasoning=include_reasoning)
 
     if task_type == "Rotation_Match":
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["rotation"]},
@@ -2458,14 +2450,14 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                                                        "required":["x","y"]}},
                 "required":["answer_type","point"]}, include_reasoning=include_reasoning)
 
-    # fallback
+              
     return _with_reasoning({"type":"object"}, include_reasoning=include_reasoning)
 
 
-# %% [markdown]
-# ### 评测入口
+               
+          
 
-# %%
+    
 def run_eval(
     dataset_root: str,
     types: List[str],
@@ -2475,7 +2467,7 @@ def run_eval(
     out_csv: str = "results.csv",
     secrets_file: str = "./secrets.yaml",
     stream: bool = True,
-    estimate_cost_flag: bool = False,  # 兼容旧参数，不使用
+    estimate_cost_flag: bool = False,             
     timeout_sec: float = 600.0,
     seed: int = 1234,
     prompts_file: Optional[str] = None,
@@ -2498,31 +2490,31 @@ def run_eval(
     few_shot_assets_root: str = "./few_shot_assets",
 ) -> Dict[str, Any]:
     """
-    实验一：仅输出【每类一行】的聚合结果到 out_csv；
-    控制台仍打印每类与总体摘要。不再写每题一行。
-    支持 few-shot learning。
+    Experiment 1: Only output aggregated results (one row per type) to out_csv;
+    Console still prints per-type and overall summary. No longer writes one row per question.
+    Supports few-shot learning.
     """
     secrets = load_secrets(secrets_file)
     random.seed(seed)
 
-    # 结构化加载 prompts.yaml（支持 merge/replace/by_id/template）
+                                                         
     prompts_cfg = _load_prompts_yaml(prompts_file) if prompts_file else {}
 
     if thinking_options is not None and not isinstance(thinking_options, dict):
-        raise TypeError("thinking_options 必须是 dict 或 None")
+        raise TypeError("thinking_options must be dict or None")
 
-    # Few-shot 集成逻辑
+                   
     few_shot_examples_db = None
     exclude_examples = None
     few_shot_enabled = few_shot_config and few_shot_config.get("enabled", False)
 
     if few_shot_enabled:
         print(f"[INFO] Few-shot learning enabled")
-        # 加载 few-shot 示例配置
+                          
         few_shot_examples_db = load_few_shot_examples(few_shot_file)
 
         if few_shot_examples_db:
-            # 构建排除列表（避免示例样本被测试）
+                               
             exclude_examples = {}
             for task_type in types:
                 if task_type in few_shot_examples_db:
@@ -2538,9 +2530,9 @@ def run_eval(
                         prompt_suffix=prompt_suffix,
                         prompt_mode=prompt_mode,
                         exclude_examples=exclude_examples)
-    print(f"[INFO] 将评测 {len(tasks)} 道题（types={types}）")
+    print(f"[INFO] Will evaluate {len(tasks)} question (types={types}）")
 
-    # 成本估算依赖 usage，多数情况下需非流式；但本函数不再输出逐题行→不再写成本列
+                                               
     stream_flag = (stream and (not estimate_cost_flag) and (not collect_tokens) and (not collect_errors))
     prov = make_provider(
         provider,
@@ -2571,7 +2563,7 @@ def run_eval(
     ea_token_log_writer = None
     if collect_errors:
         if not ERROR_COLLECTOR_AVAILABLE:
-            print("⚠️ SimpleErrorCollector 不可用，跳过错误分析收集")
+            print("⚠️ SimpleErrorCollector unavailable, skipping error analysis collection")
             collect_errors = False
         else:
             exp_name = error_experiment_name or experiment_name or "exp"
@@ -2586,7 +2578,7 @@ def run_eval(
                 "provider", "model", "type", "puzzle_id", "tokens_in", "tokens_out", "ttft_ms", "e2e_ms"
             ])
 
-    # 聚合器（按类型）
+              
     agg = defaultdict(lambda: {"n": 0, "ok": 0, "e2e_sum": 0.0, "ttft_sum": 0.0})
     failures: List[Dict[str, Any]] = []
 
@@ -2595,11 +2587,11 @@ def run_eval(
     sum_e2e = 0.0
     wall_t0 = time.perf_counter()
 
-    # —— 推理并聚合（不写逐题行）——
+                       
     for task in tqdm(tasks, desc="Evaluating", ncols=0):
         schema = build_json_schema(task.type, include_reasoning=collect_reasoning)
 
-        # 构建该任务类型的 few-shot 示例内容（如果启用）
+                                      
         few_shot_content = None
         if few_shot_enabled and few_shot_examples_db:
             few_shot_content = build_few_shot_content(
@@ -2669,7 +2661,7 @@ def run_eval(
             ])
 
         if collector:
-            # 仅在错误时提供 failure_msg，否则从模型获取 reasoning
+                                                   
             error_description = failure_msg if not passed else None
 
             reasoning_field = None
@@ -2718,13 +2710,13 @@ def run_eval(
     wall_ms = (time.perf_counter() - wall_t0) * 1000.0
     pass1 = ok/len(tasks) if tasks else 0.0
 
-    # —— 仅写每类一行的 CSV —— 
+                        
     os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
     overall_cost = estimate_cost(provider, model, token_tot_in, token_tot_out, secrets) or 0.0
 
     with open(out_csv, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
-        # 精简成类型级别列，包含 token 与成本信息
+                                 
         writer.writerow([
             "provider","model","type","n","pass_at_1","avg_ttft_ms","avg_e2e_ms",
             "tokens_in","tokens_out","total_tokens","cost_usd","cost_per_question"
@@ -2756,7 +2748,7 @@ def run_eval(
                 f"{cost_per_question:.6f}"
             ])
 
-    # —— 控制台摘要（保留）——
+                    
     print("\n[SUMMARY by type]")
     for t in sorted(agg.keys()):
         s = agg[t]; n = s["n"]; ok_t = s["ok"]
@@ -2783,7 +2775,7 @@ def run_eval(
             "provider": provider,
             "model": model,
             "overall": {
-                "total_questions": len(tasks),
+                "total_question": len(tasks),
                 "total_tokens_in": token_tot_in,
                 "total_tokens_out": token_tot_out,
                 "total_tokens": token_tot_in + token_tot_out,
@@ -2807,7 +2799,7 @@ def run_eval(
     print(f"\n[OVERALL] tasks={len(tasks)}  pass@1={pass1:.3f}  sum_e2e_ms={sum_e2e:.1f}  wall_ms={wall_ms:.1f}")
     print(f"[OVERALL TOKENS] tokens_in={token_tot_in} tokens_out={token_tot_out} cost_usd={overall_cost:.6f}")
 
-    # 可选：另存一份 summary_csv（同样是类型级）
+                                 
     if summary_csv:
         with open(summary_csv, "w", encoding="utf-8") as f:
             f.write("type,n,pass,pass_rate,e2e_avg_ms,ttft_avg_ms\n")
@@ -2817,7 +2809,7 @@ def run_eval(
                 ttft_avg = (s["ttft_sum"]/n) if n else 0.0
             f.write(f"{t},{n},{ok_t},{(ok_t/n if n else 0):.6f},{e2e_avg:.3f},{ttft_avg:.3f}\n")
 
-    print(f"[DONE] Pass@1 = {ok}/{len(tasks)} = {pass1:.3f} ; errors={errors}. 结果已保存到 {out_csv}")
+    print(f"[DONE] Pass@1 = {ok}/{len(tasks)} = {pass1:.3f} ; errors={errors}. Results saved to {out_csv}")
     result = {
         "n": len(tasks), "pass1": pass1, "errors": errors,
         "out_csv": out_csv, "provider": provider, "model": model,
@@ -2845,17 +2837,17 @@ def run_eval(
     return result
 
 
-# %%
-# 直到做对为止的评测
+    
+           
 
 def run_until_type_correct(
     dataset_root: str,
     provider: str,
     model: str,
     types: List[str],
-    max_attempts_per_type: int = 6,      # 每个题型最多尝试次数（抽样“有放回”）
-    max_pool_per_type: int = 50,         # 兼容参数：若不使用全量题库则限定候选池大小
-    use_full_dataset_pool: bool = True,  # 是否从该类型“全量题库”构建候选池（随后有放回抽样）
+    max_attempt_per_type: int = 6,                           
+    max_pool_per_type: int = 50,                                
+    use_full_dataset_pool: bool = True,                              
     secrets_file: str = "./secrets.yaml",
     timeout_sec: float = 120.0,
     prompts_file: Optional[str] = None,
@@ -2863,7 +2855,7 @@ def run_until_type_correct(
     prompt_prefix: str = "",
     prompt_suffix: str = "",
     out_csv: str = "until_type_correct.csv",
-    log_attempt_rows: bool = False,      # 是否在同一 CSV 中追加每次尝试明细
+    log_attempt_rows: bool = False,                           
     retry_sleep_ms: int = 150,
     cache_bust: bool = True,
     stream: bool = False,
@@ -2875,24 +2867,24 @@ def run_until_type_correct(
     collect_reasoning: bool = False
 ) -> Dict[str, Any]:
     """
-    新实验：按“题型”为单位，有放回抽样尝试题目；若一道题做错则继续抽样下一道，
-    直到该题型首次做对或达到最大尝试次数。
-    进度指示：
-      - 每进入一个题型时打印“开始评测某题型（最多N次）”
-      - 每次尝试前打印“[Type] Attempt a/b • PID=...”
-      - 每次尝试后打印“↳ OK/FAIL/ERROR  e2e=..ms  cum=..ms”
-      - 每个题型结束打印“总结：attempts / cum_ms / success 与首个命中PID”
+    Newexperiment：by“task type”asunit，with replacementsampleattemptquestions；ifonequestionfailthencontinuesamplenext one，
+    until first success for that task type or reaching max attempt.
+    Progress indicators:
+      - eachenteronetask typewhenprint“Startevaluatecertaintask type（maxNattempts）”
+      - eachattemptsattemptbeforeprint“[Type] Attempt a/b • PID=...”
+      - eachattemptsattemptafterprint“↳ OK/FAIL/ERROR  e2e=..ms  cum=..ms”
+      - eachtask typeEndprint“Summary：attempt / cum_ms / success andfirsthitPID”
     Args:
-        thinking: 是否启用各 Provider 的 thinking/reasoning 模式
-        thinking_options: thinking 模式的附加配置
-        collect_tokens: 是否统计 token 并写入日志/汇总
-        token_log_path: 若提供则输出详细 token 日志 CSV
-        token_summary_path: 若提供则输出 token 汇总 JSON
-        collect_reasoning: 是否要求模型返回 reasoning 字段
+        thinking: Whether to enable thinking/reasoning mode for each Provider
+        thinking_options: Additional configuration for thinking mode
+        collect_tokens: Whether to collect tokens and write to log/summary
+        token_log_path: Output detailed token log CSV if provided
+        token_summary_path: Output token summary JSON if provided
+        collect_reasoning: Whether to require model to return reasoning field
     """
     import os, uuid, time, random, csv
 
-    # Provider / 配置
+                   
     secrets = load_secrets(secrets_file)
     prompts_cfg = _load_prompts_yaml(prompts_file) if prompts_file else {}
     prov = make_provider(
@@ -2918,19 +2910,19 @@ def run_until_type_correct(
             "tokens_in", "tokens_out", "ttft_ms", "e2e_ms", "reasoning"
         ])
 
-    # CSV 行收集（在内存中累积，最后一次性写入）
+                             
     os.makedirs(os.path.dirname(out_csv) or ".", exist_ok=True)
-    csv_rows = []  # 收集所有要写入的行
-    csv_rows.append("kind,provider,model,type,puzzle_id,attempt_idx,cumulative_ms,pass1,notes")  # CSV header
+    csv_rows = []             
+    csv_rows.append("kind,provider,model,type,puzzle_id,attempt_idx,cumulative_ms,pass1,notes")              
 
-    overall = {"by_type": {}, "sum_attempts": 0, "sum_cum_ms": 0.0, "sum_pass1": 0, "n_types": 0}
+    overall = {"by_type": {}, "sum_attempt": 0, "sum_cum_ms": 0.0, "sum_pass1": 0, "n_types": 0}
 
     for t in types:
-        print(f"\n========== [{t}] 开始评测（最多 {max_attempts_per_type} 次尝试） ==========", flush=True)
+        print(f"\n========== [{t}] Starting evaluation (max {max_attempt_per_type} attempt) ==========", flush=True)
 
-        # 构建题池（候选集）
-        # 当 use_full_dataset_pool=True 时，使用该类型“全量题库”作为候选集；
-        # 否则仍按 max_pool_per_type 限制候选集大小。
+                   
+                                                          
+                                         
         effective_max = None if use_full_dataset_pool else max_pool_per_type
         pool_tasks = build_tasks(
             dataset_root=dataset_root,
@@ -2944,26 +2936,26 @@ def run_until_type_correct(
         random.shuffle(pool_tasks)
 
         if not pool_tasks:
-            print(f"[{t}] ⚠️ 没有可用题目，跳过该类型")
+            print(f"[{t}] ⚠️ No available question, skipping this type")
             continue
 
-        attempts = 0
+        attempt = 0
         cumulative = 0.0
         success = 0
         first_success_pid = ""
         last_err = ""
 
-        while attempts < max_attempts_per_type:
-            task = random.choice(pool_tasks)  # 抽样有放回
+        while attempt < max_attempt_per_type:
+            task = random.choice(pool_tasks)         
 
-            attempts += 1
+            attempt += 1
             schema = build_json_schema(task.type)
 
             pr = task.prompt
             if cache_bust:
-                pr = pr + f"\n\n[IGNORE THIS LINE] nonce={uuid.uuid4().hex} attempt={attempts}"
+                pr = pr + f"\n\n[IGNORE THIS LINE] nonce={uuid.uuid4().hex} attempt={attempt}"
 
-            print(f"[{t}] Attempt {attempts}/{max_attempts_per_type} • PID={task.puzzle_id}", flush=True)
+            print(f"[{t}] Attempt {attempt}/{max_attempt_per_type} • PID={task.puzzle_id}", flush=True)
 
             try:
                 raw, parsed, meta = prov.infer(
@@ -3000,7 +2992,7 @@ def run_until_type_correct(
                     model,
                     t,
                     task.puzzle_id,
-                    attempts,
+                    attempt,
                     tokens_in,
                     tokens_out,
                     f"{meta.get('ttft_ms', 0.0):.1f}",
@@ -3009,18 +3001,18 @@ def run_until_type_correct(
                 ])
 
             if log_attempt_rows:
-                csv_rows.append(f"attempt,{provider},{model},{t},{task.puzzle_id},{attempts},{cumulative:.1f},{int(ok)},{last_err}")
+                csv_rows.append(f"attempt,{provider},{model},{t},{task.puzzle_id},{attempt},{cumulative:.1f},{int(ok)},{last_err}")
 
             if ok:
                 success = 1
                 first_success_pid = task.puzzle_id
-                print(f"[{t}] 🎯 首次命中：PID={first_success_pid}  用时累计={cumulative:.1f}ms  尝试次数={attempts}", flush=True)
+                print(f"[{t}] 🎯 First hit: PID={first_success_pid}  Cumulative time={cumulative:.1f}ms  Attempts={attempt}", flush=True)
                 break
 
             time.sleep(retry_sleep_ms / 1000.0)
 
-        # 类型汇总行
-        csv_rows.append(f"summary,{provider},{model},{t},{first_success_pid},{attempts},{cumulative:.1f},{success},{last_err}")
+               
+        csv_rows.append(f"summary,{provider},{model},{t},{first_success_pid},{attempt},{cumulative:.1f},{success},{last_err}")
 
         if token_log_writer:
             token_log_writer.writerow([
@@ -3029,7 +3021,7 @@ def run_until_type_correct(
                 model,
                 t,
                 first_success_pid,
-                attempts,
+                attempt,
                 token_by_type[t]["tokens_in"],
                 token_by_type[t]["tokens_out"],
                 "",
@@ -3037,27 +3029,27 @@ def run_until_type_correct(
                 ""
             ])
 
-        print(f"[{t}] 总结：attempts={attempts}  cum_ms={cumulative:.1f}  success={success}  first_pid={first_success_pid or '-'}", flush=True)
+        print(f"[{t}] Summary: attempt={attempt}  cum_ms={cumulative:.1f}  success={success}  first_pid={first_success_pid or '-'}", flush=True)
 
         overall["by_type"][t] = {
-            "attempts": attempts,
+            "attempt": attempt,
             "cumulative_ms": cumulative,
             "pass1": success,
             "first_success_pid": first_success_pid
         }
-        overall["sum_attempts"] += attempts
+        overall["sum_attempt"] += attempt
         overall["sum_cum_ms"] += cumulative
         overall["sum_pass1"] += success
         overall["n_types"] += 1
 
-    # 实验结束，一次性写入所有结果（覆盖模式）
+                          
     with open(out_csv, "w", encoding="utf-8") as outp:
         for row in csv_rows:
             outp.write(row + "\n")
 
-    # overall 宏观指标（按类型取平均）
+                          
     n = max(1, overall["n_types"])
-    overall["avg_attempts_per_type"] = overall["sum_attempts"] / n
+    overall["avg_attempt_per_type"] = overall["sum_attempt"] / n
     overall["avg_cum_ms_per_type"] = overall["sum_cum_ms"] / n
     overall["pass_rate_types"] = overall["sum_pass1"] / n
     overall["out_csv"] = out_csv
@@ -3065,7 +3057,7 @@ def run_until_type_correct(
     overall["tokens_out"] = token_tot_out
 
     print(f"\n[UNTIL-TYPE] types={types}  pass_rate={overall['pass_rate_types']:.3f}  "
-          f"avg_attempts={overall['avg_attempts_per_type']:.2f}  "
+          f"avg_attempt={overall['avg_attempt_per_type']:.2f}  "
           f"avg_cum_ms={overall['avg_cum_ms_per_type']:.1f}  -> {out_csv}", flush=True)
 
     if token_log_file:
@@ -3094,39 +3086,39 @@ def run_until_type_correct(
 
     return overall
 
-# %%
+    
 def main():
     """
-    命令行入口：解析参数并调用 run_eval（支持 prompts-file / prefix / suffix）
+    CLI entry: parse arguments and call run_eval (supports prompts-file / prefix / suffix)
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-root", required=True, help="./captcha_data")
-    parser.add_argument("--types", nargs="+", required=True, help="评测的类型（如 Dice_Count Geometry_Click ...）")
+    parser.add_argument("--types", nargs="+", required=True, help="Task types to evaluate (e.g., Dice_Count Geometry_Click ...)")
     parser.add_argument("--provider", default="openai", help="openai|anthropic|gemini|fireworks")
-    parser.add_argument("--model", default="gpt-4o-mini", help="模型名称")
-    parser.add_argument("--max-per-type", type=int, default=15, help="每类最多题数")
-    parser.add_argument("--out-csv", default="results.csv", help="输出 CSV 路径")
-    parser.add_argument("--secrets-file", default="./secrets.yaml", help="密钥配置文件路径")
-    parser.add_argument("--no-stream", action="store_true", help="禁用流式（便于 usage/成本估算）")
-    parser.add_argument("--estimate-cost", action="store_true", help="启用成本估算（多需非流式）")
-    parser.add_argument("--timeout-sec", type=float, default=120.0, help="单请求超时秒数")
+    parser.add_argument("--model", default="gpt-4o-mini", help="Model name")
+    parser.add_argument("--max-per-type", type=int, default=15, help="Max question per type")
+    parser.add_argument("--out-csv", default="results.csv", help="Output CSV path")
+    parser.add_argument("--secrets-file", default="./secrets.yaml", help="Secrets config file path")
+    parser.add_argument("--no-stream", action="store_true", help="Disable streaming (for usage/cost estimation)")
+    parser.add_argument("--estimate-cost", action="store_true", help="Enable cost estimation (usually requires non-streaming)")
+    parser.add_argument("--timeout-sec", type=float, default=120.0, help="Timeout seconds per request")
     
-    parser.add_argument("--prompts-file", default=None, help="Prompt 覆写文件（yaml/json），键为任务类型或 default")
-    parser.add_argument("--prompt-prefix", default="", help="拼接到每题 prompt 前面的字符串")
-    parser.add_argument("--prompt-suffix", default="", help="拼接到每题 prompt 后面的字符串")
+    parser.add_argument("--prompts-file", default=None, help="Prompt override file (yaml/json), key is task type or default")
+    parser.add_argument("--prompt-prefix", default="", help="String to prepend to each question prompt")
+    parser.add_argument("--prompt-suffix", default="", help="String to append to each question prompt")
     parser.add_argument("--prompt-mode", choices=["auto","gt","opt"], default="auto",
-                        help="Prompt 来源：gt=用 GT 原始；opt=用 prompts.yaml；auto=GT>yaml>default")
-    parser.add_argument("--summary-csv", default=None, help="另存按题型汇总 CSV")
-    parser.add_argument("--enable-thinking", action="store_true", help="启用各 Provider 的思考/推理扩展（若支持）。")
-    parser.add_argument("--thinking-config", default=None, help="Thinking 配置（JSON 字符串），如 '{\"effort\":\"medium\"}'.")
+                        help="Prompt source: gt=use GT original; opt=use prompts.yaml; auto=GT>yaml>default")
+    parser.add_argument("--summary-csv", default=None, help="Save per-type summary CSV separately")
+    parser.add_argument("--enable-thinking", action="store_true", help="Enable thinking/reasoning extension for each Provider (if supported).")
+    parser.add_argument("--thinking-config", default=None, help="Thinking configuration (JSON string), e.g., '{\"effort\":\"medium\"}'.")
     parser.add_argument("--collect-reasoning", action="store_true",
-                        help="要求模型输出 reasoning 字段（可能增加耗时与成本）")
+                        help="Require model to output reasoning field (may increase time and cost)")
     
     parser.add_argument("--until-correct-type", default=None, 
-                        help="只对该类型执行 '直到做对' 实验, 如 Dice_Count。当此项为None时，执行常规评测;否则需使用run_until_correct(...)")
-    parser.add_argument("--max-attempts", type=int, default=10, help="'直到做对'的最大尝试次数")
-    parser.add_argument("--retry-sleep-ms", type=int, default=200, help="'直到做对'的尝试间隔毫秒数")
-    parser.add_argument("--no-cache-bust", action="store_true", help="禁用 '直到做对' 的 cache-bust nonce")
+                        help="Only execute 'until-correct' experiment for this type, e.g., Dice_Count. When this is None, run regular evaluation; otherwise use run_until_correct(...)")
+    parser.add_argument("--max-attempt", type=int, default=10, help="'until-correct' max attempt count")
+    parser.add_argument("--retry-sleep-ms", type=int, default=200, help="'until-correct' interval between attempt in milliseconds")
+    parser.add_argument("--no-cache-bust", action="store_true", help="Disable 'until-correct' cache-bust nonce")
 
 
     args = parser.parse_args()
@@ -3136,25 +3128,25 @@ def main():
         try:
             thinking_options = json.loads(args.thinking_config)
             if not isinstance(thinking_options, dict):
-                raise ValueError("thinking_config 需是 JSON 对象")
+                raise ValueError("thinking_config must be a JSON object")
         except Exception as exc:
-            raise SystemExit(f"解析 --thinking-config 失败: {exc}")
+            raise SystemExit(f"Failed to parse --thinking-config: {exc}")
     thinking_enabled = args.enable_thinking or bool(thinking_options)
 
     if args.until_correct_type:
-        # === Experiment 3: until-correct for one type ===
+                                                          
         run_until_type_correct(
             dataset_root=args.dataset_root,
             provider=args.provider,
             model=args.model,
             types=[args.until_correct_type],
-            max_attempts_per_type=args.max_attempts,
+            max_attempt_per_type=args.max_attempt,
             max_pool_per_type=args.max_per_type,
             secrets_file=args.secrets_file,
             timeout_sec=args.timeout_sec,
             prompts_file=args.prompts_file,
             prompt_mode=args.prompt_mode,
-            prompt_prefix="",                 # 如需全局前后缀可加
+            prompt_prefix="",                            
             prompt_suffix="",
             out_csv=args.out,
             retry_sleep_ms=args.retry_sleep_ms,
@@ -3164,7 +3156,7 @@ def main():
             thinking_options=thinking_options
         )
     else:
-        # === Experiments 1 & 2: standard evaluation (GT vs OPT) ===
+                                                                    
         run_eval(
             dataset_root=args.dataset_root,
             types=args.types,
@@ -3179,7 +3171,7 @@ def main():
             prompts_file=args.prompts_file,
             prompt_prefix="",
             prompt_suffix="",
-            prompt_mode=args.prompt_mode,     # 关键：gt / opt / auto
+            prompt_mode=args.prompt_mode,                         
             summary_csv=args.summary_csv,
             thinking=thinking_enabled,
             thinking_options=thinking_options,
@@ -3187,7 +3179,7 @@ def main():
         )
 
 
-# %%
+    
 from google import genai
 client = genai.Client(api_key="REDACTED_GEMINI_API_KEY")
 
@@ -3198,14 +3190,14 @@ response = client.models.generate_content(
 print("TEXT OK:", bool(getattr(response, 'text', None)), getattr(response, 'text', "")[:120])
 
 
-# %%
+    
 
 
-# %% [markdown]
-# ### 实验一
+               
+         
 
-# %%
-# 程序运行入口
+    
+        
 '''
 import traceback
 try:
@@ -3215,41 +3207,25 @@ try:
     dataset_root="./captcha_data",
     secrets_file="./secrets.yaml",
     prompt_mode="gt",
-    #out_csv="./results/results_exp1_g25_flash_lite.csv",
-    #out_csv="./results/results_exp1_g25_flash.csv",
-    #out_csv="./results/results_exp1_g25_pro.csv",
-    #out_csv="./results/results_exp1_g41.csv",
-    #out_csv="./results/results_exp1_g4o.csv",
     out_csv="./results/test.csv",
 
     
     
-    # 'Patch_Select', 'Connect_Icon', 'Path_Finder', 'Dart_Count', 'Object_Match', 
-    # 'Click_Order', 'Geometry_Click', 'Select_Animal', 'Bingo', 'Image_Recognition', 
-    # 'Dice_Count', 'Unusual_Detection', 'Coordinates', 'Place_Dot', 'Image_Matching', 
-    # 'Pick_Area', 'Rotation_Match', 'Misleading_Click'
 
     types= ["Image_Matching"], # all_types,  #["Image_Matching"]
 
-    #provider="gemini", model="gemini-2.5-flash-lite",
     provider="gemini", model="gemini-2.5-flash",
-    #provider="gemini", model="gemini-2.5-pro",
-    #provider="openai", model="gemini-4.1",
-    #provider="openai", model="gpt-4o",
-    #provider="openai", model="gpt-5",
     
-    # ===== Thinking Options =====
-    thinking=True,  # 开启 thinking
+    thinking=True,  # Enable thinking
     thinking_options={
-        "mode": "dynamic",  # mode：dynamic/ disabled/ 默认固定预算
-        "thinking_budget": 8192  # Token 预算（可选，mode 会覆盖此值）
+        "mode": "dynamic",  # mode: dynamic / disabled / default fixed budget
+        "thinking_budget": 8192  # Token budget (optional, mode will override this value)
         },
     
     
     
-    # prompts_file="./prompts.yaml",   # ← 新增
-    prompt_prefix="",                # ← 全局前缀（可选）
-    prompt_suffix="",                # ← 全局后缀（可选）
+    prompt_prefix="",                # ← Global prefix (optional)
+    prompt_suffix="",                # ← Global suffix (optional)
     
     estimate_cost_flag=False,
     timeout_sec=120.0,
@@ -3259,25 +3235,22 @@ try:
 
     print(res)
 except Exception as e:
-    traceback.print_exc()     # ← 打印真正的异常和栈
+    traceback.print_exc()     # ← Print actual exception and stack trace
     raise
 
 
 
-# %% [markdown]
-# ### 实验二
 
-# %%
 from pathlib import Path
 
 def _exp2_all_types() -> list[str]:
     """
-    返回当前代码里受支持的全部题型（按名称排序，避免不同平台的set顺序不稳定）。
+    Return all supported task types in current code (sorted by name to avoid platform-specific set order instability).
     """
     try:
         return sorted(list(SUPPORTED_TYPES))
     except NameError:
-        raise RuntimeError("SUPPORTED_TYPES 未定义，请确认粘贴位置在 run_eval.py 内部。")
+        raise RuntimeError("SUPPORTED_TYPES not defined, please confirm paste position is inside run_eval.py.")
 
 def exp2_run_auto_only(
     dataset_root: str = "./captcha_data",
@@ -3295,15 +3268,15 @@ def exp2_run_auto_only(
     summary_csv: str | None = None
 ):
     """
-    实验二（唯一版本）：使用 prompt_mode='auto' 跑全部题型。
-    - 'auto'：若题目自带 per-item 文案则按 merge 追加类型规则，否则按 opt。
+    Experiment 2 (single version): Use prompt_mode='auto' to run all task types.
+    - 'auto': If question has per-item text, merge and append type rules; otherwise use opt.
     """
     pf = Path(prompts_file)
     if not pf.exists():
-        raise FileNotFoundError(f"prompts_file 不存在：{pf}. 请先把 prompts.yaml 放到本地。")
+        raise FileNotFoundError(f"prompts_file does not exist: {pf}. Please place prompts.yaml locally first.")
 
     types = ["Click_Order"]  
-    print(f"[EXP2-AUTO] 计划评测类型：{types}")
+    print(f"[EXP2-AUTO] Planned evaluation types: {types}")
 
     return run_eval(
         dataset_root=dataset_root,
@@ -3313,30 +3286,25 @@ def exp2_run_auto_only(
         max_per_type=max_per_type,
         out_csv=out_csv,
         secrets_file=secrets_file,
-        stream=stream,                     # 建议 False，E2E更稳；要TTFT可改 True
+        stream=stream,                     # Recommended False, more stable E2E; can change to True for TTFT
         estimate_cost_flag=False,
         timeout_sec=timeout_sec,
         seed=seed,
         prompts_file=str(pf),
         prompt_prefix=prompt_prefix,
         prompt_suffix=prompt_suffix,
-        prompt_mode="auto",                # ★ 仅此：实验二的优化 prompts 主设定
+        prompt_mode="auto",                # ★ Only this: Experiment 2 optimized prompts main setting
         summary_csv=summary_csv
     )
 
 exp2_run_auto_only(
     dataset_root="./captcha_data",
-    provider="openai",                 # 或 gemini / anthropic / fireworks
+    provider="openai",                 #  or gemini / anthropic / fireworks
     model="gpt-4o",               
     prompts_file="./prompts_optimized.yaml",
     
     out_csv="./results/test_exp2.csv",
-    #out_csv="./results/results_exp2_g25_flash_lite.csv",
-    #out_csv="./results/results_exp2_g25_flash.csv",
-    #out_csv="./results/results_exp2_g25_pro.csv",
     
-    #out_csv="./results/results_exp2_gpt41.csv",
-    #out_csv="./results/results_exp2_gpt4o.csv",
     
     
     max_per_type=10, 
@@ -3344,10 +3312,7 @@ exp2_run_auto_only(
     stream=False
 )
 
-# %% [markdown]
-# ### 实验三
 
-# %%
 import traceback
 try:
     all_types = list(SUPPORTED_TYPES)
@@ -3355,33 +3320,24 @@ try:
     overall = run_until_type_correct(
         dataset_root="./captcha_data",
         types=all_types,
-        max_attempts_per_type=8,       # 每个题型最多换 x 道题
-        max_pool_per_type=50,          # 每类最多从题库拿 x 道作为候选
+        max_attempt_per_type=8,       # Max x question to try per task type
+        max_pool_per_type=50,          # Max x question from question bank as candidates per type
         secrets_file="./secrets.yaml",
-        prompts_file="./prompts_optimized.yaml", # 若做“优化提示”的实验，打开这个
-        prompt_mode="auto",              # 实验一：只用 GT 文案（你也可改为 "merge"/"opt"）
+        prompts_file="./prompts_optimized.yaml", # ifdo“optimizedprompt”experiment，enablethis
+        prompt_mode="auto",              # Experiment 1: Only use GT text (you can also change to "merge"/"opt")
         
-        #provider="gemini", model="gemini-2.5-flash-lite",
-        #provider="gemini", model="gemini-2.5-flash",
-        #provider="gemini", model="gemini-2.5-pro",
-        #provider="openai", model="gpt-4.1",
         provider="openai", model="gpt-4o",
-        #provider="openai", model="gpt-5",
         
-        #out_csv="./results/results_exp3_OPT_g25_flash_lite.csv",
-        #out_csv="./results/results_exp3_OPT_g25_flash.csv",
-        #out_csv="./results/results_exp3_OPT_g25_pro.csv",
-        #out_csv="./results/results_exp3_OPT_g41.csv",
         out_csv="./results/results_exp3_OPT_g4o.csv",
         
         
-        log_attempt_rows=False,        # 如需每次尝试的明细，把它改为 True
+        log_attempt_rows=False,        # If you need details for each attempt, change this to True
         stream=False
     )
 
 
 except Exception as e:
-    traceback.print_exc()     # ← 打印真正的异常和栈
+    traceback.print_exc()     # ← Print actual exception and stack trace
     raise
 
 '''

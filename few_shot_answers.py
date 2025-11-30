@@ -1,28 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Few-shot 示例的硬编码答案数据
+Hard-coded answers for few-shot examples. This avoids filename drift (for
+example PNG compressed to JPG) breaking lookups, so we do not rely on
+ground_truth.json for these entries.
 
-为了避免文件名变更（如 PNG → JPG 压缩）导致的匹配问题，
-我们将所有 few-shot 示例的答案直接硬编码在这里，不再从 ground_truth.json 读取。
-
-数据结构：
+Structure:
 {
     "TaskType": [
-        {
-            "filename": "image1.jpg",  # 主图片文件名（用于匹配）
-            "answer": {...},            # 答案数据
-            "order_image": "...",       # 可选：辅助图片
-            "reference_image": "...",   # 可选：参考图片
-            ...其他字段
-        },
+        {"filename": "...", "answer": {...}, "order_image": "...", "reference_image": "..."},
         ...
     ]
 }
 
-注意：
-- filename 字段应与 few_shot_examples.yaml 中保持一致
-- 如果压缩脚本修改了文件名（PNG→JPG），这里的 filename 也应手动同步更新
+Keep filenames in sync with few_shot_examples.yaml and any asset renames.
 """
 
 FEW_SHOT_ANSWERS = {
@@ -376,16 +367,7 @@ FEW_SHOT_ANSWERS = {
 
 
 def get_few_shot_answer(task_type: str, filename: str):
-    """
-    根据任务类型和文件名获取 few-shot 答案
-
-    Args:
-        task_type: 任务类型
-        filename: 图片文件名
-
-    Returns:
-        答案数据字典，如果未找到则返回 None
-    """
+    
     if task_type not in FEW_SHOT_ANSWERS:
         return None
 
@@ -398,13 +380,5 @@ def get_few_shot_answer(task_type: str, filename: str):
 
 
 def get_all_examples(task_type: str):
-    """
-    获取某个任务类型的所有 few-shot 示例
 
-    Args:
-        task_type: 任务类型
-
-    Returns:
-        示例列表，如果任务类型不存在则返回空列表
-    """
     return FEW_SHOT_ANSWERS.get(task_type, [])

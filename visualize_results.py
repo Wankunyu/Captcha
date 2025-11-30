@@ -9,35 +9,23 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import json
 import warnings
 warnings.filterwarnings('ignore')
 
-# Optional dependency to avoid overlapping text labels in scatter plots
 try:
     from adjustText import adjust_text  # type: ignore
 except Exception:
     adjust_text = None
 
-# Set font and chart style
-plt.rcParams.update({
-    'font.family': 'sans-serif',
-    'font.sans-serif': ['Calibri', 'DejaVu Sans', 'Arial'],
-    'axes.unicode_minus': False,
-    'font.size': 12,           # 全局基准字号
-    'axes.titlesize': 14,      # 标题字号
-    'axes.labelsize': 13,      # 轴标签字号
-    'xtick.labelsize': 11,     # x轴刻度字号
-    'ytick.labelsize': 11,     # y轴刻度字号
-    'legend.fontsize': 11,     # 图例字号
-})
 sns.set_style("whitegrid")
 sns.set_palette("husl")
 
 class CAPTCHAVisualizer:
     """CAPTCHA experiment result visualizer"""
 
-    # Default model display name mapping
     DEFAULT_MODEL_NAMES = {
         'openai/gpt-5': 'GPT-5 (Medium)',
         'openai/gpt-5.1_medium': 'GPT-5.1 (Medium)',
@@ -49,17 +37,13 @@ class CAPTCHAVisualizer:
         'fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct': 'Qwen3-VL-235B-A22B-Instruct',
     }
 
-    # Default experiment display name mapping
     DEFAULT_EXP_NAMES = {
         'exp1': 'Exp1 (Original Prompts)',
         'exp2': 'Exp2 (Optimized Prompts)',
-        # Exp3 plots use expected until-correct behaviour derived from Exp2
         'exp3': 'Exp3 (Until-Correct, Expected)',
     }
 
-    # Task family (category) mapping for radar plots and grouped summaries
     TASK_FAMILY = {
-        # Click / Coordinate tasks
         'Dice_Count': 'Click/Coordinate',
         'Click_Order': 'Click/Coordinate',
         'Place_Dot': 'Click/Coordinate',
@@ -67,23 +51,25 @@ class CAPTCHAVisualizer:
         'Pick_Area': 'Click/Coordinate',
         'Misleading_Click': 'Click/Coordinate',
 
-        # Grid selection
         'Patch_Select': 'Grid Selection',
         'Select_Animal': 'Grid Selection',
         'Image_Recognition': 'Grid Selection',
         'Unusual_Detection': 'Grid Selection',
 
-        # Image matching
         'Image_Matching': 'Image Matching',
         'Object_Match': 'Image Matching',
         'Path_Finder': 'Image Matching',
         'Rotation_Match': 'Image Matching',
 
-        # Logic / Reasoning
         'Bingo': 'Logic/Reasoning',
         'Dart_Count': 'Logic/Reasoning',
         'Coordinates': 'Logic/Reasoning',
         'Connect_Icon': 'Logic/Reasoning',
+    }
+
+    HARD_TASKS = {
+        'Patch_Select', 'Rotation_Match', 'Click_Order',
+        'Pick_Area', 'Place_Dot', 'Dice_Count'
     }
 
     def __init__(self, results_dir: str = "./results", error_dir: str = "./error_analysis",
@@ -118,6 +104,28 @@ class CAPTCHAVisualizer:
         if self.exclude_models and not self.data.empty:
             self.data = self.data[~self.data['provider_model'].isin(self.exclude_models)].copy()
         self.task_types = sorted(self.data['task_type'].unique()) if not self.data.empty else []
+
+    def _format_exp_label(self, experiments) -> str:
+        """
+        Build standardized experiment label line: "(Exp #) Name" joined by " / " for multiple.
+        """
+        import re
+
+        def fmt_single(exp: str) -> str:
+            disp = self._get_display_name(exp, 'experiment')
+            m = re.match(r"Exp\s*([0-9]+)\s*\(?([^)]*)\)?", disp, re.IGNORECASE)
+            if m:
+                num = m.group(1)
+                name = m.group(2).strip() or disp
+                return f"(Exp {num}) {name}"
+            return f"(Exp {exp.replace('exp','').strip()}) {disp}"
+
+        if isinstance(experiments, (list, tuple, set)):
+            parts = [fmt_single(str(e)) for e in experiments if e]
+            return " / ".join(parts)
+        if experiments:
+            return fmt_single(str(experiments))
+        return ""
 
     def _get_display_name(self, identifier: str, name_type: str = 'model') -> str:
         """
@@ -335,12 +343,17 @@ class CAPTCHAVisualizer:
         # Plot heatmap
         fig, ax = plt.subplots(figsize=figsize)
 
-        # Use reverse color scheme (red=hard, green=easy)
+        # Create custom colormap: light green (#EEF4ED) -> deep blue (#183F7F)
+        from matplotlib.colors import LinearSegmentedColormap
+        custom_colors = ['#EEF4ED', '#D9E6C9', '#97C8C5', '#4281B6', '#183F7F']
+        custom_cmap = LinearSegmentedColormap.from_list('custom_heatmap', custom_colors)
+
+        # Use custom color scheme (light=easy, dark blue=hard)
         sns.heatmap(
             pivot,
             annot=True,
             fmt='.1f',
-            cmap='RdYlGn',
+            cmap=custom_cmap,
             vmin=0,
             vmax=100,
             cbar_kws={'label': 'Pass@1 (%)'},
@@ -352,10 +365,10 @@ class CAPTCHAVisualizer:
         )
 
         # Title and labels
-        exp_title = self._get_display_name(experiment, 'experiment')
+        exp_title = self._format_exp_label(experiment)
 
-        ax.set_title(f'CAPTCHA Task Difficulty Heatmap - {exp_title}',
-                     fontsize=16, fontweight='bold', pad=20)
+        # ax.set_title(f'CAPTCHA Task Difficulty Heatmap\n{exp_title}',
+        #              fontsize=16, fontweight='bold', pad=20)
         ax.set_xlabel('Model', fontsize=13, fontweight='bold')
         ax.set_ylabel('Task Type (Sorted by Difficulty)', fontsize=13, fontweight='bold')
 
@@ -383,10 +396,19 @@ class CAPTCHAVisualizer:
                                        model_filter: Optional[str] = None,
                                        log_x: bool = True,
                                        figsize: Tuple[int, int] = (12, 8),
+                                       font_sizes: Optional[Dict[str, float]] = None,
                                        save_path: Optional[str] = None):
         """
         Cost–Performance frontier: x=cost_per_question (USD), y=Pass@1 (%).
         Overlays multiple experiments for the same model.
+
+        Args:
+            experiments: Experiments to overlay
+            model_filter: Optional provider/model filter
+            log_x: Whether to use log scale on the x-axis
+            figsize: Figure size
+            font_sizes: Optional font size overrides (keys: label, tick, legend, annotation)
+            save_path: Optional PDF output path
         """
         if self.data.empty:
             print("[WARNING] Cannot plot frontier: No data")
@@ -405,10 +427,18 @@ class CAPTCHAVisualizer:
             print("[WARNING] results.csv missing cost_per_question column; skip frontier plot")
             return None
 
+        font_sizes = font_sizes or {}
+        label_size = font_sizes.get('label', plt.rcParams.get('axes.labelsize', 12))
+        legend_size = font_sizes.get('legend', plt.rcParams.get('legend.fontsize', 10))
+        annot_size = font_sizes.get('annotation', max(6, plt.rcParams.get('font.size', 12) - 2))
+        tick_size = font_sizes.get('tick')
+
         # Prepare figure
         fig, ax = plt.subplots(figsize=figsize)
+        if tick_size is not None:
+            ax.tick_params(axis='both', which='both', labelsize=tick_size)
 
-        colors = ['#2e75b6', '#70ad47', '#ffc000', '#d32f2f']
+        colors = ['#7eb3d6', '#2e75b6', '#70ad47', '#ffc000']
         exp_list = [e for e in experiments if e in set(df['experiment'])]
         for i, exp in enumerate(exp_list):
             sub = df[df['experiment'] == exp].copy()
@@ -440,29 +470,30 @@ class CAPTCHAVisualizer:
             label_df = df.copy()
             label_df['pass_pct'] = label_df['pass'] * 100
             label_df = label_df.dropna(subset=['cost_per_question', 'pass_pct'])
-            # Keep last occurrence of each task_type (usually the optimized experiment)
-            label_df = label_df.drop_duplicates(subset=['task_type'], keep='last')
             for _, row in label_df.iterrows():
+                color = '#c0392b' if row['task_type'] in self.HARD_TASKS else '#666666'
                 ax.annotate(
                     row['task_type'],
                     xy=(row['cost_per_question'], row['pass_pct']),
                     xytext=(3, 3), textcoords='offset points',
-                    fontsize=8, alpha=0.75, color='#333333'
+                    fontsize=annot_size, alpha=0.75, color=color
                 )
 
         ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5, label='CAPTCHA Threshold (40%)')
-        ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
-        ax.set_xlabel('Cost per Question (USD)', fontsize=12, fontweight='bold')
-        ax.set_ylim(-5, 105)
+        ax.set_ylabel('Pass@1 (%)', fontsize=label_size, fontweight='bold')
+        ax.set_xlabel('Cost per Question (USD)', fontsize=label_size, fontweight='bold')
+        ax.set_ylim(0, 105)
         if log_x:
             ax.set_xscale('log')
         ax.grid(alpha=0.3, which='both', axis='both')
 
-        title = 'Cost–Performance Frontier'
-        if model_filter:
-            title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
-        ax.set_title(title, fontsize=16, fontweight='bold', pad=16)
-        ax.legend(loc='upper right', bbox_to_anchor=(1.02, 1), fontsize=10, framealpha=0.9)
+        # exp_line = self._format_exp_label(exp_list if exp_list else experiments)
+        # title = f'Cost–Performance Frontier\n{exp_line}'
+        # if model_filter:
+        #     title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
+        # title_size = plt.rcParams.get('axes.titlesize', 16)
+        # ax.set_title(title, fontsize=title_size, fontweight='bold', pad=16)
+        ax.legend(loc='lower left', fontsize=legend_size, framealpha=0.9)
 
         plt.tight_layout()
         if save_path:
@@ -476,9 +507,18 @@ class CAPTCHAVisualizer:
                                        model_filter: Optional[str] = None,
                                        metric: str = 'avg_e2e_ms',
                                        figsize: Tuple[int, int] = (12, 8),
+                                       font_sizes: Optional[Dict[str, float]] = None,
                                        save_path: Optional[str] = None):
         """
         Time–Performance scatter: x=avg_e2e_ms, y=Pass@1 (%). Overlays experiments.
+
+        Args:
+            experiments: Experiments to overlay
+            model_filter: Optional provider/model filter
+            metric: Column name for x-axis timing metric
+            figsize: Figure size
+            font_sizes: Optional font size overrides (keys: label, tick, legend, annotation)
+            save_path: Optional PDF output path
         """
         if self.data.empty:
             print("[WARNING] Cannot plot time-performance: No data")
@@ -487,6 +527,12 @@ class CAPTCHAVisualizer:
         if metric not in self.data.columns:
             print(f"[WARNING] Column '{metric}' not found; skip time-performance plot")
             return None
+
+        font_sizes = font_sizes or {}
+        label_size = font_sizes.get('label', plt.rcParams.get('axes.labelsize', 12))
+        legend_size = font_sizes.get('legend', plt.rcParams.get('legend.fontsize', 10))
+        annot_size = font_sizes.get('annotation', max(6, plt.rcParams.get('font.size', 12) - 2))
+        tick_size = font_sizes.get('tick')
 
         df = self.data.copy()
         if model_filter:
@@ -497,9 +543,12 @@ class CAPTCHAVisualizer:
             return None
 
         fig, ax = plt.subplots(figsize=figsize)
+        if tick_size is not None:
+            ax.tick_params(axis='both', which='both', labelsize=tick_size)
         colors = ['#7eb3d6', '#2e75b6', '#70ad47', '#ffc000']
         exp_list = [e for e in experiments if e in set(df['experiment'])]
 
+        texts = []
         for i, exp in enumerate(exp_list):
             sub = df[df['experiment'] == exp].copy()
             if sub.empty:
@@ -510,34 +559,29 @@ class CAPTCHAVisualizer:
             ax.scatter(sub[metric] / 1000.0, sub['pass_pct'], s=80, alpha=0.85,
                        label=self._get_display_name(exp, 'experiment'),
                        color=colors[i % len(colors)], edgecolors='black', linewidths=0.8)
-
-        # Add task type labels for all experiments
-        # Use drop_duplicates to label each task_type only at its last (usually optimized) position
-        if not df.empty:
-            label_df = df.copy()
-            label_df = label_df.dropna(subset=[metric])
-            label_df['pass_pct'] = label_df['pass'] * 100
-            # Keep last occurrence of each task_type (usually the optimized experiment)
-            label_df = label_df.drop_duplicates(subset=['task_type'], keep='last')
-            for _, row in label_df.iterrows():
-                ax.annotate(
+            # Annotate every point (keep both Exp1/Exp2 labels)
+            for _, row in sub.iterrows():
+                color = '#c0392b' if row['task_type'] in self.HARD_TASKS else '#666666'
+                texts.append(ax.annotate(
                     row['task_type'],
                     xy=(row[metric] / 1000.0, row['pass_pct']),
                     xytext=(3, 3), textcoords='offset points',
-                    fontsize=8, alpha=0.75, color='#333333'
-                )
+                    fontsize=annot_size, alpha=0.75, color=color
+                ))
 
         ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
-        ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
-        ax.set_xlabel('Average E2E Time (s)', fontsize=12, fontweight='bold')
-        ax.set_ylim(-5, 105)
+        ax.set_ylabel('Pass@1 (%)', fontsize=label_size, fontweight='regular')
+        ax.set_xlabel('Average E2E Time (s)', fontsize=label_size, fontweight='regular')
+        ax.set_ylim(0, 105)
         ax.grid(alpha=0.3)
 
-        title = 'Time–Performance Scatter'
-        if model_filter:
-            title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
-        ax.set_title(title, fontsize=16, fontweight='bold', pad=16)
-        ax.legend(loc='upper right', bbox_to_anchor=(1.02, 1), fontsize=10, framealpha=0.9)
+        # exp_line = self._format_exp_label(exp_list if exp_list else experiments)
+        # title = f'Time–Performance Scatter\n{exp_line}'
+        # if model_filter:
+        #     title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
+        # title_size = plt.rcParams.get('axes.titlesize', 16)
+        # ax.set_title(title, fontsize=title_size, fontweight='bold', pad=16)
+        ax.legend(loc='upper right', bbox_to_anchor=(1.02, 1), fontsize=legend_size, framealpha=0.9)
 
         plt.tight_layout()
         if save_path:
@@ -546,138 +590,6 @@ class CAPTCHAVisualizer:
             print(f"[SAVED] Time–Performance saved: {save_path}")
         return fig
 
-    def plot_slope_improvement(self,
-                               base_exp: str = 'exp1',
-                               target_exp: str = 'exp2',
-                               model_filter: Optional[str] = None,
-                               top_k: Optional[int] = None,
-                               figsize: Tuple[int, int] = (16, 8),
-                               save_path: Optional[str] = None):
-        """
-        Slope chart: per-task change from base_exp to target_exp.
-        """
-        if self.data.empty:
-            print("[WARNING] Cannot plot slope: No data")
-            return None
-
-        df = self.data.copy()
-        if model_filter:
-            df = df[df['provider_model'] == model_filter]
-
-        a = df[df['experiment'] == base_exp].groupby('task_type')['pass'].mean()
-        b = df[df['experiment'] == target_exp].groupby('task_type')['pass'].mean()
-
-        merged = pd.DataFrame({'base': a, 'target': b}).dropna()
-        if merged.empty:
-            print("[WARNING] No overlapping tasks for slope plot")
-            return None
-
-        merged['base_pct'] = merged['base'] * 100
-        merged['target_pct'] = merged['target'] * 100
-        merged['delta'] = merged['target_pct'] - merged['base_pct']
-        merged = merged.sort_values('base_pct')
-
-        if top_k and top_k > 0:
-            # Select top_k with largest absolute improvement
-            sel = merged.reindex(merged['delta'].abs().sort_values(ascending=False).index).head(top_k)
-            merged = merged.loc[sel.index]
-
-        fig, ax = plt.subplots(figsize=figsize)
-        x = np.arange(len(merged))
-        ax.scatter(x, merged['base_pct'], color='#7eb3d6', label=self._get_display_name(base_exp, 'experiment'))
-        ax.scatter(x, merged['target_pct'], color='#70ad47', label=self._get_display_name(target_exp, 'experiment'))
-        for i, (y0, y1) in enumerate(zip(merged['base_pct'], merged['target_pct'])):
-            color = '#70ad47' if y1 >= y0 else '#d32f2f'
-            ax.plot([i, i], [y0, y1], color=color, linewidth=2, alpha=0.9)
-
-        ax.set_xticks(x)
-        ax.set_xticklabels(merged.index, rotation=45, ha='right')
-        ax.set_ylabel('Pass@1 (%)', fontsize=12, fontweight='bold')
-        ax.set_title('Improvement Slope', fontsize=16, fontweight='bold', pad=16)
-        if model_filter:
-            ax.set_title(f"Improvement Slope\nModel: {self._get_display_name(model_filter, 'model')}", fontsize=16, fontweight='bold', pad=16)
-        ax.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
-        ax.set_ylim(-5, 105)
-        ax.grid(alpha=0.3, axis='y')
-        ax.legend(fontsize=10)
-
-        plt.tight_layout()
-        if save_path:
-            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(save_path, format='pdf', bbox_inches='tight')
-            print(f"[SAVED] Slope saved: {save_path}")
-        return fig
-
-    def plot_task_family_radar(self,
-                                experiment: str = 'exp2',
-                                model_filter: Optional[str] = None,
-                                figsize: Tuple[int, int] = (8, 8),
-                                save_path: Optional[str] = None):
-        """
-        Radar chart of average Pass@1 by task family (Click/Coordinate, Grid Selection, Image Matching, Logic/Reasoning).
-        """
-        if self.data.empty:
-            print("[WARNING] Cannot plot radar: No data")
-            return None
-
-        df = self.data.copy()
-        df = df[df['experiment'] == experiment]
-        if model_filter:
-            df = df[df['provider_model'] == model_filter]
-        if df.empty:
-            print("[WARNING] No data for radar after filtering")
-            return None
-
-        # Map to families
-        df['family'] = df['task_type'].map(self.TASK_FAMILY).fillna('Other')
-        fam = df.groupby('family')['pass'].mean().reindex(['Click/Coordinate', 'Grid Selection', 'Image Matching', 'Logic/Reasoning']).fillna(0)
-        values = (fam * 100).values.tolist()
-        labels = fam.index.tolist()
-        # Close the polygon
-        values += values[:1]
-        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-        angles += angles[:1]
-
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, polar=True)
-        ax.plot(angles, values, color='#2e75b6', linewidth=2, zorder=2)
-        ax.fill(angles, values, color='#7eb3d6', alpha=0.25, zorder=1)
-
-        # Compute separate angles for label placement (without closing angle)
-        label_angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False)
-
-        # Hide default theta tick labels and draw custom labels slightly outside the outer ring
-        ax.set_xticks([])
-        rmax = 110  # extend radius a bit to leave room for labels
-        ax.set_ylim(0, rmax)
-        label_r = rmax * 0.985
-        for a, lab in zip(label_angles, labels):
-            # Choose alignment based on quadrant so labels stay outside
-            if -np.pi/2 <= a <= np.pi/2:
-                ha = 'left'
-            elif np.pi/2 < a < 3*np.pi/2:
-                ha = 'right'
-            else:
-                ha = 'center'
-            ax.text(a, label_r, lab, ha=ha, va='center', fontsize=11,
-                    bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.7),
-                    zorder=3)
-
-        # Move radial tick labels away from crowded areas
-        ax.set_rlabel_position(225)
-        ax.set_yticks([0, 20, 40, 60, 80, 100])
-        ax.set_yticklabels(['0', '20', '40', '60', '80', '100'])
-
-        title = f"Task Family Radar - {self._get_display_name(experiment, 'experiment')}"
-        if model_filter:
-            title += f"\nModel: {self._get_display_name(model_filter, 'model')}"
-        ax.set_title(title, fontsize=14, fontweight='bold', va='bottom')
-
-        if save_path:
-            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(save_path, format='pdf', bbox_inches='tight')
-            print(f"[SAVED] Radar saved: {save_path}")
-        return fig
 
     def plot_comparison_bars(self, experiments: List[str] = ['exp1', 'exp2', 'exp4'],
                             model_filter: Optional[str] = None,
@@ -728,28 +640,33 @@ class CAPTCHAVisualizer:
                              label=exp_label, color=colors[i % len(colors)],
                              alpha=0.9)
 
+                label_size = plt.rcParams.get('legend.fontsize', 10)
                 # Add value labels on bars (only for valid data)
                 for j, (idx, val) in enumerate(pivot[exp].items()):
                     if not np.isnan(val):
                         ax.text(x[j] + offset, val + 2, f'{val:.0f}',
-                               ha='center', va='bottom', fontsize=8)
+                               ha='center', va='bottom', fontsize=label_size)
 
         # Add CAPTCHA recommendation threshold line
         ax.axhline(y=40, color='red', linestyle='--', linewidth=2,
                   label='CAPTCHA Threshold (40%)', alpha=0.7)
 
-        ax.set_ylabel('Pass@1 (%)', fontsize=13, fontweight='bold')
-        ax.set_xlabel('Task Type (Sorted by Difficulty)', fontsize=13, fontweight='bold')
+        label_size = plt.rcParams.get('axes.labelsize', 13)
+        title_size = plt.rcParams.get('axes.titlesize', 16)
+        legend_size = plt.rcParams.get('legend.fontsize', 11)
+        ax.set_ylabel('Pass@1 (%)', fontsize=label_size, fontweight='bold')
+        ax.set_xlabel('Task Type (Sorted by Difficulty)', fontsize=label_size, fontweight='bold')
 
-        title = 'Optimization Impact on CAPTCHA Task Difficulty'
-        if model_filter:
-            model_display = self._get_display_name(model_filter, 'model')
-            title += f'\nModel: {model_display}'
-        ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+        # exp_line = self._format_exp_label(experiments)
+        # title = f'Optimization Impact on CAPTCHA Task Difficulty\n{exp_line}'
+        # if model_filter:
+        #     model_display = self._get_display_name(model_filter, 'model')
+        #     title += f'\nModel: {model_display}'
+        # ax.set_title(title, fontsize=title_size, fontweight='bold', pad=20)
 
         ax.set_xticks(x)
         ax.set_xticklabels(pivot.index, rotation=45, ha='right')
-        ax.legend(loc='upper left', fontsize=11, framealpha=0.9)
+        ax.legend(loc='upper left', fontsize=legend_size, framealpha=0.9)
         ax.set_ylim(0, 110)
         ax.grid(axis='y', alpha=0.3)
 
@@ -769,7 +686,7 @@ class CAPTCHAVisualizer:
                                     model_filter: Optional[str] = None,
                                     figsize: Tuple[int, int] = (11, 11),
                                     save_path: Optional[str] = None,
-                                    use_adjust_text: bool = True):
+                                    use_adjust_text: bool = False):
         """
         Plot scatter plot: Optimization resistance analysis
 
@@ -824,8 +741,9 @@ class CAPTCHAVisualizer:
         # Add task labels; prefer using adjustText to reduce overlaps if available
         texts = []
         for idx, row in comparison.iterrows():
+            color = '#c0392b' if idx in self.HARD_TASKS else '#666666'
             t = ax.text(row['baseline'], row['optimized'], idx,
-                        fontsize=9, alpha=0.9, color='black')
+                        fontsize=9, alpha=0.9, color=color)
             texts.append(t)
 
         if use_adjust_text and adjust_text is not None and len(texts) > 0:
@@ -865,29 +783,25 @@ class CAPTCHAVisualizer:
         ax.set_ylabel(f'{opt_exp_display} Pass@1 (%)',
                      fontsize=13, fontweight='bold')
 
-        title = 'Task Optimization Resistance Analysis'
-        if model_filter:
-            model_display = self._get_display_name(model_filter, 'model')
-            title += f'\nModel: {model_display}'
-        ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+        # exp_line = self._format_exp_label([base_exp, opt_exp])
+        # title = f'Task Optimization Resistance Analysis\n{exp_line}'
+        # if model_filter:
+        #     model_display = self._get_display_name(model_filter, 'model')
+        #     title += f'\nModel: {model_display}'
+        # ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
 
-        ax.set_xlim(-5, 105)
-        ax.set_ylim(-5, 105)
+        # Anchor origin at (0,0) so axes start from zero
+        ax.set_xlim(0, 105)
+        ax.set_ylim(0, 105)
         ax.grid(alpha=0.3)
-        ax.legend(loc='upper left', fontsize=11, framealpha=0.9)
-
-        # Add legend explanation
-        legend_elements = [
-            plt.scatter([], [], s=100, c='#d32f2f', alpha=0.7,
-                       edgecolors='black', label='Robust (Low -> Low) [RECOMMENDED]'),
-            plt.scatter([], [], s=100, c='#ffa726', alpha=0.7,
-                       edgecolors='black', label='Improved (Low -> High)'),
-            plt.scatter([], [], s=100, c='#78909c', alpha=0.7,
-                       edgecolors='black', label='Easy (High -> High)'),
-            plt.scatter([], [], s=100, c='#7e57c2', alpha=0.7,
-                       edgecolors='black', label='Easy (High -> Low) [ALERT]')
+        # Legend for reference lines/zones (single legend, placed at lower right)
+        guide_handles = [
+            Line2D([0], [0], color='black', linestyle='--', linewidth=1.5, alpha=0.4,
+                   label='No Change (y=x)'),
+            Patch(facecolor='red', alpha=0.1, edgecolor='red', linestyle='--',
+                  label='Recommended CAPTCHA Zone')
         ]
-        ax.legend(handles=legend_elements, loc='lower right', fontsize=10)
+        ax.legend(handles=guide_handles, loc='lower right', fontsize=11, framealpha=0.9)
 
         plt.tight_layout()
 
@@ -960,9 +874,9 @@ class CAPTCHAVisualizer:
         ax.set_xlabel('Task Type (Sorted by Median Difficulty)',
                      fontsize=13, fontweight='bold')
 
-        exp_display = self._get_display_name(experiment, 'experiment')
-        ax.set_title(f'Cross-Model Stability Analysis - {exp_display}',
-                    fontsize=16, fontweight='bold', pad=20)
+        # exp_line = self._format_exp_label(experiment)
+        # ax.set_title(f'Cross-Model Stability Analysis\n{exp_line}',
+        #             fontsize=16, fontweight='bold', pad=20)
 
         plt.xticks(rotation=45, ha='right')
         ax.set_ylim(-5, 105)
@@ -980,191 +894,6 @@ class CAPTCHAVisualizer:
 
         return fig
 
-    def plot_exp3_analysis(self, model_filter: Optional[str] = None,
-                          figsize: Tuple[int, int] = (20, 12),
-                          save_path: Optional[str] = None,
-                          k: int = 3):
-        """
-        Plot comprehensive Experiment 3 (Until-Correct) analysis with 4 subplots.
-
-        NOTE: This chart now uses the *expected* Exp3 behaviour derived from Exp2:
-          - Pass@1 from Exp2 gives p̂ per task type
-          - Expected Exp3 success: q = 1 - (1 - p̂)^k
-          - Expected attempts: A = [1 - (1 - p̂)^k] / p̂  (truncated geometric)
-          - Expected cumulative time: Exp2 avg_e2e_ms * A
-
-        Actual Exp3 logs are only used for choosing k (if desired); by default k=10.
-
-        Args:
-            model_filter: Only show specific model
-            figsize: Figure size
-            save_path: Save path
-            k: Max attempts per type in the Exp3 protocol
-
-        Returns:
-            Figure object
-        """
-        if self.data.empty:
-            print("[WARNING] Cannot plot Exp3 analysis: No data")
-            return None
-
-        # --------- Build expected Exp3 stats from Exp2 ---------
-
-        # Use Exp2 as baseline (Pass@1 + avg time per attempt)
-        exp2 = self.data[self.data['experiment'] == 'exp2'].copy()
-        if model_filter:
-            exp2 = exp2[exp2['provider_model'] == model_filter]
-
-        if exp2.empty:
-            print("[WARNING] No Exp2 data available for Exp3 expectation")
-            return None
-
-        # Aggregate per task type: p̂ and average per-attempt time from Exp2
-        exp2_stats = exp2.groupby('task_type').agg({
-            'pass': 'mean',          # Pass@1 -> p_hat
-            'avg_e2e_ms': 'mean',    # single-attempt latency per item
-            'n': 'sum'
-        }).reset_index()
-
-        # Clip p to avoid numerical issues
-        p = np.clip(exp2_stats['pass'].to_numpy(), 1e-9, 1 - 1e-9)
-
-        # Expected Until-Correct success within k attempts
-        q_exp = 1.0 - (1.0 - p) ** max(k, 0)
-
-        # Expected attempts A = [1 - (1-p)^k] / p  (truncated geometric)
-        A_exp = (1.0 - (1.0 - p) ** max(k, 0)) / p
-
-        # Expected cumulative time and per-attempt time
-        avg_e2e_ms_exp2 = exp2_stats['avg_e2e_ms'].to_numpy()
-        cum_e2e_ms_exp = avg_e2e_ms_exp2 * A_exp  # expected total time across attempts
-
-        # Build task-level DataFrame compatible with existing plotting code
-        task_stats = exp2_stats.copy()
-        task_stats['pass'] = q_exp
-        task_stats['avg_attempts'] = A_exp
-        task_stats['cum_e2e_ms'] = cum_e2e_ms_exp
-        task_stats['pass_pct'] = task_stats['pass'] * 100
-        task_stats['cum_time_sec'] = task_stats['cum_e2e_ms'] / 1000.0
-        task_stats['avg_time_per_attempt_sec'] = task_stats['avg_e2e_ms'] / 1000.0
-
-        # Create figure with 4 subplots
-        fig = plt.figure(figsize=figsize)
-        gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.3)
-
-        # Sort by average attempts (descending)
-        task_stats = task_stats.sort_values('avg_attempts', ascending=False)
-
-        # Color palette
-        colors_hard = ['#d32f2f' if x >= 5 else '#7eb3d6' for x in task_stats['avg_attempts']]
-
-        # ===== Subplot 1: Average Attempts per Task Type =====
-        ax1 = fig.add_subplot(gs[0, 0])
-        bars1 = ax1.barh(task_stats['task_type'], task_stats['avg_attempts'], color=colors_hard, alpha=0.8)
-        ax1.set_xlabel('Average Attempts Until Success', fontsize=11, fontweight='bold')
-        ax1.set_ylabel('Task Type', fontsize=11, fontweight='bold')
-        ax1.set_title('Exp3: Retry Attempts Required', fontsize=13, fontweight='bold')
-        ax1.axvline(x=5, color='red', linestyle='--', linewidth=2, alpha=0.5, label='High Difficulty (≥5 attempts)')
-        ax1.grid(axis='x', alpha=0.3)
-        ax1.legend(fontsize=9)
-
-        # Add value labels
-        for i, (idx, row) in enumerate(task_stats.iterrows()):
-            ax1.text(row['avg_attempts'] + 0.2, i, f"{row['avg_attempts']:.1f}",
-                    va='center', fontsize=9)
-
-        # ===== Subplot 2: Average Time per Task Type =====
-        ax2 = fig.add_subplot(gs[0, 1])
-        task_stats_time = task_stats.sort_values('cum_time_sec', ascending=False)
-        colors_time = ['#ff6b6b' if x >= 30 else '#4ecdc4' for x in task_stats_time['cum_time_sec']]
-        bars2 = ax2.barh(task_stats_time['task_type'], task_stats_time['cum_time_sec'], color=colors_time, alpha=0.8)
-        ax2.set_xlabel('Cumulative Time Until Success (s)', fontsize=11, fontweight='bold')
-        ax2.set_ylabel('Task Type', fontsize=11, fontweight='bold')
-        ax2.set_title('Exp3: Time Cost Analysis', fontsize=13, fontweight='bold')
-        ax2.axvline(x=30, color='orange', linestyle='--', linewidth=2, alpha=0.5, label='High Time Cost (≥30s)')
-        ax2.grid(axis='x', alpha=0.3)
-        ax2.legend(fontsize=9)
-
-        # Add value labels
-        for i, (idx, row) in enumerate(task_stats_time.iterrows()):
-            ax2.text(row['cum_time_sec'] + 1, i, f"{row['cum_time_sec']:.1f}s",
-                    va='center', fontsize=9)
-
-        # ===== Subplot 3: Expected Success@k and Attempts =====
-        ax3 = fig.add_subplot(gs[1, 0])
-        # Sort by expected success (descending)
-        ts_sorted = task_stats.sort_values('pass_pct', ascending=False)
-        x = np.arange(len(ts_sorted))
-
-        # Bar: expected Success@k (%)
-        bars3 = ax3.bar(
-            x,
-            ts_sorted['pass_pct'],
-            color='#70ad47',
-            alpha=0.85,
-            label=f'Expected Success@k (k={k})'
-        )
-        ax3.set_ylabel('Success@k (%)', fontsize=11, fontweight='bold')
-        ax3.set_xlabel('Task Type', fontsize=11, fontweight='bold')
-        ax3.set_xticks(x)
-        ax3.set_xticklabels(ts_sorted['task_type'], rotation=45, ha='right', fontsize=9)
-        ax3.axhline(y=40, color='red', linestyle='--', linewidth=2, alpha=0.5)
-        ax3.grid(axis='y', alpha=0.3)
-        ax3.set_ylim(0, 110)
-
-        # Secondary axis: expected attempts A_k
-        ax3b = ax3.twinx()
-        ax3b.plot(
-            x,
-            ts_sorted['avg_attempts'],
-            color='#d32f2f',
-            marker='o',
-            linewidth=2,
-            label='Expected Attempts A_k'
-        )
-        ax3b.set_ylabel('Expected Attempts (A_k)', fontsize=11, fontweight='bold')
-        ax3b.set_ylim(0, max(5, ts_sorted['avg_attempts'].max() + 1))
-
-        # Combine legends
-        lines_labels = [ax3.get_legend_handles_labels(), ax3b.get_legend_handles_labels()]
-        handles = sum((hl[0] for hl in lines_labels), [])
-        labels = sum((hl[1] for hl in lines_labels), [])
-        ax3.legend(handles, labels, fontsize=10, loc='lower right', framealpha=0.9)
-        ax3.set_title(f'Expected Exp3 Metrics (k={k})', fontsize=13, fontweight='bold')
-
-        # ===== Subplot 4: Time Efficiency (Time per Attempt) =====
-        ax4 = fig.add_subplot(gs[1, 1])
-        task_stats_eff = task_stats.sort_values('avg_time_per_attempt_sec', ascending=False)
-        colors_eff = ['#9b59b6' if x >= 5 else '#95a5a6' for x in task_stats_eff['avg_time_per_attempt_sec']]
-        bars4 = ax4.barh(task_stats_eff['task_type'], task_stats_eff['avg_time_per_attempt_sec'], color=colors_eff, alpha=0.8)
-        ax4.set_xlabel('Average Time per Attempt (s)', fontsize=11, fontweight='bold')
-        ax4.set_ylabel('Task Type', fontsize=11, fontweight='bold')
-        ax4.set_title('Exp3: Time Efficiency per Attempt', fontsize=13, fontweight='bold')
-        ax4.axvline(x=5, color='purple', linestyle='--', linewidth=2, alpha=0.5, label='Slow (≥5s/attempt)')
-        ax4.grid(axis='x', alpha=0.3)
-        ax4.legend(fontsize=9)
-
-        # Add value labels
-        for i, (idx, row) in enumerate(task_stats_eff.iterrows()):
-            ax4.text(row['avg_time_per_attempt_sec'] + 0.2, i, f"{row['avg_time_per_attempt_sec']:.1f}s",
-                    va='center', fontsize=9)
-
-        # Main title
-        exp3_display = self._get_display_name('exp3', 'experiment')
-        title = f'{exp3_display} Comprehensive Analysis'
-        if model_filter:
-            model_display = self._get_display_name(model_filter, 'model')
-            title += f'\nModel: {model_display}'
-        fig.suptitle(title, fontsize=16, fontweight='bold', y=0.995)
-
-        if save_path:
-            # Ensure output directory exists
-            save_path_obj = Path(save_path)
-            save_path_obj.parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(save_path, format='pdf', bbox_inches='tight')
-            print(f"[SAVED] Exp3 analysis saved: {save_path}")
-
-        return fig
 
     def generate_captcha_recommendation(self, experiment: str = 'exp2',
                                        threshold: float = 40.0,
@@ -1296,21 +1025,7 @@ class CAPTCHAVisualizer:
                 except Exception as e:
                     print(f"[WARNING] Box plot {exp} generation failed: {e}")
 
-        # 5. Exp3 comprehensive analysis (only when Exp3 results exist)
-        if 'exp3' in available_exps:
-            for model in available_models:
-                try:
-                    fig = self.plot_exp3_analysis(
-                        model_filter=model,
-                        save_path=str(output_path / f"exp3_analysis_{model.replace('/', '_')}.pdf")
-                    )
-                    if fig:
-                        figures.append(fig)
-                        plt.close(fig)
-                except Exception as e:
-                    print(f"[WARNING] Exp3 analysis {model} generation failed: {e}")
-
-        # 6. Cost–Performance frontier per model (if cost columns present)
+        # 5. Cost–Performance frontier per model (if cost columns present)
         for model in available_models:
             try:
                 fig = self.plot_cost_performance_frontier(
@@ -1324,7 +1039,7 @@ class CAPTCHAVisualizer:
             except Exception as e:
                 print(f"[WARNING] Frontier {model} generation failed: {e}")
 
-        # 7. Time–Performance scatter per model (baseline experiments only)
+        # 6. Time–Performance scatter per model (baseline experiments only)
         for model in available_models:
             try:
                 fig = self.plot_time_performance_scatter(
@@ -1337,10 +1052,6 @@ class CAPTCHAVisualizer:
                     plt.close(fig)
             except Exception as e:
                 print(f"[WARNING] Time–Performance {model} generation failed: {e}")
-
-        # Note: Slope and radar charts are available via dedicated helpers
-        # but are not part of the quick (Mode A) default set to keep parity
-        # with Mode B’s chart bundle.
 
         print(f"\n[COMPLETED] Chart generation finished! Total {len(list(output_path.glob('*.pdf')))} PDF files")
         print(f"[OUTPUT] Save location: {output_path.absolute()}")
