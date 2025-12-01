@@ -232,13 +232,13 @@ FEW_SHOT_ANSWERS = {
         {
             "filename": "image1.jpg",
             "answer": {
-                "indices": [0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 13]
+                "indices": [0, 1, 2, 3, 5, 6, 7, 8, 11, 12, 13]
             }
         },
         {
             "filename": "image2.jpg",
             "answer": {
-                "indices": [0, 5, 6, 7, 10, 11, 12, 15, 16, 17]
+                "indices": [5, 6, 7, 10, 11, 12, 15, 16]
             }
         }
     ],

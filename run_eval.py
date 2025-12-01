@@ -349,7 +349,7 @@ def _describe_failure(task, parsed, raw: str) -> str:
             return "Did not return selection indices."
         pred = set(int(i) for i in (parsed.get("indices") or []))
         gt_indices = set(int(i) for i in (gt.get("indices_gt") or gt.get("correct_patches") or []))
-        Missing = sorted(gt_indices - pred)
+        missing = sorted(gt_indices - pred)
         extra = sorted(pred - gt_indices)
         parts = []
         if missing:
@@ -1878,7 +1878,7 @@ def build_tasks(
                     continue
 
                                      
-                targets = entry.get("targets_object") or "the targets object"
+                targets = _get_first(entry, "target_object", "targets_object", default="the target object")
                 gs = entry.get("grid_size", [5, 5])
                 if not (isinstance(gs, (list, tuple)) and len(gs) == 2):
                     gs = [5, 5]
