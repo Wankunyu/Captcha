@@ -1,5 +1,0 @@
-provider,model,type,puzzle_id,tokens_in,tokens_out,ttft_ms,e2e_ms
-anthropic,claude-sonnet-4-5,Place_Dot,path29.png,0,0,772.7,772.7
-anthropic,claude-sonnet-4-5,Dice_Count,dice2.png,0,0,1185.9,1185.9
-anthropic,claude-sonnet-4-5,Patch_Select,image1.jpg,0,0,428.7,428.7
-anthropic,claude-sonnet-4-5,Click_Order,image2.png,0,0,149.8,149.8

@@ -1454,7 +1454,8 @@ def build_few_shot_content(
     task_type: str,
     few_shot_examples: Dict,
     dataset_root: Optional[str] = None,
-    few_shot_assets_root: Optional[pathlib.Path] = None
+    few_shot_assets_root: Optional[pathlib.Path] = None,
+    n_shot: Optional[int] = None
 ) -> List:
     """
     Build few-shot example content (image path list + concise answer text)
@@ -1482,6 +1483,8 @@ def build_few_shot_content(
         return []
 
     examples_data = few_shot_examples[task_type].get("examples", [])
+    if isinstance(n_shot, int) and n_shot > 0:
+        examples_data = examples_data[:n_shot]
     if not examples_data:
         return []
 
@@ -1574,12 +1577,20 @@ def build_few_shot_content(
                                 images.append(path)
                                 seen.add(path)
 
-                              
+
         answer = example.get("answer")
+        target_object = example.get("target_object")
+
+        # Build the few-shot text with task description if available
         if answer is not None:
-            answer_text = f"Example {i}: {json.dumps(answer, ensure_ascii=False)}"
+            if target_object and task_type == "Patch_Select":
+                # For Patch_Select, include the specific task prompt
+                task_prompt = f"Select all squares with {target_object}"
+                answer_text = f"Few-shot example {i} (reference only, do NOT solve):\nTask: {task_prompt}\nAnswer JSON = {json.dumps(answer, ensure_ascii=False)}"
+            else:
+                answer_text = f"Few-shot example {i} (reference only, do NOT solve): Answer JSON = {json.dumps(answer, ensure_ascii=False)}"
         else:
-            answer_text = f"Example {i}: (no answer available)"
+            answer_text = f"Few-shot example {i} (reference only, do NOT solve): (no answer available)"
 
         if images:
             result.append((images, answer_text))
@@ -2507,11 +2518,18 @@ def run_eval(
     few_shot_examples_db = None
     exclude_examples = None
     few_shot_enabled = few_shot_config and few_shot_config.get("enabled", False)
+    n_shot_limit = None
 
     if few_shot_enabled:
         print(f"[INFO] Few-shot learning enabled")
                           
         few_shot_examples_db = load_few_shot_examples(few_shot_file)
+        try:
+            ns = int(few_shot_config.get("n_shot", 0))
+            if ns > 0:
+                n_shot_limit = ns
+        except Exception:
+            n_shot_limit = None
 
         if few_shot_examples_db:
                                
@@ -2519,6 +2537,8 @@ def run_eval(
             for task_type in types:
                 if task_type in few_shot_examples_db:
                     examples = few_shot_examples_db[task_type].get("examples", [])
+                    if isinstance(n_shot_limit, int) and n_shot_limit > 0:
+                        examples = examples[:n_shot_limit]
                     excluded_files = [ex.get("filename") for ex in examples if ex.get("filename")]
                     if excluded_files:
                         exclude_examples[task_type] = excluded_files
@@ -2598,7 +2618,8 @@ def run_eval(
                 task.type,
                 few_shot_examples_db,
                 dataset_root=dataset_root,
-                few_shot_assets_root=few_shot_assets_root
+                few_shot_assets_root=few_shot_assets_root,
+                n_shot=n_shot_limit
             )
 
         raw, parsed, meta = prov.infer(
