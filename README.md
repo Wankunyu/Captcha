@@ -322,21 +322,3 @@ The toolkit evaluates 18 CAPTCHA task types across 4 categories:
 * [exp2_to_exp3_predict.py](exp2_to_exp3_predict.py): Statistical prediction tools (baseline formulas: q = 1-(1-p)^k, A = [1-(1-p)^k]/p)
 * [test_statistic.ipynb](test_statistic.ipynb): Prediction validation with calibration diagnostics
 * [prompts_optimized.yaml](prompts_optimized.yaml): Task-specific optimized prompts
-
-## Citation
-
-If you use this toolkit in your research, please cite:
-
-```bibtex
-@software{captcha_eval_toolkit,
-  title = {CAPTCHA Evaluation Toolkit},
-  author = {Research Team},
-  year = {2024},
-  url = {https://github.com/yourusername/captcha}
-}
-```
-
----
-
-**Version**: 2.1 (GPT-5/5.1 integration with statistical analysis)
-**Last Updated**: November 30, 2024
