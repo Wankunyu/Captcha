@@ -66,29 +66,66 @@ providers:
 
 pricing:
   openai:
-    gpt-5:
-      in_per_1k: 0.0020
-      out_per_1k: 0.0080
-    gpt-5.1-medium:
-      in_per_1k: 0.0025
-      out_per_1k: 0.0100
-    gpt-5.1-none:
-      in_per_1k: 0.0015
-      out_per_1k: 0.0060
-  gemini:
-    gemini-2.5-flash:
-      in_per_1k: 0.0003
-      out_per_1k: 0.0025
-    gemini-2.5-pro:
-      in_per_1k: 0.0010
-      out_per_1k: 0.0050
+    gpt-5: {in_per_1k: 0.00125, out_per_1k: 0.0100}
+    gpt-5.1: {in_per_1k: 0.00125, out_per_1k: 0.0100}
+  
   anthropic:
-    claude-sonnet-4-5:
-      in_per_1k: 0.003
-      out_per_1k: 0.015
+    claude-opus-4-1: {in_per_1k: 0.015, out_per_1k: 0.075}
+    claude-sonnet-4-5: {in_per_1k: 0.003, out_per_1k: 0.015}
+
+  gemini:
+    gemini-2.5-pro: {in_per_1k: 0.00125, out_per_1k: 0.0100}
+    gemini-2.5-flash: {in_per_1k: 0.00030, out_per_1k: 0.0025}
+
+  fireworks:
+    accounts/fireworks/models/qwen3-vl-235b-a22b-instruct: {in_per_1k: 0.00022, out_per_1k: 0.00088}
 ```
 
 Each provider requires valid credentials before initialization.
+
+## Running Experiments
+
+### Notebook Usage (test.ipynb)
+
+```python
+provider = "openai"
+model = "gpt-5.1"
+reasoning_effort = "medium"
+
+result = run_experiment_1(
+    types=["Dice_Count", "Click_Order", "Patch_Select"],
+    max_per_type=10,
+    provider=provider,
+    model=model,
+    out_csv=exp_out_csv("exp1", provider, model),
+    token_output_dir=exp_results_dir("exp1", provider, model),
+    error_analysis_dir=exp_error_dir("exp1", provider, model),
+    collect_tokens=True,
+    collect_reasoning=False  # Set True for reasoning traces
+)
+```
+
+### Provider-Specific Notes
+
+#### OpenAI
+
+* **GPT-5 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium" by default), **no temperature parameter**
+* **GPT-5.1 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium"/"none"), **no temperature parameter**
+
+#### Anthropic
+
+* **Claude Sonnet 4.5**
+
+#### Gemini
+
+* **Gemini 2.5 Flash**, **Gemini 2.5 Pro**
+* Thinking budget: -1=dynamic, 0=disabled, N=token limit
+
+#### Fireworks
+
+* **Qwen3-VL-235B-A22B-Instruct** and other vision-language models
+* OpenAI-compatible API with extended vision capabilities
+* Supports up to 30 images per request
 
 ## Visualization System
 
@@ -155,71 +192,8 @@ viz.plot_optimization_resistance(base_exp='exp1', opt_exp='exp2', model_filter=S
 4. **Box Plot**: Cross-model stability and variance analysis
 5. **Cost-Performance Frontier**: API cost vs Pass@1 trade-offs with Pareto frontier
 6. **Time-Performance Scatter**: Response latency vs accuracy relationship
-7. **Custom Analysis**: Complete pipeline from Pass@1 → Success@3 → Expected cost per solve
 
 All charts export to **PDF format** for publication quality.
-
-**Note**: The visualization system focuses on the core 6 chart types used in the paper. Additional analysis tools are available through the `CAPTCHAVisualizer` class methods.
-
-## Few-shot Asset Pipeline
-
-1. Regenerate examples if the dataset changes:
-
-   ```bash
-   python prepare_few_shot_examples.py --dataset ./captcha_data --n-shot 2 --output few_shot_examples.yaml
-   ```
-
-2. Compress all example images without resizing:
-
-   ```bash
-   python compress_few_shot_assets.py
-   ```
-
-   The script creates `few_shot_image_compression_report.json` summarising byte savings.
-
-## Running Experiments
-
-### Notebook Usage (test.ipynb)
-
-```python
-provider = "openai"
-model = "gpt-5.1"
-reasoning_effort = "medium"
-
-result = run_experiment_1(
-    types=["Dice_Count", "Click_Order", "Patch_Select"],
-    max_per_type=10,
-    provider=provider,
-    model=model,
-    out_csv=exp_out_csv("exp1", provider, model),
-    token_output_dir=exp_results_dir("exp1", provider, model),
-    error_analysis_dir=exp_error_dir("exp1", provider, model),
-    collect_tokens=True,
-    collect_reasoning=False  # Set True for reasoning traces
-)
-```
-
-### Provider-Specific Notes
-
-#### OpenAI
-
-* **GPT-5 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium" by default), **no temperature parameter**
-* **GPT-5.1 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium"/"none"), **no temperature parameter**
-
-#### Anthropic
-
-* **Claude Sonnet 4.5**
-
-#### Gemini
-
-* **Gemini 2.5 Flash**, **Gemini 2.5 Pro**
-* Thinking budget: -1=dynamic, 0=disabled, N=token limit
-
-#### Fireworks
-
-* **Qwen3-VL-235B-A22B-Instruct** and other vision-language models
-* OpenAI-compatible API with extended vision capabilities
-* Supports up to 30 images per request
 
 ## Output Organization
 
