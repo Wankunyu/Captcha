@@ -1,5 +1,5 @@
 # Cognition: From Evaluation to Defense against Multimodal LLM CAPTCHA Solvers
-LAST UODATED: Dec. 02, 2025
+LAST UPDATED: Dec. 02, 2025
 
 A comprehensive framework for evaluating visual CAPTCHA tasks across multiple large language model providers (OpenAI GPT-5/5.1, Google Gemini 2.5, Anthropic Claude, Fireworks Qwen). Features 4 experimental paradigms testing 18 distinct task types with advanced visualization and statistical analysis capabilities.
 
