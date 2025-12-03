@@ -1,5 +1,5 @@
 # Cognition: From Evaluation to Defense against Multimodal LLM CAPTCHA Solvers
-
+LAST UODATED: Dec. 02, 2025
 A comprehensive framework for evaluating visual CAPTCHA tasks across multiple large language model providers (OpenAI GPT-5/5.1, Google Gemini 2.5, Anthropic Claude, Fireworks Qwen). Features 4 experimental paradigms testing 18 distinct task types with advanced visualization and statistical analysis capabilities.
 
 ## Project Structure
@@ -182,7 +182,8 @@ All charts export to **PDF format** for publication quality.
 
 ```python
 provider = "openai"
-model = "gpt-5.1-medium"
+model = "gpt-5.1"
+reasoning_effort = "medium"
 
 result = run_experiment_1(
     types=["Dice_Count", "Click_Order", "Patch_Select"],
@@ -197,50 +198,21 @@ result = run_experiment_1(
 )
 ```
 
-### CLI Usage
-
-```bash
-# Experiment 1: Baseline
-python run_single_experiment.py 1 \
-  --provider openai \
-  --model gpt-5.1-medium \
-  --max-per-type 10
-
-# Experiment 3: Until-Correct
-python run_single_experiment.py 3 \
-  --provider anthropic \
-  --model claude-sonnet-4-5 \
-  --max-attempts-per-type 5
-
-# Experiment 4: Few-Shot with Reasoning
-python run_single_experiment.py 4 \
-  --provider openai \
-  --model gpt-5 \
-  --n-shot 2 \
-  --thinking \
-  --thinking-budget 2048
-```
-
 ### Provider-Specific Notes
 
 #### OpenAI
 
 * **GPT-5 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium" by default), **no temperature parameter**
-* **GPT-5.1 Medium/None**: Variants with different reasoning effort levels, uses Responses API
-* **GPT-5-Chat-Latest**: Uses Chat Completions, non-reasoning model (`thinking=False`)
+* **GPT-5.1 (Reasoning)**: Uses Responses API with `reasoning.effort` ("medium"/"none"), **no temperature parameter**
 
 #### Anthropic
 
-* **Claude Sonnet 4.5**, Claude 3.5 Sonnet
-* Extended thinking modes: structured/freeform with `thinking_budget_tokens`
-* Supports up to 64K thinking tokens for complex reasoning
+* **Claude Sonnet 4.5**
 
 #### Gemini
 
 * **Gemini 2.5 Flash**, **Gemini 2.5 Pro**
 * Thinking budget: -1=dynamic, 0=disabled, N=token limit
-* Raw bytes image format (no base64 encoding)
-* Supports multimodal reasoning with visual inputs
 
 #### Fireworks
 
@@ -284,35 +256,15 @@ figures/
 | JSON parsing failures | Check `raw_response` in `errors.csv` |
 | GPT-5 parameter errors | Remove `temperature` parameter |
 | Exp3 visualization errors | Ensure `avg_attempts` and `avg_e2e_ms` columns exist |
-| Missing adjustText | Install with `pip install adjustText` |
-| Scatter plot label overlap | Enable `use_adjust_text=True` (default) |
-
-## Key Features
-
-* **Zero-Conversion Image Pipeline**: Images loaded as raw bytes, no resizing/format conversion
-* **Automatic Error Analysis**: Auto-generated error descriptions with detailed failure categorization
-* **Token Tracking**: Per-question and aggregated cost calculations across all providers
-* **Exp3 Format Handling**: Automatic conversion of Until-Correct CSV format with attempt tracking
-* **Statistical Prediction Tools**: Baseline formulas for Exp2→Exp3 predictions (q = 1-(1-p)^k, A = [1-(1-p)^k]/p)
-* **Display Name Mapping**: Professional model/experiment names for publication-quality outputs
-* **Missing Data Tolerance**: Gracefully handles incomplete experiments with partial results
 
 ## Task Types
 
 The toolkit evaluates 18 CAPTCHA task types across 4 categories:
 
-1. **Click/Coordinate Tasks** (6 types): Dice_Count, Click_Order, Place_Dot, Geometry_Click, Pick_Area, Misleading_Click
-2. **Grid Selection Tasks** (4 types): Patch_Select, Select_Animal, Image_Recognition, Unusual_Detection
-3. **Image Matching Tasks** (4 types): Image_Matching, Object_Match, Path_Finder, Rotation_Match
-4. **Logic/Reasoning Tasks** (4 types): Bingo, Dart_Count, Coordinates, Connect_Icon
-
-## Recent Updates
-
-* **GPT-5 and GPT-5.1 Support**: Full integration with OpenAI's latest reasoning models
-* **Enhanced Statistical Analysis**: Exp2→Exp3 prediction tools with calibration diagnostics
-* **Comprehensive Results**: Full evaluation across 6 major models (GPT-5, GPT-5.1 variants, Gemini 2.5 Flash/Pro, Claude Sonnet 4.5, Qwen3-VL)
-* **Improved Visualization**: 11 generated figures with optimization resistance and cost-performance analysis
-* **Dataset Expansion**: Extended samples across multiple task types for robust evaluation
+1. **Counting and aggregation**: Dice_Count, Dart_Count
+2. **Pointing and path-based localization**: Place_Dot, Geometry_Click, Pick_Area, Misleading_Click, Click_Order, Path_Finder
+3. **Grid selection and matching**: Bingo, Patch_Select, Image_Recognition, Select_Animal, Unusual_Detection, Object_Match, Image_Matching
+4. **Relational and transformation puzzles**: Coordinates, Connect_Icon, Rotation_Match.
 
 ## Further Reading
 
