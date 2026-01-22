@@ -1,13 +1,13 @@
 # Cognition: From Evaluation to Defense against Multimodal LLM CAPTCHA Solvers
 LAST UPDATED: Dec. 02, 2025
 
-A comprehensive framework for evaluating visual CAPTCHA tasks across multiple large language model providers (OpenAI GPT-5/5.1, Google Gemini 2.5, Anthropic Claude, Fireworks Qwen). Features 4 experimental paradigms testing 18 distinct task types with advanced visualization and statistical analysis capabilities.
+A comprehensive framework for evaluating visual CAPTCHA tasks across multiple large language model providers (OpenAI GPT-5/5.1, Google Gemini 2.5, Anthropic Claude, Fireworks Qwen). Features 4 experimental paradigms testing 19 distinct task types with advanced visualization and statistical analysis capabilities.
 
 ## Project Structure
 
 | Path | Purpose |
 | --- | --- |
-| `captcha_data/` | Raw CAPTCHA datasets with `ground_truth.json` metadata (18 task types). |
+| `captcha_data/` | Raw CAPTCHA datasets with `ground_truth.json` metadata (19 task types). |
 | `few_shot_assets/` | Compressed few-shot example images grouped by task type. |
 | `few_shot_image_manifest.json` | Auto-generated manifest of all few-shot image paths. |
 | `compress_few_shot_assets.py` | Lossless optimizer for images listed in the manifest. |
@@ -234,12 +234,20 @@ figures/
 
 ## Task Types
 
-The toolkit evaluates 18 CAPTCHA task types across 4 categories:
+The toolkit evaluates 19 CAPTCHA task types across 4 categories:
 
-1. **Counting and aggregation**: Dice_Count, Dart_Count
-2. **Pointing and path-based localization**: Place_Dot, Geometry_Click, Pick_Area, Misleading_Click, Click_Order, Path_Finder
-3. **Grid selection and matching**: Bingo, Patch_Select, Image_Recognition, Select_Animal, Unusual_Detection, Object_Match, Image_Matching
-4. **Relational and transformation puzzles**: Coordinates, Connect_Icon, Rotation_Match.
+1. **Click/Coordinate Tasks** (7 types): Dice_Count, Click_Order, Place_Dot, Geometry_Click, Pick_Area, Misleading_Click, Select_Animal_Optimized
+2. **Grid Selection Tasks** (4 types): Patch_Select, Select_Animal, Image_Recognition, Unusual_Detection
+3. **Image Matching Tasks** (4 types): Image_Matching, Object_Match, Path_Finder, Rotation_Match
+4. **Logic/Reasoning Tasks** (4 types): Bingo, Dart_Count, Coordinates, Connect_Icon
+
+## Recent Updates
+
+* **GPT-5 and GPT-5.1 Support**: Full integration with OpenAI's latest reasoning models
+* **Enhanced Statistical Analysis**: Exp2→Exp3 prediction tools with calibration diagnostics
+* **Comprehensive Results**: Full evaluation across 6 major models (GPT-5, GPT-5.1 variants, Gemini 2.5 Flash/Pro, Claude Sonnet 4.5, Qwen3-VL-235B-A22B-Instruct)
+* **Improved Visualization**: 11 generated figures with optimization resistance and cost-performance analysis
+* **Dataset Expansion**: Extended samples across multiple task types for robust evaluation
 
 ## Further Reading
 

@@ -256,6 +256,47 @@ def _point_dist(p: dict, q: dict) -> float:
     """Euclidean distance between two points; p/q: {"x":...,"y":...}"""
     return ((float(p["x"]) - float(q["x"]))**2 + (float(p["y"]) - float(q["y"]))**2) ** 0.5
 
+def _normalize_points(points) -> list[dict]:
+    """Normalize points to [{'x': float, 'y': float}] list; tolerate list/dict inputs."""
+    if points is None:
+        return []
+    if isinstance(points, dict):
+        points = [points]
+    out = []
+    for p in (points or []):
+        try:
+            if isinstance(p, dict):
+                x, y = p.get("x"), p.get("y")
+            elif isinstance(p, (list, tuple)) and len(p) == 2:
+                x, y = p
+            else:
+                continue
+            out.append({"x": float(x), "y": float(y)})
+        except Exception:
+            continue
+    return out
+
+def _match_points(pred_pts: list[dict], gt_pts: list[dict], tol: float) -> tuple[int, int, int]:
+    """Greedy match points within tolerance; returns (matched, missing_gt, extra_pred)."""
+    used_pred = set()
+    matched = 0
+    for g in gt_pts:
+        best_idx = None
+        best_dist = None
+        for i, p in enumerate(pred_pts):
+            if i in used_pred:
+                continue
+            dist = _point_dist(p, g)
+            if dist <= tol and (best_dist is None or dist < best_dist):
+                best_idx = i
+                best_dist = dist
+        if best_idx is not None:
+            used_pred.add(best_idx)
+            matched += 1
+    missing_gt = max(0, len(gt_pts) - matched)
+    extra_pred = max(0, len(pred_pts) - len(used_pred))
+    return matched, missing_gt, extra_pred
+
 def _clean_indices(xs) -> list:
     """Deduplicate/convert to int/sort index set"""
     try:
@@ -343,6 +384,30 @@ def _describe_failure(task, parsed, raw: str) -> str:
         if not messages:
             messages.append("Click order error detected but details unclear, check raw response: " + (raw[:120] if raw else "(empty)"))
         return " ".join(messages)
+
+    if task_type == "Select_Animal_Optimized":
+        if not isinstance(parsed, dict):
+            return "Did not return points list."
+        pred_pts = _normalize_points(parsed.get("points"))
+        gt_pts = _normalize_points(gt.get("targets_positions"))
+        tol = float(gt.get("tolerance", 15.0))
+        if not pred_pts:
+            return "points list empty or malformed."
+        if not gt_pts:
+            return "GT points missing."
+        matched, missing_gt, extra_pred = _match_points(pred_pts, gt_pts, tol)
+        parts = []
+        if parsed.get("answer_type") != "multi_point":
+            parts.append(f"answer_type should be 'multi_point', got {parsed.get('answer_type')!r}.")
+        if len(pred_pts) != len(gt_pts):
+            parts.append(f"Predicted {len(pred_pts)} points vs GT {len(gt_pts)}.")
+        if missing_gt:
+            parts.append(f"{missing_gt} GT point(s) unmatched within {tol}px.")
+        if extra_pred:
+            parts.append(f"{extra_pred} predicted point(s) unmatched within {tol}px.")
+        if not parts:
+            parts.append("No specific mismatch detected, check raw response formatting.")
+        return " ".join(parts)
 
     if task_type == "Patch_Select":
         if not isinstance(parsed, dict):
@@ -1333,6 +1398,7 @@ SUPPORTED_TYPES = {
     "Path_Finder",
     "Pick_Area",
     "Select_Animal",
+    "Select_Animal_Optimized",
     "Unusual_Detection",
     "Coordinates",
     "Connect_Icon",
@@ -1340,7 +1406,7 @@ SUPPORTED_TYPES = {
 }
 
 TYPE_REQUIRE_PER_ITEM = {"Geometry_Click", "Image_Recognition", "Misleading_Click",
-                         "Select_Animal","Patch_Select","Bingo", 
+                         "Select_Animal","Select_Animal_Optimized","Patch_Select","Bingo", 
                          "Click_Order", "Connect_Icon", "Coordinates", "Dice_Count",
                         "Dart_Count", "Image_Matching", "Object_Match", "Pick_Area",
                         "Place_Dot", "Rotation_Match", "Unusual_Detection", "Path_Finder"}
@@ -1985,6 +2051,25 @@ def build_tasks(
                 indices_gt = _get_first(entry, "correct_selections", "correct_patches", "answer", default=[])
                 tasks.append(TaskItem(t, pid, prompt, [img], {"indices_gt": indices_gt}))
 
+            elif t == "Select_Animal_Optimized":
+                default_prompt = (
+                    "Click on all of the target's eyes and return JSON "
+                    "{\"answer_type\":\"multi_point\",\"points\":[{\"x\":..,\"y\":..}, ...]}. "
+                    "Include one point per eye; order does not matter."
+                )
+                prompt = _choose_prompt(entry, t, pid, default_prompt, prompts_cfg or {}, prompt_prefix, prompt_suffix, mode=prompt_mode)
+                img = os.path.join(type_dir, pid)
+                if not os.path.isfile(img):
+                    print(f"[SKIP] File does not exist: {img}")
+                    continue
+                raw_positions = _get_first(entry, "target_position", "targets_position", "answer", default=[])
+                gt_pts = _normalize_points(raw_positions)
+                if not gt_pts:
+                    print(f"[SKIP] {t}/{pid} missing target_position list")
+                    continue
+                tol = float(entry.get("tolerance", 15.0))
+                tasks.append(TaskItem(t, pid, prompt, [img], {"targets_positions": gt_pts, "tolerance": tol}))
+
             elif t == "Path_Finder":
                                                          
                 default_prompt_cls = (
@@ -2321,6 +2406,17 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
             gold = _clean_indices(gt.get("indices_gt", []))
             return pred == gold
 
+        if t == "Select_Animal_Optimized":
+            if parsed.get("answer_type") != "multi_point":
+                return False
+            pred_pts = _normalize_points(parsed.get("points"))
+            gt_pts = _normalize_points(gt.get("targets_positions"))
+            if not pred_pts or not gt_pts:
+                return False
+            tol = float(gt.get("tolerance", 15.0))
+            matched, missing_gt, extra_pred = _match_points(pred_pts, gt_pts, tol)
+            return matched == len(gt_pts) and missing_gt == 0 and extra_pred == 0
+
         if t in ("Dart_Count","Coordinates","Connect_Icon","Object_Match"):
             return parsed.get("answer_type")=="classify" and int(parsed.get("index")) == int(gt["correct_index"])
 
@@ -2420,6 +2516,13 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["multi_select"]},
                                               "indices":{"type":"array","items":{"type":"integer"}}},
                 "required":["answer_type","indices"]}, include_reasoning=include_reasoning)
+
+    if task_type == "Select_Animal_Optimized":
+        return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["multi_point"]},
+                                              "points":{"type":"array","items":{"type":"object",
+                                                                               "properties":{"x":{"type":"number"},"y":{"type":"number"}},
+                                                                               "required":["x","y"]}}},
+                "required":["answer_type","points"]}, include_reasoning=include_reasoning)
 
     if task_type in ("Dart_Count","Coordinates","Connect_Icon","Object_Match","Path_Finder"):
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["classify"]},

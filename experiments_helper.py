@@ -309,6 +309,21 @@ def _normalize_ground_truth(task_type: str, data: Dict) -> Dict:
         else:
             return {"target_position": {"x": 0, "y": 0}, "tolerance": 15.0}
 
+    elif task_type == "Select_Animal_Optimized":
+        points = data.get("target_position", data.get("targets_position", data.get("answer", [])))
+        if isinstance(points, dict):
+            points = [points]
+        norm_points = []
+        for p in points or []:
+            if isinstance(p, dict) and "x" in p and "y" in p:
+                norm_points.append({"x": p["x"], "y": p["y"]})
+            elif isinstance(p, list) and len(p) == 2:
+                norm_points.append({"x": p[0], "y": p[1]})
+        return {
+            "targets_positions": norm_points,
+            "tolerance": data.get("tolerance", 15.0)
+        }
+
     else:
         return data.get("answer", {})
 

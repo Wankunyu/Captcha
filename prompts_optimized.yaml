@@ -84,6 +84,26 @@ types:
 
       Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
+  Select_Animal_Optimized:
+    mode: merge
+    rules: |-
+      Task: Click on all of the [target]'s eyes.
+
+      Process:
+      1) Note the image pixel size (width x height).
+      2) Locate the target object named in the prompt.
+      3) Determine how many eyes are visible on that object (often 1 or 2).
+      4) Click the center of each visible eye.
+
+      Output Rules:
+      - Use absolute pixel coordinates for the FULL image (origin at top-left).
+      - Include one point per visible eye; do NOT guess hidden/occluded eyes.
+      - Ensure all points are within image bounds.
+      - Only include eyes of the specified target.
+      - Return JSON {"answer_type":"multi_point","points":[{"x":..,"y":..}, ...]}.
+
+      Respond with JSON only, strictly following the provided schema. No extra fields or text.
+
   Unusual_Detection: |-
     Task: Select ALL items that are inconsistent with the majority (the "odd ones out").
 
@@ -258,4 +278,3 @@ types:
     - Ignore small shadows or compression artifacts.
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
-
