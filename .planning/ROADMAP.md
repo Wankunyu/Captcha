@@ -111,7 +111,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Reproducibility and Safety Foundation | 0/TBD | Not started | - |
+| 1. Reproducibility and Safety Foundation | 0/5 | Planned | - |
 | 2. Statistical Confidence and Dataset Scope | 0/TBD | Not started | - |
 | 3. Adaptive Attacker Evidence | 0/TBD | Not started | - |
 | 4. Benchmark and Baseline Strengthening | 0/TBD | Not started | - |
