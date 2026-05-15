@@ -32,7 +32,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every revision experiment writes a versioned run manifest and append-only per-attempt records before aggregate summaries are derived.
   4. Shareable reports and planning artifacts never print, copy, or commit credential values from local secret configuration.
   5. Revision-critical task aliases, result schemas, and scoring helpers are covered by focused regression tests or validators.
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 01-01-PLAN.md - Add uv dependency manifest, lockfile, and local validation documentation.
+- [ ] 01-02-PLAN.md - Remove import-time side effects and establish secret-safe provider smoke boundaries.
+- [ ] 01-03-PLAN.md - Define versioned revision artifact schemas and append-only writer.
+- [ ] 01-04-PLAN.md - Add offline preflight validation for task aliases, datasets, prompts, outputs, and request counts.
+- [ ] 01-05-PLAN.md - Wire explicit revision artifact mode into the evaluator and add focused regression tests.
 
 ### Phase 2: Statistical Confidence and Dataset Scope
 **Goal**: Researchers can quantify uncertainty, sample support, threshold sensitivity, retry-model validity, and infrastructure-vs-scientific failures for existing and future results.
@@ -111,4 +117,3 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 4. Benchmark and Baseline Strengthening | 0/TBD | Not started | - |
 | 5. Defense Methodology Artifacts | 0/TBD | Not started | - |
 | 6. Paper Artifact QA and Claim Alignment | 0/TBD | Not started | - |
-
