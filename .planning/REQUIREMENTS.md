@@ -101,43 +101,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REPRO-01 | TBD | Pending |
-| REPRO-02 | TBD | Pending |
-| REPRO-03 | TBD | Pending |
-| REPRO-04 | TBD | Pending |
-| REPRO-05 | TBD | Pending |
-| REPRO-06 | TBD | Pending |
-| STAT-01 | TBD | Pending |
-| STAT-02 | TBD | Pending |
-| STAT-03 | TBD | Pending |
-| STAT-04 | TBD | Pending |
-| STAT-05 | TBD | Pending |
-| ADAPT-01 | TBD | Pending |
-| ADAPT-02 | TBD | Pending |
-| ADAPT-03 | TBD | Pending |
-| ADAPT-04 | TBD | Pending |
-| ADAPT-05 | TBD | Pending |
-| ADAPT-06 | TBD | Pending |
-| BASE-01 | TBD | Pending |
-| BASE-02 | TBD | Pending |
-| BASE-03 | TBD | Pending |
-| BASE-04 | TBD | Pending |
-| BASE-05 | TBD | Pending |
-| DEF-01 | TBD | Pending |
-| DEF-02 | TBD | Pending |
-| DEF-03 | TBD | Pending |
-| DEF-04 | TBD | Pending |
-| DEF-05 | TBD | Pending |
-| PAPER-01 | TBD | Pending |
-| PAPER-02 | TBD | Pending |
-| PAPER-03 | TBD | Pending |
-| PAPER-04 | TBD | Pending |
+| REPRO-01 | Phase 1 | Pending |
+| REPRO-02 | Phase 1 | Pending |
+| REPRO-03 | Phase 1 | Pending |
+| REPRO-04 | Phase 1 | Pending |
+| REPRO-05 | Phase 1 | Pending |
+| REPRO-06 | Phase 1 | Pending |
+| STAT-01 | Phase 2 | Pending |
+| STAT-02 | Phase 2 | Pending |
+| STAT-03 | Phase 2 | Pending |
+| STAT-04 | Phase 2 | Pending |
+| STAT-05 | Phase 2 | Pending |
+| ADAPT-01 | Phase 3 | Pending |
+| ADAPT-02 | Phase 3 | Pending |
+| ADAPT-03 | Phase 3 | Pending |
+| ADAPT-04 | Phase 3 | Pending |
+| ADAPT-05 | Phase 3 | Pending |
+| ADAPT-06 | Phase 3 | Pending |
+| BASE-01 | Phase 4 | Pending |
+| BASE-02 | Phase 4 | Pending |
+| BASE-03 | Phase 4 | Pending |
+| BASE-04 | Phase 4 | Pending |
+| BASE-05 | Phase 4 | Pending |
+| DEF-01 | Phase 5 | Pending |
+| DEF-02 | Phase 5 | Pending |
+| DEF-03 | Phase 5 | Pending |
+| DEF-04 | Phase 5 | Pending |
+| DEF-05 | Phase 5 | Pending |
+| PAPER-01 | Phase 6 | Pending |
+| PAPER-02 | Phase 6 | Pending |
+| PAPER-03 | Phase 6 | Pending |
+| PAPER-04 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 31 total
-- Mapped to phases: 0
-- Unmapped: 31
+- Mapped to phases: 31
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-15*
-*Last updated: 2026-05-15 after initial definition*
+*Last updated: 2026-05-15 after roadmap creation*
