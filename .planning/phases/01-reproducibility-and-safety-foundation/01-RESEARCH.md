@@ -520,22 +520,19 @@ All claims in this research were verified against local files, local command out
 |---|-------|---------|---------------|
 | - | None | - | - |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 1 pin current provider SDK versions exactly or allow compatible minor upgrades?**
    - What we know: local installed versions are older than PyPI latest for OpenAI, Anthropic, and Google Gen AI. [VERIFIED: importlib.metadata; PyPI JSON API]
-   - What's unclear: whether the user's current local results depend on exact SDK behavior. [VERIFIED: .planning/codebase/CONCERNS.md]
-   - Recommendation: first lock exact installed provider SDK versions, then add a later explicit upgrade task after provider contract tests. [VERIFIED: .planning/codebase/CONCERNS.md]
+   - RESOLVED: Phase 1 pins the exact locally installed provider SDK versions in `pyproject.toml` and `uv.lock`: `openai==2.6.1`, `anthropic==0.72.0`, and `google-genai==1.39.1`. Compatible/minor SDK upgrades are intentionally out of scope until explicit provider contract or smoke tests exist. [VERIFIED: .planning/codebase/CONCERNS.md]
 
 2. **How far should Phase 1 go on scoring regressions?**
    - What we know: `Path_Finder` has classification schema/build behavior but `evaluate_pass1()` treats it with multi-select logic in one branch; there are other known scoring/summary crash surfaces. [VERIFIED: run_eval.py:2073-2108; run_eval.py:2404-2407; run_eval.py:2527-2530; run_eval.py:2927-2934]
-   - What's unclear: whether the planner should fix a minimal blocker or only surface validators. [VERIFIED: 01-CONTEXT.md D-14]
-   - Recommendation: include tests/validators that expose the issue; fix only the smallest behavior needed to make Phase 1 contracts truthful. [VERIFIED: 01-CONTEXT.md D-13, D-14]
+   - RESOLVED: Phase 1 adds focused regression tests/validators for revision-critical scoring and summary risks, and only permits the smallest code fixes needed for those tests to pass. Broad scoring repair, taxonomy migration, and evaluator refactors remain out of scope per D-14. [VERIFIED: 01-CONTEXT.md D-13, D-14]
 
 3. **Should `revision_preflight.py` import `run_eval` after import safety, or maintain an independent task registry?**
    - What we know: importing `run_eval` is currently unsafe, but duplicating task logic can drift. [VERIFIED: run_eval.py:35-47; run_eval.py:1797-2328]
-   - What's unclear: exact implementation after cleanup. [VERIFIED: 01-CONTEXT.md discretion]
-   - Recommendation: implement import-safety first, then have preflight import a small alias/registry helper or a cleaned `run_eval` constant surface. [VERIFIED: 01-PATTERNS.md]
+   - RESOLVED: Plan 02 makes `run_eval` import-safe first. Plan 04 may then import the cleaned `run_eval.SUPPORTED_TYPES` constant surface, while keeping preflight offline and forbidden from calling `load_secrets()`, `make_provider()`, provider SDK classes, or any `infer()` method. [VERIFIED: 01-PATTERNS.md]
 
 ## Environment Availability
 
