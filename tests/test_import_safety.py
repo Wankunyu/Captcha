@@ -27,9 +27,10 @@ def test_run_eval_and_wrapper_imports_are_quiet() -> None:
     result = _run_imports("import run_eval; import run_single_experiment")
     output = _combined_output(result)
 
-    assert result.returncode == 0, output
+    assert result.returncode == 0, "import subprocess failed"
     for marker in UNSAFE_OUTPUT_MARKERS:
-        assert marker not in output
+        if marker in output:
+            raise AssertionError(f"unsafe marker emitted during import: {marker!r}")
 
 
 def test_revision_provider_smoke_import_does_not_construct_provider() -> None:
@@ -42,9 +43,10 @@ def test_revision_provider_smoke_import_does_not_construct_provider() -> None:
     )
     output = _combined_output(result)
 
-    assert result.returncode == 0, output
+    assert result.returncode == 0, "revision_provider_smoke import subprocess failed"
     for marker in UNSAFE_OUTPUT_MARKERS:
-        assert marker not in output
+        if marker in output:
+            raise AssertionError(f"unsafe marker emitted during smoke import: {marker!r}")
 
 
 def test_revision_provider_smoke_help_does_not_read_secrets() -> None:
@@ -56,6 +58,8 @@ def test_revision_provider_smoke_help_does_not_read_secrets() -> None:
     )
     output = _combined_output(result)
 
-    assert result.returncode == 0, output
-    assert "secrets.yaml exists?" not in output
-    assert "api_key" not in output
+    assert result.returncode == 0, "revision_provider_smoke --help failed"
+    if "secrets.yaml exists?" in output:
+        raise AssertionError("help emitted import-time secrets diagnostic")
+    if "api_key" in output:
+        raise AssertionError("help emitted credential field name")

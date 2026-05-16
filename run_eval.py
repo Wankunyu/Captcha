@@ -32,25 +32,6 @@ except ImportError:
 
     
             
-import os, glob
-print("CWD =", os.getcwd())
-print("captcha_data exists?", os.path.isdir("./captcha_data"))
-print("secrets.yaml exists?", os.path.exists("./secrets.yaml"))
-print("sample type dirs:", glob.glob("./captcha_data/*")[:5])
-
-    
-           
-import yaml, json
-with open("./secrets.yaml","r",encoding="utf-8") as f:
-    cfg = yaml.safe_load(f)
-print(json.dumps(cfg, indent=2, ensure_ascii=False))
-assert cfg.get("providers",{}).get("openai",{}).get("api_key"), "openai.api_key missing！"
-
-
-               
-                            
-
-    
 IMG_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".webp")
 IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
 IMAGE_EXTENSIONS = {ext.lower() for ext in IMG_EXTS}
@@ -3302,26 +3283,6 @@ def main():
             collect_reasoning=args.collect_reasoning
         )
 
-
-    
-from google import genai
-client = genai.Client(api_key="REDACTED_GEMINI_API_KEY")
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-lite",
-    contents="I am test from local IDE. Say hello."
-)
-print("TEXT OK:", bool(getattr(response, 'text', None)), getattr(response, 'text', "")[:120])
-
-
-    
-
-
-               
-         
-
-    
-        
 '''
 import traceback
 try:
