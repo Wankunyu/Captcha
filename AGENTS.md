@@ -21,10 +21,10 @@ Produce credible, reproducible revision evidence that directly strengthens the p
 
 Phase 1: Reproducibility and Safety Foundation.
 
-The next planning step is:
+Phase 1 has been planned and is ready for execution. The next GSD step is:
 
 ```bash
-/gsd-discuss-phase 1
+/gsd-execute-phase 1
 ```
 
 Phase 1 should establish install, preflight, manifest, attempt-log, secret-safety, and validator contracts before expensive provider runs.
@@ -69,11 +69,11 @@ Primary artifact directories:
 ## Roadmap Summary
 
 1. Reproducibility and Safety Foundation
-2. Statistical Confidence and Dataset Scope
-3. Adaptive Attacker Evidence
-4. Benchmark and Baseline Strengthening
-5. Defense Methodology Artifacts
-6. Paper Artifact QA and Claim Alignment
+2. Adaptive Attacker Main-Body Evidence
+3. Dataset Scope, Statistical Confidence, and Limitations
+4. SOTA Solver and Larger Benchmark Strengthening
+5. Defense Methodology and HCI Scope
+6. Ethics, Artifact Availability, and Paper Claim Alignment
 
 Each implementation phase should map back to `.planning/REQUIREMENTS.md` and update traceability when complete.
 

@@ -96,7 +96,7 @@ Use a strangler-style architecture: add revision wrappers and artifact generator
 
 ## Implications for Roadmap
 
-Based on the combined research, the roadmap should start with evidence contracts and offline analysis before expensive model calls. The adaptive attacker is the headline reviewer need, but it should run on top of manifest, schema, confidence, and safety foundations so its outputs are immediately usable in the manuscript.
+Based on the combined research and the later shepherding plan, the roadmap should start with evidence contracts before expensive model calls, then prioritize the adaptive attacker as the first headline empirical addition. Dataset/statistical limitations follow immediately after the adaptive evidence so the main-body claims can be bounded before baseline, defense, and final paper packaging work.
 
 ### Phase 1: Reproducibility and Safety Foundation
 
@@ -108,19 +108,9 @@ Based on the combined research, the roadmap should start with evidence contracts
 
 **Avoids:** Secret leakage, provider-cost surprises, task alias drift, provider SDK drift, generated artifact churn, code fragility.
 
-### Phase 2: Statistical Confidence and Dataset Scope
+### Phase 2: Adaptive Attacker Main-Body Evidence
 
-**Rationale:** This can run mostly offline over existing results and should constrain later paper language. It also gives the adaptive and baseline phases a shared uncertainty/reporting contract.
-
-**Delivers:** Confidence intervals by task and family, denominator definitions, threshold sensitivity around 40%, small-n/underpowered flags, dataset scope audit, Bernoulli prediction calibration over existing retry results, and paper-ready confidence summaries.
-
-**Addresses:** Statistical confidence reporting, dataset limitations, threshold justification, Bernoulli assumption validation.
-
-**Avoids:** Claim drift, arbitrary hard/broken labels, prose-only treatment of retry assumptions, operational failures mixed with scientific failures.
-
-### Phase 3: Adaptive Attacker Evidence
-
-**Rationale:** This is the most visible reviewer-requested empirical addition, but it needs Phase 1 contracts and Phase 2 confidence outputs to be credible and main-body-ready.
+**Rationale:** This is the most visible shepherd-requested empirical addition and should move from appendix to main body as soon as Phase 1 safety and artifact contracts exist.
 
 **Delivers:** Adaptive session-memory runner, attempt-level logs, structured attacker state summaries, adaptive-vs-fixed comparison tables, pass@k and attempts-to-success outputs, hard-task robustness interpretation, and main-body figure/table inputs.
 
@@ -128,44 +118,54 @@ Based on the combined research, the roadmap should start with evidence contracts
 
 **Avoids:** Superficial prompt-only adaptation, untraceable memory behavior, unsupported claims that hard tasks remain robust.
 
-### Phase 4: Baseline and Larger-Dataset Strengthening
+### Phase 3: Dataset Scope, Statistical Confidence, and Limitations
+
+**Rationale:** This can run mostly offline over existing and adaptive results, and should constrain paper language before baseline and final packaging work.
+
+**Delivers:** Confidence intervals by task and family, denominator definitions, threshold sensitivity around 40%, small-n/underpowered flags, dataset scope audit, removed/incompatible CaptchaWorld task rationale, Bernoulli prediction calibration, and paper-ready limitations summaries.
+
+**Addresses:** Statistical confidence reporting, dataset limitations, threshold justification, Bernoulli assumption validation, and generalizability boundaries.
+
+**Avoids:** Claim drift, arbitrary hard/broken labels, prose-only treatment of retry assumptions, operational failures mixed with scientific failures, and population-level overclaims.
+
+### Phase 4: SOTA Solver and Larger Benchmark Strengthening
 
 **Rationale:** SOTA solver and larger-dataset comparisons have the highest external uncertainty. This phase should start with primary artifact inspection and scoped ingestion, not full solver rewrites.
 
-**Delivers:** Baseline comparison schema, coverage matrix, task-family mapping, comparability labels, external benchmark smoke subset if feasible, literature/reproduction distinction, and appendix-ready comparison table.
+**Delivers:** Baseline comparison schema, Halligan/Oedipus and dedicated-solver coverage matrix, task-family mapping, comparability labels, external benchmark smoke subset if feasible, literature/reproduction distinction, and appendix-ready comparison table.
 
 **Addresses:** Specialized solver baseline comparison, larger-dataset integration path, benchmark coverage matrix, literature-to-experiment reconciliation.
 
 **Avoids:** Apples-to-oranges SOTA tables, invalid dataset conversions, unsafe external solver workflows, overclaiming beyond matched evidence.
 
-### Phase 5: Defense Methodology Artifacts
+### Phase 5: Defense Methodology and HCI Scope
 
-**Rationale:** Defense guidance should consume final empirical evidence from confidence, adaptive, and baseline work. This phase should produce actionable methodology, not a production defense system.
+**Rationale:** Defense guidance should consume final empirical evidence from adaptive, confidence, and baseline work. This phase should produce actionable methodology, not a production defense system or formal HCI claim.
 
-**Delivers:** Hardness-factor matrix, defense methodology Markdown, practitioner checklist, template-rotation example, defense evidence map, and at least one worked weak-to-hardened example where evidence supports it.
+**Delivers:** Hardness-factor matrix, defense methodology Markdown, practitioner checklist, template-family/rotation example, human-clarity constraints, deployment-monitoring knobs, defense evidence map, and at least one worked weak-to-hardened example where evidence supports it.
 
-**Addresses:** Defense methodology clarification, defense evidence mapping, structural hardness scorecard, usability proxy checklist.
+**Addresses:** Defense methodology clarification, defense evidence mapping, structural hardness scorecard, usability/HCI scoping, and deployment-overhead discussion.
 
-**Avoids:** Restated guideline lists, unsupported usability claims, production-service scope creep.
+**Avoids:** Restated guideline lists, unsupported usability claims, formal HCI overclaiming, production-service scope creep.
 
-### Phase 6: Paper Artifact QA and Claim Alignment
+### Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment
 
-**Rationale:** The revision succeeds only if generated artifacts visibly answer reviewer asks and manuscript claims stay within the evidence.
+**Rationale:** The revision succeeds only if generated artifacts visibly answer shepherd asks, disclosure details are documented, artifact availability is ready, and manuscript claims stay within the evidence.
 
-**Delivers:** Claim ledger, reviewer-request-to-artifact traceability table, paper artifact manifest, final figure/table inputs, confidence-aware captions, notebook cleanup or read-only notebook consumers, and shareable redacted artifact bundle.
+**Delivers:** Claim ledger, reviewer-request-to-artifact traceability table, ethics/disclosure record, paper artifact manifest, final figure/table inputs, confidence-aware captions, notebook cleanup or read-only notebook consumers, color-coded diff support, point-by-point change support, and shareable redacted artifact bundle.
 
-**Addresses:** Main-body integration, paper-ready change log, visualization cleanup, final reproducibility package.
+**Addresses:** Main-body integration, paper-ready change log, visualization cleanup, ethics/disclosure requirements, and final artifact availability package.
 
 **Avoids:** New evidence hidden in appendix only, stale notebook computations, threshold overclaims, model-snapshot overgeneralization.
 
 ### Phase Ordering Rationale
 
 - Start with reproducibility and safety because all later runs require manifests, schema versions, task validation, budget preflight, and secret-safe logging.
-- Run statistical confidence and dataset scope before adaptive full sweeps because this work is mostly offline and sets the language/interval contract for all later results.
-- Run adaptive experiments after the artifact and confidence contracts exist so the strongest reviewer-facing evidence is immediately traceable and usable in main-body figures.
-- Put baselines and larger datasets after local schemas stabilize because external comparisons require explicit mapping and comparability controls.
+- Run adaptive experiments immediately after the foundation because the shepherding plan explicitly moves session-memory evidence into the main body.
+- Run dataset scope and statistical confidence after adaptive evidence so limitations and uncertainty can bound both existing and new results.
+- Put SOTA solvers and larger datasets after local schemas stabilize because external comparisons require explicit mapping and comparability controls.
 - Build defense methodology after empirical evidence lands so it is grounded in measured hardness factors rather than repeated prose.
-- Finish with claim alignment because the last risk is not missing code; it is manuscript language exceeding the generated evidence.
+- Finish with ethics, artifact availability, and claim alignment because the last risk is not missing code; it is manuscript language, disclosure detail, or artifact packaging falling out of sync with generated evidence.
 
 ### Research Flags
 

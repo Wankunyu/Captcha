@@ -11,11 +11,11 @@ The roadmap should assign these ownership buckets before implementation begins:
 | Phase | Purpose |
 |-------|---------|
 | Phase 1: Reproducibility and Safety Foundation | Make experiment execution safe, deterministic, versioned, and secret-clean before expensive runs. |
-| Phase 2: Adaptive Attacker Experiment | Implement session-memory/adaptive retry experiments and main-body-ready interpretation. |
-| Phase 3: Statistical Confidence and Dataset Scope | Add uncertainty reporting, sample-size caveats, threshold justification, and dataset limitation artifacts. |
-| Phase 4: Baselines and Larger Dataset Integration | Compare against SOTA solver baselines and/or larger external datasets with fair scoped methodology. |
-| Phase 5: Defense Methodology Artifacts | Turn defense guidance into an actionable, reusable methodology with practitioner-facing artifacts. |
-| Phase 6: Paper Artifact QA and Claim Alignment | Freeze figures/tables/appendix inputs, audit claims against outputs, and prevent overclaiming. |
+| Phase 2: Adaptive Attacker Main-Body Evidence | Implement session-memory/adaptive retry experiments and main-body-ready interpretation. |
+| Phase 3: Dataset Scope, Statistical Confidence, and Limitations | Add uncertainty reporting, sample-size caveats, threshold justification, dataset limitation artifacts, and generalizability boundaries. |
+| Phase 4: SOTA Solver and Larger Benchmark Strengthening | Compare against SOTA solver baselines and/or larger external datasets with fair scoped methodology. |
+| Phase 5: Defense Methodology and HCI Scope | Turn defense guidance into an actionable, reusable methodology with practitioner-facing artifacts and explicit HCI limits. |
+| Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment | Freeze figures/tables/appendix inputs, audit claims against outputs, document disclosure details, and prevent overclaiming. |
 
 ## Critical Pitfalls
 
@@ -42,7 +42,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Interpret results by hardness mechanism: localization, object-location binding, counting, continuous output precision, and multi-step composition.
 - Keep the implementation offline and dataset-based; do not add browser automation or live-site attack capabilities.
 
-**Roadmap phase:** Phase 2: Adaptive Attacker Experiment.
+**Roadmap phase:** Phase 2: Adaptive Attacker Main-Body Evidence.
 
 ### Pitfall 2: Bernoulli Criticism Is Treated as a Prose Limitation Instead of an Empirical Check
 
@@ -65,7 +65,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Treat infrastructure/provider errors as censored or separate operational failures, not as evidence of CAPTCHA hardness.
 - Make the main claim independent of Bernoulli where possible: hard tasks remain hard empirically under stronger adaptive trials.
 
-**Roadmap phase:** Phase 3: Statistical Confidence and Dataset Scope, with inputs from Phase 2.
+**Roadmap phase:** Phase 3: Dataset Scope, Statistical Confidence, and Limitations, with inputs from Phase 2.
 
 ### Pitfall 3: Statistical Confidence Is Added After Figures, Causing Claim Drift
 
@@ -88,7 +88,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Include dataset-scope caveats in the same tables or appendix artifacts used by the main text, not only in a standalone limitations paragraph.
 - Require Phase 6 claim audit to compare every numeric and categorical claim against generated statistical outputs.
 
-**Roadmap phase:** Phase 3: Statistical Confidence and Dataset Scope; audited in Phase 6.
+**Roadmap phase:** Phase 3: Dataset Scope, Statistical Confidence, and Limitations; audited in Phase 6.
 
 ### Pitfall 4: SOTA Baselines Are Compared Unfairly or Too Literally
 
@@ -111,7 +111,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Preserve dataset provenance, license, checksums, task mapping, and excluded-category rationale.
 - Use comparison language such as "complements", "covers different threat model", or "stress-tests against agentic baseline" unless direct matched experiments justify stronger wording.
 
-**Roadmap phase:** Phase 4: Baselines and Larger Dataset Integration.
+**Roadmap phase:** Phase 4: SOTA Solver and Larger Benchmark Strengthening.
 
 ### Pitfall 5: Larger Dataset Integration Sacrifices Ground-Truth Validity
 
@@ -135,7 +135,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Keep larger-dataset claims scoped to the subset that is faithfully represented in the offline COGNITION framework.
 - Prefer fewer validated external task families over a broad but lossy import.
 
-**Roadmap phase:** Phase 4: Baselines and Larger Dataset Integration, with foundation work in Phase 1.
+**Roadmap phase:** Phase 4: SOTA Solver and Larger Benchmark Strengthening, with foundation work in Phase 1.
 
 ### Pitfall 6: Secrets Leak Through Existing Import Side Effects and Result Logs
 
@@ -230,7 +230,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - State limits clearly: no formal HCI study in this milestone unless added explicitly; usability claims should be framed as design constraints or future validation needs.
 - Address operational deployment concerns through config-driven template families and monitoring recommendations, not a production service implementation.
 
-**Roadmap phase:** Phase 5: Defense Methodology Artifacts.
+**Roadmap phase:** Phase 5: Defense Methodology and HCI Scope.
 
 ### Pitfall 10: Claims Overreach Beyond the Revision Evidence
 
@@ -254,7 +254,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - For cost and latency, state the date/model/provider assumptions and include volatility caveats.
 - Use Phase 6 to remove or soften any claim without a direct artifact link.
 
-**Roadmap phase:** Phase 6: Paper Artifact QA and Claim Alignment.
+**Roadmap phase:** Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment.
 
 ## Moderate Pitfalls
 
@@ -272,7 +272,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Treat appendix material as support for main claims, not the primary location for required revisions.
 - Write a reviewer-response traceability table: final request -> paper location -> artifact path.
 
-**Roadmap phase:** Phase 6: Paper Artifact QA and Claim Alignment.
+**Roadmap phase:** Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment.
 
 ### Pitfall 12: External Baseline Artifacts Create Safety or Ethics Drift
 
@@ -288,7 +288,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Integrate only dataset-compatible, offline components, or cite the external results with a capability matrix.
 - Add a baseline safety checklist: no live service attack, no credentialed farm use, no turnkey browser automation, no release of operational abuse scripts.
 
-**Roadmap phase:** Phase 4: Baselines and Larger Dataset Integration.
+**Roadmap phase:** Phase 4: SOTA Solver and Larger Benchmark Strengthening.
 
 ### Pitfall 13: Reproducibility Metadata Is Missing From New Artifacts
 
@@ -320,7 +320,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Tie task-family groupings to measured failure modes and evaluator semantics.
 - Use the threshold as a descriptive operational cutoff, not a universal security boundary.
 
-**Roadmap phase:** Phase 3: Statistical Confidence and Dataset Scope.
+**Roadmap phase:** Phase 3: Dataset Scope, Statistical Confidence, and Limitations.
 
 ### Pitfall 15: Model Snapshot Becomes Obsolete Before the Revision Lands
 
@@ -336,7 +336,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Date-stamp model IDs, provider settings, pricing assumptions, and latency measurements.
 - Add a limitations note that newer models may change point estimates while the methodology remains reusable.
 
-**Roadmap phase:** Phase 6: Paper Artifact QA and Claim Alignment.
+**Roadmap phase:** Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment.
 
 ### Pitfall 16: Few-Shot and Prompt Diagnostics Are Misread as Attack Strength
 
@@ -352,7 +352,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Use a single generated few-shot manifest validated against assets and ground truth.
 - Compare few-shot, fixed retry, and adaptive memory as separate attack dimensions.
 
-**Roadmap phase:** Phase 2: Adaptive Attacker Experiment; manifest validation in Phase 1.
+**Roadmap phase:** Phase 2: Adaptive Attacker Main-Body Evidence; manifest validation in Phase 1.
 
 ## Minor Pitfalls
 
@@ -384,7 +384,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Include a practitioner checklist item for accessibility and human effort.
 - Avoid claiming empirical HCI validation in this revision.
 
-**Roadmap phase:** Phase 5: Defense Methodology Artifacts; claim audit in Phase 6.
+**Roadmap phase:** Phase 5: Defense Methodology and HCI Scope; claim audit in Phase 6.
 
 ### Pitfall 19: Provider SDK Drift Breaks Token, Cost, or Parsing Metadata
 
@@ -416,7 +416,7 @@ Mistakes that could invalidate the revision experiments, expose sensitive materi
 - Exclude or separately report operational failures according to a predeclared rule.
 - Include failure-category counts in appendix artifacts.
 
-**Roadmap phase:** Phase 3: Statistical Confidence and Dataset Scope, supported by Phase 1 schema work.
+**Roadmap phase:** Phase 3: Dataset Scope, Statistical Confidence, and Limitations, supported by Phase 1 schema work.
 
 ## Phase-Specific Warnings
 

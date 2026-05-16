@@ -2,7 +2,7 @@
 
 ## What This Is
 
-This project extends the existing COGNITION CAPTCHA evaluation framework to support post-acceptance USENIX Security revision experiments. The immediate goal is to turn reviewer comments into reproducible empirical artifacts: adaptive-attacker results, strengthened benchmark/baseline comparisons, statistical confidence reporting, and clearer evidence for structural CAPTCHA hardness.
+This project extends the existing COGNITION CAPTCHA evaluation framework to support the shepherded USENIX Security revision due May 28 AoE. The immediate goal is to turn the shepherding plan into reproducible paper and artifact evidence: main-body adaptive-attacker results, dataset/statistical limitations, SOTA-solver and larger-benchmark comparisons, actionable defense methodology, ethics/disclosure updates, and a final availability-ready artifact package.
 
 The codebase is a local Python research toolkit for evaluating multimodal LLMs on CAPTCHA tasks, generating results and error analysis, and producing paper-ready visualizations. This planning cycle should preserve the paper-driven workflow: every implementation phase must map to a concrete revision need, figure, table, appendix artifact, or reviewer concern.
 
@@ -22,12 +22,12 @@ Produce credible, reproducible revision evidence that directly strengthens the p
 
 ### Active
 
-- [ ] Add and integrate an adaptive/session-memory attacker experiment that evaluates stronger retry behavior than the current fixed-policy or i.i.d. framing.
-- [ ] Produce main-body-ready analysis showing why hard CAPTCHA tasks remain robust under the adaptive attacker, including task-family-level interpretation.
-- [ ] Strengthen benchmark credibility by supporting comparisons against specialized CAPTCHA solver baselines and/or larger external benchmark datasets where feasible.
-- [ ] Add statistical confidence reporting for pass rates, task-family conclusions, and threshold-based claims.
-- [ ] Clarify and operationalize the defense methodology as a reusable, actionable pipeline rather than only high-level design guidelines.
-- [ ] Improve reproducibility and safety of the experiment framework enough that revision results can be regenerated without fragile notebook-only steps or accidental secret exposure.
+- [ ] Establish safe, reproducible experiment contracts before any new costly provider runs: install metadata, preflight, manifests, attempt logs, prompt/few-shot hashes, cost preview, and secret-safe reporting.
+- [ ] Move the session-memory adaptive attacker into the main-body evidence flow, including explicit feedback/memory assumptions and comparison to fixed-policy Bernoulli Success@k estimates.
+- [ ] Revise dataset scope and statistical interpretation: CaptchaWorld limitations, removed incompatible task types, sample-size caveats, confidence reporting, and boundaries on population-level claims.
+- [ ] Strengthen benchmark credibility through a structured comparison against Halligan, Oedipus, specialized CAPTCHA solvers, and a feasible larger external benchmark subset where artifacts are compatible.
+- [ ] Convert defense guidance into a reusable practitioner methodology with structural hardening transformations, red-team evaluation, deployment-monitoring knobs, and clear HCI/usability limits.
+- [ ] Produce final paper and artifact-delivery evidence: ethics/disclosure details, stakeholder contacts, reviewer-request traceability, claim ledger, color-coded diff support, and an availability-ready artifact package by May 28 AoE.
 
 ### Out of Scope
 
@@ -39,12 +39,15 @@ Produce credible, reproducible revision evidence that directly strengthens the p
 
 ## Context
 
-The paper received reviewer requests after USENIX Security 2026 Cycle 2 review. The final requested revisions emphasize four areas:
+The paper received a conditional acceptance with shepherding requirements after USENIX Security 2026 Cycle 2 review. The current revision plan, captured in `/Users/ukun/Desktop/Shepherding.docx`, commits to submit the revised paper, color-coded diff, point-by-point changes, and final artifact package by May 28 AoE. The latest shepherding scope emphasizes seven areas:
 
-- Adaptive attacker evidence: move session-memory attacker results into the main body and explain why hard CAPTCHA tasks remain robust against this stronger attacker.
-- Dataset limitations and scope: discuss CaptchaWorld limitations, sample size, representativeness, and statistical significance.
-- Benchmark strengthening: compare against state-of-the-art CAPTCHA solvers and extend evaluation to larger datasets where possible.
-- Defense methodology: turn high-level design guidelines into a clearer, actionable methodology practitioners can apply.
+- Adaptive attacker evidence: move session-memory attacker results into the main body, define binary pass/fail feedback and task-level memory over fresh CAPTCHA instances, and explain why hard tasks remain robust.
+- Dataset limitations and scope: discuss CaptchaWorld size, representativeness, removed incompatible task types, cleaning/standardization, answer-format normalization, and statistical significance limits.
+- Benchmark strengthening: compare against state-of-the-art solver and benchmark systems such as Halligan and Oedipus, and attempt a compatible larger external benchmark subset where feasible.
+- Defense methodology: turn high-level guidelines into a practical hardening pipeline with transformations, human-clarity constraints, red-team evaluation, and deployment-monitoring knobs.
+- Limitations and HCI scope: clarify long-term validity limits, evolving MLLMs, custom-trained/agentic attackers, API cost/latency volatility, and the absence of formal human-subject usability validation.
+- Ethics and disclosure: document stakeholder categories, disclosure dates and response status, including Google VRP closure by January 26, 2026 and January 30, 2026 contacts to OpenAI, Anthropic, hCaptcha, Cloudflare, and Alibaba.
+- Artifact availability: package the evaluation framework, prompts, dataset preprocessing/cleaning scripts, task metadata, result-processing scripts, and reproduction documentation without turning the artifact into operational CAPTCHA-bypass tooling.
 
 The repository already contains a Python evaluation framework centered around `run_eval.py`, `run_single_experiment.py`, `experiments_helper.py`, `visualize_results.py`, and `exp2_to_exp3_predict.py`. Datasets and generated artifacts live under `captcha_data/`, `few_shot_assets/`, `results/`, `error_analysis/`, and `figures/`.
 
@@ -64,10 +67,12 @@ The current codebase has several known risks that matter for revision work: `run
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Treat this as a brownfield research-revision project | The existing repo already implements the core CAPTCHA evaluation framework and result pipeline. | — Pending |
-| Prioritize adaptive attacker evaluation first | The final reviewer comment explicitly names adaptive/session-memory results as a valuable addition that should move into the main body. | — Pending |
+| Keep Phase 1 as the safety/reproducibility gate before additional provider runs | The shepherding deadline is tight, and every later claim needs preflight, prompt/few-shot hashes, cost visibility, secret safety, and append-only attempt records. | Phase 1 planned |
+| Prioritize adaptive attacker main-body evidence immediately after the foundation | The shepherding plan explicitly moves session-memory adaptive results from appendix to main body and uses them to address fixed-prompt/i.i.d. concerns. | Roadmap updated |
 | Treat benchmark strengthening as baseline/dataset integration rather than a full solver rewrite by default | Reviewers asked for comparisons to SOTA solvers and larger datasets, but a scoped comparison layer is more feasible for revision than reimplementing entire external systems. | — Pending |
 | Add statistical confidence reporting as a first-class output | Reviewer concerns about sample size, thresholding, and Bernoulli assumptions require quantitative uncertainty reporting, not only prose. | — Pending |
-| Keep defense work methodology-focused | Reviewers want actionable guidance; code should support methodology clarity without turning the project into a production CAPTCHA platform. | — Pending |
+| Keep defense work methodology-focused and HCI-scoped | Shepherding asks for actionable guidance, but the revision must avoid claiming formal usability validation without a human-subjects study. | Roadmap updated |
+| Treat ethics, disclosure, and artifact availability as implementation deliverables | The final package must include traceability, disclosure details, and availability-ready artifacts, not just prose edits. | Roadmap updated |
 
 ## Evolution
 
@@ -87,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-15 after initialization*
+*Last updated: 2026-05-16 after shepherding-plan roadmap update*

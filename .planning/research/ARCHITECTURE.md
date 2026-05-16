@@ -426,7 +426,7 @@ Dependencies:
 - Phase 2 confidence reporter for local and comparable rows.
 - External result availability or manually curated literature metrics.
 
-### Phase 5: Defense Methodology Artifacts
+### Phase 5: Defense Methodology and HCI Scope
 
 Build fifth because the methodology should cite the final evidence from confidence, adaptive attacker, and baseline phases.
 
@@ -442,7 +442,7 @@ Dependencies:
 - Phase 3 adaptive hard-task analysis.
 - Phase 4 baseline/dataset comparison where available.
 
-### Phase 6: Visualization and Notebook Cleanup
+### Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment
 
 Build last because figures and notebooks should consume stable artifacts.
 
