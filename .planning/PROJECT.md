@@ -19,10 +19,10 @@ Produce credible, reproducible revision evidence that directly strengthens the p
 - ✓ Existing result artifacts capture pass rates, token usage, cost summaries, latency, error analysis, and publication figures — existing.
 - ✓ Existing Exp2-to-Exp3 analysis implements i.i.d. Bernoulli-style retry prediction and prediction validation workflows — existing.
 - ✓ Existing codebase map documents the current stack, architecture, testing gaps, integrations, and technical concerns under `.planning/codebase/` — existing.
+- ✓ Safe, reproducible experiment contracts are established before new costly provider runs: install metadata, offline preflight, manifests, attempt logs, prompt/few-shot hashes, cost preview, secret-safe reporting, and focused validators — validated in Phase 1.
 
 ### Active
 
-- [ ] Establish safe, reproducible experiment contracts before any new costly provider runs: install metadata, preflight, manifests, attempt logs, prompt/few-shot hashes, cost preview, and secret-safe reporting.
 - [ ] Move the session-memory adaptive attacker into the main-body evidence flow, including explicit feedback/memory assumptions and comparison to fixed-policy Bernoulli Success@k estimates.
 - [ ] Revise dataset scope and statistical interpretation: CaptchaWorld limitations, removed incompatible task types, sample-size caveats, confidence reporting, and boundaries on population-level claims.
 - [ ] Strengthen benchmark credibility through a structured comparison against Halligan, Oedipus, specialized CAPTCHA solvers, and a feasible larger external benchmark subset where artifacts are compatible.
@@ -67,7 +67,7 @@ The current codebase has several known risks that matter for revision work: `run
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Treat this as a brownfield research-revision project | The existing repo already implements the core CAPTCHA evaluation framework and result pipeline. | — Pending |
-| Keep Phase 1 as the safety/reproducibility gate before additional provider runs | The shepherding deadline is tight, and every later claim needs preflight, prompt/few-shot hashes, cost visibility, secret safety, and append-only attempt records. | Phase 1 planned |
+| Keep Phase 1 as the safety/reproducibility gate before additional provider runs | The shepherding deadline is tight, and every later claim needs preflight, prompt/few-shot hashes, cost visibility, secret safety, and append-only attempt records. | Phase 1 complete |
 | Prioritize adaptive attacker main-body evidence immediately after the foundation | The shepherding plan explicitly moves session-memory adaptive results from appendix to main body and uses them to address fixed-prompt/i.i.d. concerns. | Roadmap updated |
 | Treat benchmark strengthening as baseline/dataset integration rather than a full solver rewrite by default | Reviewers asked for comparisons to SOTA solvers and larger datasets, but a scoped comparison layer is more feasible for revision than reimplementing entire external systems. | — Pending |
 | Add statistical confidence reporting as a first-class output | Reviewer concerns about sample size, thresholding, and Bernoulli assumptions require quantitative uncertainty reporting, not only prose. | — Pending |
@@ -92,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-16 after shepherding-plan roadmap update*
+*Last updated: 2026-05-16 after Phase 1 completion*

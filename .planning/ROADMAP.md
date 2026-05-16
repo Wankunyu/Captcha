@@ -12,7 +12,7 @@ This roadmap turns the latest shepherding plan into reproducible paper and artif
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Reproducibility and Safety Foundation** - Establish install, preflight, manifest, attempt-log, secret-safety, prompt/few-shot hash, cost-preview, and validator contracts before additional provider runs.
+- [x] **Phase 1: Reproducibility and Safety Foundation** - Establish install, preflight, manifest, attempt-log, secret-safety, prompt/few-shot hash, cost-preview, and validator contracts before additional provider runs. Completed 2026-05-16.
 - [ ] **Phase 2: Adaptive Attacker Main-Body Evidence** - Run, analyze, and package session-memory adaptive attacker evidence for the main paper body.
 - [ ] **Phase 3: Dataset Scope, Statistical Confidence, and Limitations** - Produce dataset-scope, statistical-confidence, retry-calibration, infrastructure-error, and limitations artifacts.
 - [ ] **Phase 4: SOTA Solver and Larger Benchmark Strengthening** - Add fair comparison hooks for Halligan, Oedipus, specialized CAPTCHA solvers, and compatible larger external benchmark subsets.
@@ -34,11 +34,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Revision-critical task aliases, result schemas, and scoring helpers are covered by focused regression tests or validators.
 **Plans**: 5 plans
 Plans:
-- [ ] 01-01-PLAN.md - Add uv dependency manifest, lockfile, and local validation documentation.
-- [ ] 01-02-PLAN.md - Remove import-time side effects and establish secret-safe provider smoke boundaries.
-- [ ] 01-03-PLAN.md - Define versioned revision artifact schemas and append-only writer.
-- [ ] 01-04-PLAN.md - Add offline preflight validation for task aliases, datasets, prompts, outputs, request counts, and cost preview.
-- [ ] 01-05-PLAN.md - Wire explicit revision artifact mode into the evaluator and add focused regression tests.
+- [x] 01-01-PLAN.md - Add uv dependency manifest, lockfile, and local validation documentation.
+- [x] 01-02-PLAN.md - Remove import-time side effects and establish secret-safe provider smoke boundaries.
+- [x] 01-03-PLAN.md - Define versioned revision artifact schemas and append-only writer.
+- [x] 01-04-PLAN.md - Add offline preflight validation for task aliases, datasets, prompts, outputs, request counts, and cost preview.
+- [x] 01-05-PLAN.md - Wire explicit revision artifact mode into the evaluator and add focused regression tests.
 
 ### Phase 2: Adaptive Attacker Main-Body Evidence
 **Goal**: Researchers can evaluate the session-memory adaptive attacker and produce main-body-ready evidence explaining which hard CAPTCHA families remain robust.
@@ -119,7 +119,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Reproducibility and Safety Foundation | 0/5 | Planned | - |
+| 1. Reproducibility and Safety Foundation | 5/5 | Complete | 2026-05-16 |
 | 2. Adaptive Attacker Main-Body Evidence | 0/TBD | Not started | - |
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 0/TBD | Not started | - |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 0/TBD | Not started | - |

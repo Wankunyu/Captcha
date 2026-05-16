@@ -10,12 +10,12 @@ Requirements for the current shepherded revision milestone. Each requirement map
 
 ### Reproducibility Foundation
 
-- [ ] **REPRO-01**: Researcher can install the project from a machine-readable dependency manifest instead of README-only install commands.
-- [ ] **REPRO-02**: Researcher can run a preflight command that validates task names, dataset paths, prompt files, output paths, expected request counts, and approximate cost visibility before paid model calls.
-- [ ] **REPRO-03**: Every revision experiment writes a run manifest containing schema version, code revision, dependency versions, dataset summary, prompt/few-shot configuration hashes, provider/model labels, seed, retry policy, and cost-control metadata.
-- [ ] **REPRO-04**: Every revision experiment writes append-only per-attempt records before deriving aggregate summaries.
-- [ ] **REPRO-05**: Shareable reports and planning artifacts do not print, copy, or commit credential values from local secret configuration.
-- [ ] **REPRO-06**: Revision-critical task aliases, result schemas, and scoring helpers have focused regression tests or validators.
+- [x] **REPRO-01**: Researcher can install the project from a machine-readable dependency manifest instead of README-only install commands.
+- [x] **REPRO-02**: Researcher can run a preflight command that validates task names, dataset paths, prompt files, output paths, expected request counts, and approximate cost visibility before paid model calls.
+- [x] **REPRO-03**: Every revision experiment writes a run manifest containing schema version, code revision, dependency versions, dataset summary, prompt/few-shot configuration hashes, provider/model labels, seed, retry policy, and cost-control metadata.
+- [x] **REPRO-04**: Every revision experiment writes append-only per-attempt records before deriving aggregate summaries.
+- [x] **REPRO-05**: Shareable reports and planning artifacts do not print, copy, or commit credential values from local secret configuration.
+- [x] **REPRO-06**: Revision-critical task aliases, result schemas, and scoring helpers have focused regression tests or validators.
 
 ### Adaptive Attacker Main-Body Evidence
 
@@ -110,12 +110,12 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REPRO-01 | Phase 1 | Pending |
-| REPRO-02 | Phase 1 | Pending |
-| REPRO-03 | Phase 1 | Pending |
-| REPRO-04 | Phase 1 | Pending |
-| REPRO-05 | Phase 1 | Pending |
-| REPRO-06 | Phase 1 | Pending |
+| REPRO-01 | Phase 1 | Complete |
+| REPRO-02 | Phase 1 | Complete |
+| REPRO-03 | Phase 1 | Complete |
+| REPRO-04 | Phase 1 | Complete |
+| REPRO-05 | Phase 1 | Complete |
+| REPRO-06 | Phase 1 | Complete |
 | ADAPT-01 | Phase 2 | Pending |
 | ADAPT-02 | Phase 2 | Pending |
 | ADAPT-03 | Phase 2 | Pending |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_execute
+status: ready_to_plan
 stopped_at: Phase 1 planned
-last_updated: "2026-05-16T03:25:31.150Z"
-last_activity: 2026-05-16 - Updated roadmap and requirements from Shepherding.docx.
+last_updated: "2026-05-16T04:24:16Z"
+last_activity: 2026-05-16 -- Phase 01 completed; ready to plan Phase 02.
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_plans: 5
+  percent: 17
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 1: Reproducibility and Safety Foundation
+**Current focus:** Phase 2: Adaptive Attacker Main-Body Evidence
 
 ## Current Position
 
-Phase: 1 of 6 (Reproducibility and Safety Foundation)
-Plan: 01-01 of 5
-Status: Ready to execute
-Last activity: 2026-05-16 - Updated roadmap and requirements from Shepherding.docx.
+Phase: 2 of 6 (Adaptive Attacker Main-Body Evidence)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-16 -- Phase 01 completed; ready to plan Phase 02.
 
-Progress: [----------] 0%
+Progress: [##--------] 17%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 5
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -44,7 +44,7 @@ Progress: [----------] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -72,8 +72,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Secret values must not be read into docs, printed in logs, or committed in generated artifacts.
-- [Phase 1]: Current evaluator import side effects and task alias drift can corrupt preflight, reproducibility, and safety guarantees.
+- [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
 - [Phase 2]: Adaptive attacker semantics need a precise state, feedback, memory, and stopping-rule model before paid runs.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
