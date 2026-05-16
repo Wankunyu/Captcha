@@ -471,7 +471,7 @@ def _describe_failure(task, parsed, raw: str) -> str:
             return "Did not return multi-selection result."
         pred = sorted(_clean_indices(parsed.get("indices", [])))
         gt_indices = sorted(_clean_indices(gt.get("indices_gt", [])))
-        Missing = sorted(set(gt_indices) - set(pred))
+        missing = sorted(set(gt_indices) - set(pred))
         extra = sorted(set(pred) - set(gt_indices))
         parts = []
         if missing:
@@ -2394,7 +2394,13 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
             return (dx*dx + dy*dy) <= (tol * tol)
 
                          
-        if t in ("Image_Recognition","Select_Animal","Unusual_Detection","Path_Finder"):
+        if task.type == "Path_Finder":
+            return (
+                parsed.get("answer_type") == "classify"
+                and int(parsed.get("index")) == int(task.gt.get("correct_index"))
+            )
+
+        if t in ("Image_Recognition","Select_Animal","Unusual_Detection"):
             pred = _clean_indices(parsed.get("indices", []))
             gold = _clean_indices(gt.get("indices_gt", []))
             return pred == gold
