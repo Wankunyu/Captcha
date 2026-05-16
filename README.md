@@ -37,51 +37,63 @@ All experiments support token tracking, cost analysis, and reasoning collection.
 ## Requirements
 
 * Python 3.10+
-* Core dependencies:
+* `uv` 0.11.14 for reproducible dependency resolution:
 
   ```bash
-  pip install openai anthropic google-genai pillow tqdm pyyaml numpy pandas matplotlib seaborn
+  python3 -m pip install uv==0.11.14
+  uv sync --locked
   ```
 
-* Optional for enhanced visualizations:
+* Local validation commands:
 
   ```bash
-  pip install adjustText  # Automatic label positioning in scatter plots
+  uv run pytest
+  uv run ruff check .
   ```
+
+The dependency contract is declared in `pyproject.toml` and locked in `uv.lock`; use
+`uv sync --locked` to reproduce the local environment.
 
 ## Configuration
 
-API keys and pricing are defined in `secrets.yaml`:
+Copy `secrets.example.yaml` to a local `secrets.yaml` and fill in provider credentials on
+your machine. Keep `secrets.yaml` local; do not commit it or paste credential values into
+reports, logs, notebooks, or planning artifacts.
 
 ```yaml
 providers:
   openai:
-    api_key: sk-...
+    api_key: "<OPENAI_API_KEY>"
   anthropic:
-    api_key: sk-ant-...
+    api_key: "<ANTHROPIC_API_KEY>"
   gemini:
-    api_key: ...
+    api_key: "<GEMINI_API_KEY>"
   fireworks:
-    api_key: ...
-
-pricing:
-  openai:
-    gpt-5: {in_per_1k: 0.00125, out_per_1k: 0.0100}
-    gpt-5.1: {in_per_1k: 0.00125, out_per_1k: 0.0100}
-  
-  anthropic:
-    claude-opus-4-1: {in_per_1k: 0.015, out_per_1k: 0.075}
-    claude-sonnet-4-5: {in_per_1k: 0.003, out_per_1k: 0.015}
-
-  gemini:
-    gemini-2.5-pro: {in_per_1k: 0.00125, out_per_1k: 0.0100}
-    gemini-2.5-flash: {in_per_1k: 0.00030, out_per_1k: 0.0025}
-
-  fireworks:
-    accounts/fireworks/models/qwen3-vl-235b-a22b-instruct: {in_per_1k: 0.00022, out_per_1k: 0.00088}
+    api_key: "<FIREWORKS_API_KEY>"
 ```
 
 Each provider requires valid credentials before initialization.
+
+## Phase 1 Validation
+
+Run the offline preflight before any paid provider run:
+
+```bash
+uv run python revision_preflight.py --dataset-root ./captcha_data --types Dice_Count --prompts-file ./prompts_optimized.yaml --output-root ./results/revision --run-id local-preflight --provider openai --model gpt-5 --max-per-type 2 --max-attempts 1
+uv run pytest
+uv run ruff check .
+```
+
+Revision artifacts are written under a run-specific directory:
+
+```text
+results/revision/<run_id>/
+  run_manifest.json
+  attempts.jsonl
+  summary.csv
+  summary.json
+  preflight_report.json
+```
 
 ## Running Experiments
 
