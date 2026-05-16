@@ -13,3 +13,9 @@ wandb/
 *.npy
 .DS_Store
 Draft/
+secrets.yaml
+secrets.local.yaml
+*.secret.yaml
+.env
+.env.*
+results/revision/
