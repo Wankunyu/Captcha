@@ -8,12 +8,10 @@ import yaml
 from pydantic import BaseModel, Field
 
 from revision_artifacts import revision_run_dir, sha256_file, sha256_text
-from run_eval import SUPPORTED_TYPES
+from run_eval import DATASET_DIR_ALIASES, SUPPORTED_TYPES, TASK_ALIASES
 
 
 PREFLIGHT_SCHEMA_VERSION = "cognition.revision.preflight.v1"
-TASK_ALIASES = {"Connect_icon": "Connect_Icon"}
-DATASET_DIR_ALIASES = {"Connect_Icon": "Connect_icon"}
 
 
 class PreflightTaskSummary(BaseModel):

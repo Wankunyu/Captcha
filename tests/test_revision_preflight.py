@@ -92,6 +92,11 @@ def test_existing_output_directory_fails_without_overwrite_or_resume(tmp_path) -
         main(_base_args(tmp_path))
 
 
+def test_preflight_rejects_unsafe_run_id(tmp_path) -> None:
+    with pytest.raises(SystemExit):
+        main(_base_args(tmp_path, run_id="../escape"))
+
+
 def test_preflight_never_calls_provider_factory(tmp_path, monkeypatch, capsys) -> None:
     import run_eval
 

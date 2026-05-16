@@ -3,7 +3,7 @@ from pathlib import Path
 import yaml
 
 from revision_preflight import DATASET_DIR_ALIASES, TASK_ALIASES
-from run_eval import SUPPORTED_TYPES
+from run_eval import SUPPORTED_TYPES, build_tasks
 
 
 IGNORED_NOT_USED_KEYS = {"Hold_Button(Not Used)", "Slide_Puzzle(Not Used)"}
@@ -27,6 +27,16 @@ def test_connect_icon_alias() -> None:
     assert TASK_ALIASES["Connect_icon"] == "Connect_Icon"
     assert DATASET_DIR_ALIASES["Connect_Icon"] == "Connect_icon"
     assert (Path("captcha_data") / DATASET_DIR_ALIASES["Connect_Icon"]).is_dir()
+
+
+def test_build_tasks_accepts_connect_icon_alias_and_canonical_name() -> None:
+    alias_tasks = build_tasks("./captcha_data", ["Connect_icon"], max_per_type=1)
+    canonical_tasks = build_tasks("./captcha_data", ["Connect_Icon"], max_per_type=1)
+
+    assert alias_tasks
+    assert canonical_tasks
+    assert alias_tasks[0].type == "Connect_Icon"
+    assert canonical_tasks[0].type == "Connect_Icon"
 
 
 def test_prompt_keys_are_known() -> None:

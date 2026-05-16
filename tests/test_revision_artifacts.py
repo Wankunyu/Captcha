@@ -1,5 +1,6 @@
 import csv
 import json
+import subprocess
 
 import pytest
 
@@ -11,6 +12,7 @@ from revision_artifacts import (
     RunManifest,
     collect_code_revision,
     collect_dependency_versions,
+    revision_run_dir,
     sha256_file,
     sha256_text,
     utc_now,
@@ -113,6 +115,48 @@ def test_existing_run_dir_requires_overwrite_or_resume(tmp_path) -> None:
 
     assert RevisionArtifactWriter(tmp_path, "run-1", resume=True).run_dir.exists()
     assert RevisionArtifactWriter(tmp_path, "run-1", overwrite=True).run_dir.exists()
+
+
+def test_revision_run_dir_rejects_path_traversal(tmp_path) -> None:
+    for run_id in ("../escape", "nested/run", "/tmp/absolute", "", ".hidden"):
+        with pytest.raises(ValueError):
+            revision_run_dir(tmp_path, run_id)
+
+    safe_run_dir = revision_run_dir(tmp_path, "run_1.2-abc")
+    assert safe_run_dir == (tmp_path / "run_1.2-abc").resolve()
+
+
+def test_writer_rejects_duplicate_attempt_ids(tmp_path) -> None:
+    writer = RevisionArtifactWriter(tmp_path, "run-1")
+    attempt = _attempt("run-1", "one", "Dice_Count", True)
+
+    writer.append_attempt(attempt)
+
+    with pytest.raises(ValueError, match="Attempt already exists"):
+        writer.append_attempt(attempt)
+
+
+def test_collect_code_revision_marks_untracked_source_dirty(tmp_path, monkeypatch) -> None:
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    tracked = tmp_path / "revision_artifacts.py"
+    tracked.write_text("tracked = True\n", encoding="utf-8")
+    subprocess.run(["git", "add", "revision_artifacts.py"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        env={
+            "GIT_AUTHOR_NAME": "Test",
+            "GIT_AUTHOR_EMAIL": "test@example.com",
+            "GIT_COMMITTER_NAME": "Test",
+            "GIT_COMMITTER_EMAIL": "test@example.com",
+        },
+    )
+    (tmp_path / "revision_preflight.py").write_text("untracked = True\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert collect_code_revision()["dirty"] is True
 
 
 def test_sha256_helpers_and_prompt_config_hash_keys(tmp_path) -> None:

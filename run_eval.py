@@ -1398,6 +1398,9 @@ SUPPORTED_TYPES = {
     "Rotation_Match",
 }
 
+TASK_ALIASES = {"Connect_icon": "Connect_Icon"}
+DATASET_DIR_ALIASES = {"Connect_Icon": "Connect_icon"}
+
 TYPE_REQUIRE_PER_ITEM = {"Geometry_Click", "Image_Recognition", "Misleading_Click",
                          "Select_Animal","Select_Animal_Optimized","Patch_Select","Bingo", 
                          "Click_Order", "Connect_Icon", "Coordinates", "Dice_Count",
@@ -1800,15 +1803,16 @@ def build_tasks(
     prompts_cfg = prompts_cfg or {}
     exclude_examples = exclude_examples or {}
     tasks: List[TaskItem] = []
-    for t in types:
+    for requested_type in types:
+        t = TASK_ALIASES.get(requested_type, requested_type)
         if t not in SUPPORTED_TYPES:
-            print(f"[SKIP] Type not yet supported: {t}")
+            print(f"[SKIP] Type not yet supported: {requested_type}")
             continue
-        type_dir = os.path.join(dataset_root, t)
+        type_dir = os.path.join(dataset_root, DATASET_DIR_ALIASES.get(t, t))
         try:
             gt = load_ground_truth(type_dir)
         except Exception as e:
-            print(f"[SKIP] Failed to read GT {t}: {e}")
+            print(f"[SKIP] Failed to read GT {requested_type}: {e}")
             continue
 
         puzzle_ids = list(gt.keys())
@@ -2720,6 +2724,8 @@ def run_eval(
     print(f"[INFO] Will evaluate {len(tasks)} question (types={types}）")
 
     revision_writer = None
+    existing_revision_attempt_ids: set[str] = set()
+    tasks_to_evaluate = tasks
     if revision_run_id:
         revision_writer = RevisionArtifactWriter(
             revision_output_root,
@@ -2727,6 +2733,19 @@ def run_eval(
             overwrite=overwrite_revision_output,
             resume=resume_revision_output,
         )
+        existing_revision_attempt_ids = {
+            attempt.attempt_id for attempt in revision_writer.iter_attempts()
+        }
+        if resume_revision_output and existing_revision_attempt_ids:
+            tasks_to_evaluate = [
+                task
+                for task in tasks
+                if f"{revision_run_id}:{task.type}:{task.puzzle_id}:1"
+                not in existing_revision_attempt_ids
+            ]
+            skipped = len(tasks) - len(tasks_to_evaluate)
+            if skipped:
+                print(f"[INFO] Resume mode: skipping {skipped} completed attempt(s)")
         prompt_config = PromptConfig(
             prompt_mode=prompt_mode,
             prompts_file=prompts_file,
@@ -2751,7 +2770,7 @@ def run_eval(
             cost_control=_revision_cost_control(
                 provider,
                 model,
-                len(tasks),
+                len(tasks_to_evaluate),
                 secrets,
                 estimate_cost_flag,
             ),
@@ -2761,14 +2780,16 @@ def run_eval(
 
                                                
     stream_flag = (stream and (not estimate_cost_flag) and (not collect_tokens) and (not collect_errors))
-    prov = make_provider(
-        provider,
-        model,
-        secrets,
-        timeout_sec,
-        thinking_enabled=thinking,
-        thinking_options=thinking_options
-    )
+    prov = None
+    if tasks_to_evaluate:
+        prov = make_provider(
+            provider,
+            model,
+            secrets,
+            timeout_sec,
+            thinking_enabled=thinking,
+            thinking_options=thinking_options
+        )
 
     import time, csv, os
     token_tot_in = 0
@@ -2815,8 +2836,13 @@ def run_eval(
     wall_t0 = time.perf_counter()
 
                        
-    for task in tqdm(tasks, desc="Evaluating", ncols=0):
+    for task in tqdm(tasks_to_evaluate, desc="Evaluating", ncols=0):
         schema = build_json_schema(task.type, include_reasoning=collect_reasoning)
+        revision_attempt_id = (
+            f"{revision_run_id}:{task.type}:{task.puzzle_id}:1" if revision_run_id else None
+        )
+        if revision_attempt_id and revision_attempt_id in existing_revision_attempt_ids:
+            continue
 
                                       
         few_shot_content = None
@@ -2877,7 +2903,7 @@ def run_eval(
             revision_writer.append_attempt(
                 AttemptRecord(
                     run_id=revision_run_id,
-                    attempt_id=f"{revision_run_id}:{task.type}:{task.puzzle_id}:1",
+                    attempt_id=revision_attempt_id,
                     task_type=task.type,
                     puzzle_id=task.puzzle_id,
                     attempt_index=1,
@@ -2894,6 +2920,7 @@ def run_eval(
                     timestamp=utc_now(),
                 )
             )
+            existing_revision_attempt_ids.add(revision_attempt_id)
         rec_tok = token_by_type[task.type]
         rec_tok["tokens_in"] += tokens_in
         rec_tok["tokens_out"] += tokens_out

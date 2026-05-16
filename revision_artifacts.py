@@ -2,6 +2,7 @@ import csv
 import hashlib
 import importlib.metadata
 import json
+import re
 import shutil
 import subprocess
 from collections import defaultdict
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 RUN_MANIFEST_SCHEMA_VERSION = "cognition.revision.run_manifest.v1"
 ATTEMPT_RECORD_SCHEMA_VERSION = "cognition.revision.attempt.v1"
 SUMMARY_ROW_SCHEMA_VERSION = "cognition.revision.summary_row.v1"
+_RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 _DIRTY_CHECK_PATHS = (
     "pyproject.toml",
@@ -109,7 +111,7 @@ def _run_git(args: list[str]) -> str | None:
 def collect_code_revision() -> dict[str, Any]:
     commit = _run_git(["rev-parse", "HEAD"])
     dirty_output = _run_git(
-        ["status", "--short", "--untracked-files=no", "--", *_DIRTY_CHECK_PATHS]
+        ["status", "--short", "--untracked-files=normal", "--", *_DIRTY_CHECK_PATHS]
     )
     return {
         "commit": commit,
@@ -148,7 +150,16 @@ def sha256_text(value: str | None) -> str | None:
 
 
 def revision_run_dir(output_root: str | Path, run_id: str) -> Path:
-    return Path(output_root) / run_id
+    if not _RUN_ID_RE.fullmatch(run_id):
+        raise ValueError(
+            "run_id must start with a letter or number and contain only letters, "
+            "numbers, dot, underscore, or hyphen"
+        )
+    root = Path(output_root).resolve()
+    run_dir = (root / run_id).resolve()
+    if not run_dir.is_relative_to(root):
+        raise ValueError("run_id resolves outside output_root")
+    return run_dir
 
 
 class RevisionArtifactWriter:
@@ -207,6 +218,9 @@ class RevisionArtifactWriter:
         return self.manifest_path
 
     def append_attempt(self, attempt: AttemptRecord) -> Path:
+        existing_attempt_ids = {existing.attempt_id for existing in self.iter_attempts()}
+        if attempt.attempt_id in existing_attempt_ids:
+            raise ValueError(f"Attempt already exists in attempts.jsonl: {attempt.attempt_id}")
         with self.attempts_path.open("a", encoding="utf-8") as handle:
             handle.write(attempt.model_dump_json())
             handle.write("\n")

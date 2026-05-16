@@ -200,3 +200,35 @@ def test_manifest_cost_control_is_available_before_provider(tmp_path, monkeypatc
     cost_control = manifest["cost_control"]
     assert cost_control["expected_request_count"] == 1
     assert "approximate_cost_usd" in cost_control or "unavailable_reason" in cost_control
+
+
+def test_resume_revision_output_does_not_duplicate_attempts(tmp_path, monkeypatch) -> None:
+    _run_revision_eval(tmp_path, monkeypatch, run_id="resume-run")
+
+    def fail_provider(*args, **kwargs):
+        raise AssertionError("resume should skip completed attempts before provider construction")
+
+    monkeypatch.setattr(run_eval, "make_provider", fail_provider)
+    run_eval.run_eval(
+        dataset_root=str(tmp_path / "captcha_data"),
+        types=["Dice_Count"],
+        provider="openai",
+        model="gpt-5",
+        max_per_type=1,
+        out_csv=str(tmp_path / "legacy-resume.csv"),
+        secrets_file=str(tmp_path / "local-config.yaml"),
+        stream=False,
+        prompts_file=str(tmp_path / "prompts.yaml"),
+        prompt_mode="opt",
+        revision_run_id="resume-run",
+        revision_output_root=str(tmp_path / "results" / "revision"),
+        write_attempts=True,
+        resume_revision_output=True,
+    )
+
+    run_dir = tmp_path / "results" / "revision" / "resume-run"
+    attempts = (run_dir / "attempts.jsonl").read_text(encoding="utf-8").splitlines()
+    summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
+
+    assert len(attempts) == 1
+    assert summary["rows"][0]["n_attempts"] == 1
