@@ -2,7 +2,6 @@ import csv
 import hashlib
 import importlib.metadata
 import json
-import platform
 import shutil
 import subprocess
 from collections import defaultdict
@@ -109,7 +108,9 @@ def _run_git(args: list[str]) -> str | None:
 
 def collect_code_revision() -> dict[str, Any]:
     commit = _run_git(["rev-parse", "HEAD"])
-    dirty_output = _run_git(["status", "--short", "--untracked-files=no", "--", *_DIRTY_CHECK_PATHS])
+    dirty_output = _run_git(
+        ["status", "--short", "--untracked-files=no", "--", *_DIRTY_CHECK_PATHS]
+    )
     return {
         "commit": commit,
         "dirty": bool(dirty_output),

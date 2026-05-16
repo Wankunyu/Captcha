@@ -36,3 +36,13 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+"exp2_to_exp3_predict.py" = ["E501"]
+"experiments_helper.py" = ["E501"]
+"few_shot_answers.py" = ["E501"]
+"prepare_few_shot_examples.py" = ["F401"]
+"run_eval.py" = ["E401", "E501", "E701", "E702", "E703", "F401", "F541", "F811"]
+"run_single_experiment.py" = ["E501", "F401", "F541"]
+"visualize_results.py" = ["E501", "F401", "F841"]
+"*.ipynb" = ["E402", "E501", "F401", "F541", "F811", "F841"]

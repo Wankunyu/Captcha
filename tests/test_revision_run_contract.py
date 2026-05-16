@@ -138,7 +138,7 @@ def test_revision_mode_writes_manifest_attempts_and_summaries(tmp_path, monkeypa
     assert len((run_dir / "attempts.jsonl").read_text(encoding="utf-8").splitlines()) == 1
 
 
-def test_manifest_is_written_before_provider_and_attempt_before_summary(tmp_path, monkeypatch) -> None:
+def test_manifest_attempt_summary_order(tmp_path, monkeypatch) -> None:
     events: list[str] = []
     original_manifest = RevisionArtifactWriter.write_manifest
     original_attempt = RevisionArtifactWriter.append_attempt
@@ -200,4 +200,3 @@ def test_manifest_cost_control_is_available_before_provider(tmp_path, monkeypatc
     cost_control = manifest["cost_control"]
     assert cost_control["expected_request_count"] == 1
     assert "approximate_cost_usd" in cost_control or "unavailable_reason" in cost_control
-
