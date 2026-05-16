@@ -4,12 +4,24 @@
                                                                  
 
     
-import os, re, io, json, time, base64, argparse, random, pathlib, mimetypes
+import os, re, io, json, time, base64, argparse, random, pathlib, mimetypes, platform
 from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional
 from collections import defaultdict
 
 import yaml
+
+from revision_artifacts import (
+    AttemptRecord,
+    PromptConfig,
+    RevisionArtifactWriter,
+    RunManifest,
+    collect_code_revision,
+    collect_dependency_versions,
+    sha256_file,
+    sha256_text,
+    utc_now,
+)
 
 import tqdm
 try:
@@ -2549,6 +2561,62 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
     return _with_reasoning({"type":"object"}, include_reasoning=include_reasoning)
 
 
+def _revision_dataset_summary(dataset_root: str, tasks: List[TaskItem]) -> Dict[str, Any]:
+    by_type: Dict[str, int] = defaultdict(int)
+    for task in tasks:
+        by_type[task.type] += 1
+    return {
+        "dataset_root": dataset_root,
+        "selected_task_count": len(tasks),
+        "selected_task_types": sorted(by_type.keys()),
+        "by_type": dict(sorted(by_type.items())),
+    }
+
+
+def _revision_cost_control(
+    provider: str,
+    model: str,
+    expected_request_count: int,
+    secrets: Dict[str, Any],
+    estimate_cost_flag: bool,
+) -> Dict[str, Any]:
+    cost_control: Dict[str, Any] = {
+        "expected_request_count": expected_request_count,
+        "estimate_cost_enabled": estimate_cost_flag,
+        "approximate_cost_usd": None,
+        "pricing_source": "local_config_pricing" if (secrets.get("pricing") or {}) else None,
+    }
+    pricing = (secrets.get("pricing") or {}).get(provider, {})
+    model_pricing = pricing.get(model) or pricing.get(model.lower())
+    if isinstance(model_pricing, dict) and "per_request_usd" in model_pricing:
+        cost_control["approximate_cost_usd"] = expected_request_count * float(
+            model_pricing["per_request_usd"]
+        )
+    elif isinstance(model_pricing, dict):
+        cost_control["unavailable_reason"] = (
+            "pricing metadata lacks per_request_usd pre-call estimate"
+        )
+    else:
+        cost_control["unavailable_reason"] = "pricing metadata not provided for provider/model"
+    return cost_control
+
+
+def _revision_dependency_versions() -> Dict[str, str]:
+    return collect_dependency_versions(
+        [
+            "openai",
+            "anthropic",
+            "google-genai",
+            "Pillow",
+            "PyYAML",
+            "tqdm",
+            "numpy",
+            "pandas",
+            "pydantic",
+        ]
+    )
+
+
                
           
 
@@ -2583,12 +2651,21 @@ def run_eval(
     few_shot_config: Optional[Dict] = None,
     few_shot_file: str = "./few_shot_examples.yaml",
     few_shot_assets_root: str = "./few_shot_assets",
+    *,
+    revision_run_id: Optional[str] = None,
+    revision_output_root: str = "./results/revision",
+    write_attempts: bool = False,
+    overwrite_revision_output: bool = False,
+    resume_revision_output: bool = False,
 ) -> Dict[str, Any]:
     """
     Experiment 1: Only output aggregated results (one row per type) to out_csv;
     Console still prints per-type and overall summary. No longer writes one row per question.
     Supports few-shot learning.
     """
+    if revision_run_id and not write_attempts:
+        raise ValueError("revision runs require write_attempts=True")
+
     secrets = load_secrets(secrets_file)
     random.seed(seed)
 
@@ -2635,6 +2712,46 @@ def run_eval(
                         prompt_mode=prompt_mode,
                         exclude_examples=exclude_examples)
     print(f"[INFO] Will evaluate {len(tasks)} question (types={types}）")
+
+    revision_writer = None
+    if revision_run_id:
+        revision_writer = RevisionArtifactWriter(
+            revision_output_root,
+            revision_run_id,
+            overwrite=overwrite_revision_output,
+            resume=resume_revision_output,
+        )
+        prompt_config = PromptConfig(
+            prompt_mode=prompt_mode,
+            prompts_file=prompts_file,
+            prompts_file_sha256=sha256_file(prompts_file),
+            few_shot_config=few_shot_file if few_shot_config else None,
+            few_shot_config_sha256=sha256_file(few_shot_file) if few_shot_config else None,
+            prompt_prefix_sha256=sha256_text(prompt_prefix),
+            prompt_suffix_sha256=sha256_text(prompt_suffix),
+        )
+        manifest = RunManifest(
+            run_id=revision_run_id,
+            created_at=utc_now(),
+            code_revision=collect_code_revision(),
+            python_version=platform.python_version(),
+            dependency_versions=_revision_dependency_versions(),
+            dataset_summary=_revision_dataset_summary(dataset_root, tasks),
+            prompt_config=prompt_config,
+            provider=provider,
+            model=model,
+            seed=seed,
+            retry_policy={"mode": "single_pass", "max_attempts": 1},
+            cost_control=_revision_cost_control(
+                provider,
+                model,
+                len(tasks),
+                secrets,
+                estimate_cost_flag,
+            ),
+            output_paths=revision_writer.output_paths(),
+        )
+        revision_writer.write_manifest(manifest)
 
                                                
     stream_flag = (stream and (not estimate_cost_flag) and (not collect_tokens) and (not collect_errors))
@@ -2749,6 +2866,28 @@ def run_eval(
         tokens_out = int(meta.get("tokens_out") or 0)
         token_tot_in += tokens_in
         token_tot_out += tokens_out
+        task_cost_usd = estimate_cost(provider, model, tokens_in, tokens_out, secrets)
+        if revision_writer is not None and write_attempts:
+            revision_writer.append_attempt(
+                AttemptRecord(
+                    run_id=revision_run_id,
+                    attempt_id=f"{revision_run_id}:{task.type}:{task.puzzle_id}:1",
+                    task_type=task.type,
+                    puzzle_id=task.puzzle_id,
+                    attempt_index=1,
+                    prompt_mode=prompt_mode,
+                    provider=provider,
+                    model=model,
+                    parsed_answer=parsed,
+                    correct=passed,
+                    error_category="parse_error" if parsed is None else None,
+                    latency_ms=e2e,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    cost_usd=task_cost_usd,
+                    timestamp=utc_now(),
+                )
+            )
         rec_tok = token_by_type[task.type]
         rec_tok["tokens_in"] += tokens_in
         rec_tok["tokens_out"] += tokens_out
@@ -2912,7 +3051,13 @@ def run_eval(
                 s = agg[t]; n = s["n"]; ok_t = s["ok"]
                 e2e_avg = (s["e2e_sum"]/n) if n else 0.0
                 ttft_avg = (s["ttft_sum"]/n) if n else 0.0
-            f.write(f"{t},{n},{ok_t},{(ok_t/n if n else 0):.6f},{e2e_avg:.3f},{ttft_avg:.3f}\n")
+                f.write(
+                    f"{t},{n},{ok_t},{(ok_t/n if n else 0):.6f},"
+                    f"{e2e_avg:.3f},{ttft_avg:.3f}\n"
+                )
+
+    if revision_writer is not None:
+        revision_writer.write_summaries_from_attempts()
 
     print(f"[DONE] Pass@1 = {ok}/{len(tasks)} = {pass1:.3f} ; errors={errors}. Results saved to {out_csv}")
     result = {
@@ -3218,6 +3363,11 @@ def main():
     parser.add_argument("--thinking-config", default=None, help="Thinking configuration (JSON string), e.g., '{\"effort\":\"medium\"}'.")
     parser.add_argument("--collect-reasoning", action="store_true",
                         help="Require model to output reasoning field (may increase time and cost)")
+    parser.add_argument("--revision-run-id", default=None, help="Write revision artifacts under this run id")
+    parser.add_argument("--revision-output-root", default="./results/revision", help="Revision artifact output root")
+    parser.add_argument("--write-attempts", action="store_true", help="Write append-only revision attempt records")
+    parser.add_argument("--overwrite-revision-output", action="store_true", help="Replace an existing revision run directory")
+    parser.add_argument("--resume-revision-output", action="store_true", help="Reuse an existing revision run directory")
     
     parser.add_argument("--until-correct-type", default=None, 
                         help="Only execute 'until-correct' experiment for this type, e.g., Dice_Count. When this is None, run regular evaluation; otherwise use run_until_correct(...)")
@@ -3253,7 +3403,7 @@ def main():
             prompt_mode=args.prompt_mode,
             prompt_prefix="",                            
             prompt_suffix="",
-            out_csv=args.out,
+            out_csv=args.out_csv,
             retry_sleep_ms=args.retry_sleep_ms,
             cache_bust=(not args.no_cache_bust),
             stream=(not args.no_stream),
@@ -3268,7 +3418,7 @@ def main():
             provider=args.provider,
             model=args.model,
             max_per_type=args.max_per_type,
-            out_csv=args.out,
+            out_csv=args.out_csv,
             secrets_file=args.secrets_file,
             stream=(not args.no_stream),
             estimate_cost_flag=args.estimate_cost,
@@ -3280,8 +3430,17 @@ def main():
             summary_csv=args.summary_csv,
             thinking=thinking_enabled,
             thinking_options=thinking_options,
-            collect_reasoning=args.collect_reasoning
+            collect_reasoning=args.collect_reasoning,
+            revision_run_id=args.revision_run_id,
+            revision_output_root=args.revision_output_root,
+            write_attempts=args.write_attempts,
+            overwrite_revision_output=args.overwrite_revision_output,
+            resume_revision_output=args.resume_revision_output,
         )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 
 '''
 import traceback
