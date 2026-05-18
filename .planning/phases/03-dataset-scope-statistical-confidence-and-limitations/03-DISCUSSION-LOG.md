@@ -5,7 +5,7 @@
 
 **Date:** 2026-05-19
 **Phase:** 3 - Dataset Scope, Statistical Confidence, and Limitations
-**Areas discussed:** Extended dataset strategy, adaptive attacker on extended dataset
+**Areas discussed:** Extended dataset strategy, adaptive attacker on extended dataset, threshold sensitivity labels, retry calibration and failure taxonomy
 
 ---
 
@@ -51,10 +51,40 @@
 
 ---
 
+## Threshold Sensitivity Labels
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Leave as prose only | Mention the 40% cutoff limitation in text without producing structured labels. | |
+| Carry Phase 2 labels forward unchanged | Reuse hard/borderline/broken without additional sensitivity diagnostics. | |
+| Produce structured threshold-sensitivity labels | Report hard/borderline/broken, margin to cutoff, threshold-sensitive flags, and caveat wording. | yes |
+
+**User's choice:** Produce structured threshold-sensitivity labels.
+
+**Notes:** The user identified this as a Phase 3 completion requirement. The phase should decide whether to keep Phase 2's 40% cutoff plus +/- 5% borderline margin, flag threshold-sensitive families, and prevent the paper from presenting the cutoff as a universal security boundary.
+
+---
+
+## Retry Calibration and Failure Taxonomy
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Keep existing Bernoulli predictions only | Reuse `Success@k` predictions without observed-vs-predicted diagnostics. | |
+| Add retry calibration only | Compare predictions to observed retry/adaptive-compatible outcomes but leave failure classes separate. | |
+| Add retry calibration plus failure taxonomy | Produce prediction-error outputs and paper-ready scientific/protocol/infrastructure failure summaries. | yes |
+
+**User's choice:** Add retry calibration plus failure taxonomy.
+
+**Notes:** The user identified this as a Phase 3 completion requirement. Bernoulli `Success@k` predictions should be aligned with observed retry or adaptive-compatible outcomes, prediction errors should be task-type primary with optional family summaries, and infrastructure/protocol/scientific failures should be separated in paper-ready summaries.
+
+---
+
 ## the agent's Discretion
 
 - Exact artifact names, CLI flags, and minimum underpowered-sample thresholds may be chosen during planning.
 - Confidence interval method may be selected during planning if documented and suitable for small sample counts.
+- Exact threshold-sensitive flag logic may be refined during planning if it preserves margin-to-cutoff reporting.
+- Exact retry-calibration table layout may be chosen during planning if it includes prediction-error and failure-taxonomy fields.
 
 ## Deferred Ideas
 
