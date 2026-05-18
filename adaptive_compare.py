@@ -18,7 +18,10 @@ from exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
 from visualize_results import CAPTCHAVisualizer
 
 
-CUTOFF_NOTE = "40% operational cutoff with +/- 5% borderline margin; not a universal security boundary."  # noqa: E501
+CUTOFF_NOTE = (
+    "40% working CAPTCHA threshold; not a universal security boundary. "
+    "Threshold-sensitivity review is handled in Phase 3."
+)
 CI_NOT_APPLICABLE_REASON = "single adaptive session; repeated-run CI deferred to Phase 3"
 PERSISTENT_FAILURE_NOTE = (
     "adaptive remained hard under binary-feedback explicit-memory budget"
@@ -99,10 +102,12 @@ def load_adaptive_summary(path: str | Path) -> pd.DataFrame:
 
 
 def classify_rate(
-    rate: float | None, *, cutoff: float = 0.40, margin: float = 0.05
+    rate: float | None, *, cutoff: float = 0.40, margin: float = 0.0
 ) -> str | None:
     if rate is None:
         return None
+    if margin < 0:
+        raise ValueError("margin must be non-negative")
     epsilon = 1e-12
     if rate < cutoff - margin - epsilon:
         return "hard"
@@ -120,7 +125,7 @@ def build_comparison_rows(
     model: str | None = None,
     attempt_budget_k: int,
     cutoff: float = 0.40,
-    borderline_margin: float = 0.05,
+    borderline_margin: float = 0.0,
 ) -> list[AdaptiveComparisonRow]:
     if attempt_budget_k < 1:
         raise ValueError("attempt_budget_k must be >= 1")
@@ -348,7 +353,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default=None)
     parser.add_argument("--attempt-budget-k", type=int, required=True)
     parser.add_argument("--cutoff", type=float, default=0.40)
-    parser.add_argument("--borderline-margin", type=float, default=0.05)
+    parser.add_argument(
+        "--borderline-margin",
+        type=float,
+        default=0.0,
+        help=(
+            "Optional symmetric label margin around --cutoff. Defaults to 0.0 "
+            "to match the submitted paper's 40%% working threshold; broader "
+            "threshold-sensitivity review belongs to Phase 3."
+        ),
+    )
     return parser
 
 

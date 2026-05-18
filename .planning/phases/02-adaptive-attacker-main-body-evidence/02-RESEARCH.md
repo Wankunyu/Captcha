@@ -360,7 +360,7 @@ The comparison artifact should be task-type primary, with one row per provider/m
 | Classification | `baseline_label`, `adaptive_label`, `classification_change`, `cutoff_note` |
 | Explanation | `structural_bottleneck_tags`, `persistent_failure_note` |
 
-Use `hard` below 0.40, `borderline` within a small configured margin around 0.40, and `broken` above the margin; the margin should be explicit in the artifact metadata. [CITED: .planning/phases/02-adaptive-attacker-main-body-evidence/02-CONTEXT.md][VERIFIED: visualize_results.py][ASSUMED]
+Use the submitted paper's 0.40 working threshold as the default comparison cutoff: `hard` below 0.40, `borderline` only at the cutoff boundary unless an explicit nonzero analysis margin is requested, and `broken` above 0.40. Broader threshold-sensitivity review belongs to Phase 3. [CITED: .planning/phases/02-adaptive-attacker-main-body-evidence/02-CONTEXT.md][VERIFIED: visualize_results.py][UPDATED: quick task 260519-al4]
 
 ## Structural Bottleneck Tags
 
@@ -441,7 +441,7 @@ These commands match the Phase 1 validation style. [VERIFIED: .planning/phases/0
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | Reflection calls should count separately from solve-attempt budget `k`, while still appearing in request/cost/latency metadata. | Architecture Patterns, Common Pitfalls | Cost preview or fairness wording may need adjustment if the paper treats reflection as part of the same request budget. |
-| A2 | Hard/borderline/broken should use 40% plus an explicit margin for borderline labels. | Comparison Contract | Classification-change rows may need different thresholds if authors already have a fixed cutoff policy. |
+| A2 | Superseded: hard/borderline/broken originally considered a configurable margin around 40%, but Phase 2 defaults now align with the paper's 40% working threshold; any broader sensitivity band is Phase 3 material. | Comparison Contract | Classification-change rows could drift from manuscript wording if a nonzero margin is treated as the default. |
 | A3 | Structural bottleneck tags can be initialized from task schemas/names and refined from adaptive outcomes. | Structural Bottleneck Tags | Paper wording could overstate tags unless authors confirm the mapping. |
 | A4 | Sentinel-based prompt tests are sufficient to catch ground-truth leakage in offline tests. | Test Strategy, Security Domain | More static checks may be needed if prompt construction grows complex. |
 

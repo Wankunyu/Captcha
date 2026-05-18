@@ -280,13 +280,23 @@ def test_write_comparison_outputs_primary_key_fields(tmp_path: Path) -> None:
     assert payload["rows"][0]["run_id"] == "adaptive-run"
 
 
-def test_classify_rate_uses_cutoff_margin_labels() -> None:
+def test_classify_rate_uses_paper_cutoff_by_default() -> None:
     assert classify_rate(None) is None
-    assert classify_rate(0.34) == "hard"
-    assert classify_rate(0.35) == "borderline"
+    assert classify_rate(0.39) == "hard"
     assert classify_rate(0.40) == "borderline"
-    assert classify_rate(0.45) == "borderline"
-    assert classify_rate(0.46) == "broken"
+    assert classify_rate(0.41) == "broken"
+
+
+def test_classify_rate_allows_explicit_margin_for_sensitivity_checks() -> None:
+    assert classify_rate(0.34, margin=0.05) == "hard"
+    assert classify_rate(0.35, margin=0.05) == "borderline"
+    assert classify_rate(0.45, margin=0.05) == "borderline"
+    assert classify_rate(0.46, margin=0.05) == "broken"
+
+
+def test_classify_rate_rejects_negative_margin() -> None:
+    with pytest.raises(ValueError, match="margin must be non-negative"):
+        classify_rate(0.40, margin=-0.01)
 
 
 def test_comparison_rows_add_labels_cutoff_note_and_bottleneck_tags(
@@ -406,7 +416,7 @@ def test_cli_writes_comparison_outputs_and_prints_json_summary(
             "--attempt-budget-k",
             "3",
         ]
-    ).borderline_margin == 0.05
+    ).borderline_margin == 0.0
 
     exit_code = main(
         [
