@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-05-18T03:36:21.857Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-05-18T03:46:51.224Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-18
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -45,7 +45,7 @@ Progress: [███████░░░] 70%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
-| 02 | 2 | 22min | 11min |
+| 02 | 3 | 30min | 10min |
 
 **Recent Trend:**
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 70%
 *Updated after each plan completion*
 | Phase 02 P01 | 18min | 2 tasks | 2 files |
 | Phase 02 P02 | 4min | 2 tasks | 2 files |
+| Phase 02 P03 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,10 @@ Recent decisions affecting current work:
 - Pricing preview reads only explicit non-secret pricing metadata, never local secret configuration.
 - Prompt/few-shot inputs and prompt prefix/suffix values are recorded as hashes, not raw prompt text.
 - Adaptive output directories fail closed unless --overwrite or --resume is explicit.
+- Adaptive execution samples each task-type pool without replacement using a local seeded random generator.
+- Adaptive resume skips provider construction when selected task types already have terminal adaptive attempts.
+- Adaptive run manifests are written before local config loading and provider construction.
+- Adaptive reflection is hard-coded to Feedback: FAIL and only used after scientific wrong answers when another solve attempt remains.
 
 ### Pending Todos
 
@@ -106,8 +111,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-18T03:36:21.852Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-05-18T03:46:50.721Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
 
 **Planned Phase:** 02 (Adaptive Attacker Main-Body Evidence) — 5 plans — 2026-05-18T02:32:27.766Z
