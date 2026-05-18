@@ -50,7 +50,7 @@ _BANNED_POLICY_PATTERNS = (
     re.compile(r"\(\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*\)"),
     re.compile(r"\b\w[\w.-]*\.(png|jpg|jpeg|json)\b", re.IGNORECASE),
     re.compile(
-        r"\b(count|counted|selected|clicked|chose|picked)\s+"
+        r"\b(count|counted|selected|clicked|chose|picked)\b\s*"
         r"(was|is|=|:)?\s*-?\d+(\.\d+)?\b",
         re.IGNORECASE,
     ),

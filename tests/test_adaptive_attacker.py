@@ -149,8 +149,8 @@ def test_parse_policy_state_updates_memory_and_rejects_leaky_notes() -> None:
             "Dice_Count",
             previous,
             {
-                "tried_strategy_summary": "count was 3.",
-                "next_prompt_rule": "Do not repeat dice17.png.",
+                "tried_strategy_summary": "count: 3.",
+                "next_prompt_rule": "selected: 2.",
             },
         )
 
