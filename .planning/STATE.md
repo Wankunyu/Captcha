@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-05-18T04:07:25.477Z"
+status: ready_to_plan
+stopped_at: Phase 2 verified and complete
+last_updated: "2026-05-18T04:36:03Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
   completed_plans: 10
-  percent: 100
+  percent: 33
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 02 — Adaptive Attacker Main-Body Evidence
+**Current focus:** Phase 3 — Dataset Scope, Statistical Confidence, and Limitations
 
 ## Current Position
 
-Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 3
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-18
 
-Progress: [██████████] 100%
+Progress: [███-------] 33%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -45,7 +45,7 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
-| 02 | 4 | 40min | 10min |
+| 02 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -96,7 +96,8 @@ None yet.
 ### Blockers/Concerns
 
 - [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
-- [Phase 2]: Adaptive schemas, preflight, offline loop, and comparison builder are ready; offline end-to-end validation remains for 02-05 before paid runs.
+- [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
+- [Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, and infrastructure-vs-scientific failure artifacts are next.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -119,8 +120,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-18T04:07:25.472Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-05-18T04:36:03Z
+Stopped at: Phase 2 verified and complete
 Resume file: None
 
-**Planned Phase:** 02 (Adaptive Attacker Main-Body Evidence) — 5 plans — 2026-05-18T02:32:27.766Z
+**Next Phase:** 03 (Dataset Scope, Statistical Confidence, and Limitations) — ready to plan
