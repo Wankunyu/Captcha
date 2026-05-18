@@ -33,7 +33,7 @@ def _policy_state(
         task_type=task_type,
         failed_attempt_count=failed_attempt_count,
         tried_strategy_summaries=["Count visible objects before answering."],
-        next_prompt_rules=["Use the declared answer schema."],
+        next_prompt_rules=["Use the declared JSON schema."],
         updated_at=_now(),
     )
 
@@ -195,6 +195,22 @@ def test_policy_state_rejects_banned_text() -> None:
             failed_attempt_count=1,
             tried_strategy_summaries=["ground_truth says 3"],
             next_prompt_rules=[],
+            updated_at=_now(),
+        )
+    with pytest.raises(ValueError, match="instance-specific answer detail"):
+        AdaptivePolicyState(
+            task_type="Dice_Count",
+            failed_attempt_count=1,
+            tried_strategy_summaries=["I answered value 0"],
+            next_prompt_rules=[],
+            updated_at=_now(),
+        )
+    with pytest.raises(ValueError, match="instance-specific answer detail"):
+        AdaptivePolicyState(
+            task_type="Geometry_Click",
+            failed_attempt_count=1,
+            tried_strategy_summaries=[],
+            next_prompt_rules=["Avoid the point x=10 y=20"],
             updated_at=_now(),
         )
 

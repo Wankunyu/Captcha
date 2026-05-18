@@ -167,11 +167,12 @@ def build_comparison_rows(
         adaptive_observed_success = n_success > 0 or bool(
             success_rate is not None and success_rate > 0
         )
+        adaptive_success_at_k = 1.0 if adaptive_observed_success else 0.0
         baseline_label = classify_rate(
             exp2_pass_at_1, cutoff=cutoff, margin=borderline_margin
         )
         adaptive_label = classify_rate(
-            success_rate, cutoff=cutoff, margin=borderline_margin
+            adaptive_success_at_k, cutoff=cutoff, margin=borderline_margin
         )
         classification_change = (
             f"{baseline_label}->{adaptive_label}"
@@ -290,6 +291,8 @@ def _persistent_failure_note(
         adaptive_label == "hard"
         and adaptive_observed_success is False
         and scientific_wrong_count > 0
+        and protocol_failure_count == 0
+        and infrastructure_failure_count == 0
     ):
         return PERSISTENT_FAILURE_NOTE
     if (

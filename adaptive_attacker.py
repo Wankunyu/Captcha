@@ -80,6 +80,8 @@ def build_reflection_prompt(
         [
             "Review your last CAPTCHA-solving attempt and propose a reusable policy note.",
             "Use only the facts shown here. Return JSON matching the requested schema.",
+            "Do not store attempted answers, values, counts, indices, coordinates, puzzle IDs,",
+            "ground-truth labels, corrective hints, or raw prompt/response transcripts.",
             "",
             "Current prompt:",
             current_prompt,
@@ -140,6 +142,8 @@ def classify_failure(
     raw: str,
     parsed: Any,
     correct: bool,
+    *,
+    schema_valid: bool,
     provider_exception: Exception | None = None,
 ) -> str:
     if correct:
@@ -148,9 +152,42 @@ def classify_failure(
         return "infrastructure_failure"
     if isinstance(raw, str) and raw.startswith("__ERROR__"):
         return "infrastructure_failure"
-    if parsed is None or not isinstance(parsed, dict):
+    if parsed is None or not isinstance(parsed, dict) or not schema_valid:
         return "protocol_failure"
     return "scientific_wrong"
+
+
+def _schema_valid(value: Any, schema: dict[str, Any]) -> bool:
+    if schema.get("type") == "object" and not isinstance(value, dict):
+        return False
+    if not isinstance(value, dict):
+        return True
+    for field in schema.get("required", []):
+        if field not in value:
+            return False
+    for field, field_schema in schema.get("properties", {}).items():
+        if field not in value:
+            continue
+        field_value = value[field]
+        expected_type = field_schema.get("type")
+        if expected_type == "string" and not isinstance(field_value, str):
+            return False
+        if expected_type == "integer" and (
+            not isinstance(field_value, int) or isinstance(field_value, bool)
+        ):
+            return False
+        if expected_type == "number" and (
+            not isinstance(field_value, int | float) or isinstance(field_value, bool)
+        ):
+            return False
+        if expected_type == "array" and not isinstance(field_value, list):
+            return False
+        if expected_type == "object" and not _schema_valid(field_value, field_schema):
+            return False
+        enum_values = field_schema.get("enum")
+        if enum_values is not None and field_value not in enum_values:
+            return False
+    return True
 
 
 def _dataset_summary(
@@ -269,6 +306,41 @@ def _existing_terminal_by_type(
     return terminal
 
 
+def _validate_resume_attempts(
+    attempts: list[AdaptiveAttemptRecord],
+    *,
+    provider: str,
+    model: str,
+    prompt_mode: str,
+    attempt_budget_k: int,
+) -> None:
+    for attempt in attempts:
+        if (
+            attempt.provider != provider
+            or attempt.model != model
+            or attempt.prompt_mode != prompt_mode
+            or attempt.attempt_budget_k != attempt_budget_k
+        ):
+            raise ValueError("existing adaptive attempts do not match resume configuration")
+
+
+def _validate_resume_manifest(manifest_path: Path, current_manifest: RunManifest) -> None:
+    if not manifest_path.exists():
+        raise ValueError("cannot resume adaptive run without existing run_manifest.json")
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        existing = json.load(handle)
+    expected_retry_policy = current_manifest.retry_policy
+    if (
+        existing.get("provider") != current_manifest.provider
+        or existing.get("model") != current_manifest.model
+        or existing.get("seed") != current_manifest.seed
+        or existing.get("retry_policy") != expected_retry_policy
+        or existing.get("prompt_config") != current_manifest.prompt_config.model_dump(mode="json")
+        or existing.get("dataset_summary") != current_manifest.dataset_summary
+    ):
+        raise ValueError("existing adaptive manifest does not match resume configuration")
+
+
 def _summary_from_attempts(
     attempts: list[AdaptiveAttemptRecord],
 ) -> dict[str, dict[str, Any]]:
@@ -338,7 +410,7 @@ def run_adaptive_experiment(
     tasks = run_eval.build_tasks(
         dataset_root,
         types,
-        max_per_type,
+        None,
         prompts_cfg=prompts_cfg,
         prompt_prefix=prompt_prefix,
         prompt_suffix=prompt_suffix,
@@ -346,8 +418,11 @@ def run_adaptive_experiment(
     )
     task_pools = group_tasks_by_type(tasks)
     rng = random.Random(seed)
-    for pool in task_pools.values():
+    for task_type, pool in list(task_pools.items()):
         rng.shuffle(pool)
+        if max_per_type is not None and max_per_type > 0:
+            task_pools[task_type] = pool[:max_per_type]
+    selected_tasks = [task for pool in task_pools.values() for task in pool]
 
     writer = AdaptiveArtifactWriter(
         output_root,
@@ -356,6 +431,14 @@ def run_adaptive_experiment(
         resume=resume,
     )
     existing_attempts = list(writer.iter_attempts())
+    if resume and existing_attempts:
+        _validate_resume_attempts(
+            existing_attempts,
+            provider=provider,
+            model=model,
+            prompt_mode=prompt_mode,
+            attempt_budget_k=attempt_budget_k,
+        )
     existing_attempt_ids = {attempt.attempt_id for attempt in existing_attempts}
     terminal_by_type = _existing_terminal_by_type(existing_attempts)
 
@@ -365,7 +448,7 @@ def run_adaptive_experiment(
         code_revision=collect_code_revision(),
         python_version=platform.python_version(),
         dependency_versions=_dependency_versions(),
-        dataset_summary=_dataset_summary(dataset_root, tasks),
+        dataset_summary=_dataset_summary(dataset_root, selected_tasks),
         prompt_config=PromptConfig(
             prompt_mode=prompt_mode,
             prompts_file=prompts_file,
@@ -389,6 +472,8 @@ def run_adaptive_experiment(
         cost_control=_cost_control(task_pools, attempt_budget_k),
         output_paths=_manifest_output_paths(writer),
     )
+    if resume and existing_attempts:
+        _validate_resume_manifest(writer.run_dir / "run_manifest.json", manifest)
     manifest_path = _write_manifest(writer, manifest)
 
     remaining_task_types = [
@@ -448,10 +533,11 @@ def run_adaptive_experiment(
             )
             provider_exception: Exception | None = None
             try:
+                schema = run_eval.build_json_schema(task.type)
                 raw, parsed, meta = model_provider.infer(
                     prompt=adapted_prompt,
                     images=task.images,
-                    json_schema=run_eval.build_json_schema(task.type),
+                    json_schema=schema,
                     stream=stream,
                 )
             except Exception as exc:
@@ -459,13 +545,21 @@ def run_adaptive_experiment(
                 raw = f"__ERROR__: {type(exc).__name__}: {exc}"
                 parsed = None
                 meta = {"e2e_ms": 0.0, "tokens_in": 0, "tokens_out": 0}
+                schema = run_eval.build_json_schema(task.type)
 
             correct = (
                 False
                 if provider_exception is not None
                 else run_eval.evaluate_pass1(task, parsed)
             )
-            failure_class = classify_failure(raw, parsed, correct, provider_exception)
+            schema_valid = _schema_valid(parsed, schema)
+            failure_class = classify_failure(
+                raw,
+                parsed,
+                correct,
+                schema_valid=schema_valid,
+                provider_exception=provider_exception,
+            )
             solve_latency_ms = _float_meta(meta, "e2e_ms")
             solve_cost_usd = _optional_float_meta(meta, "cost_usd")
             solve_tokens_in = _int_meta(meta, "tokens_in")
@@ -486,48 +580,61 @@ def run_adaptive_experiment(
                     parsed,
                     passed=False,
                 )
-                reflection_raw, reflection_parsed, reflection_call_meta = (
-                    model_provider.infer(
+                reflection_request_count = 1
+                try:
+                    reflection_raw, reflection_parsed, reflection_call_meta = model_provider.infer(
                         prompt=reflection_prompt,
                         images=[],
                         json_schema=reflection_json_schema(),
                         stream=stream,
                     )
-                )
-                reflection_request_count = 1
-                if isinstance(reflection_parsed, dict):
-                    parsed_note = reflection_parsed
-                reflection_latency_ms = _float_meta(reflection_call_meta, "e2e_ms")
-                reflection_cost_usd = _optional_float_meta(
-                    reflection_call_meta,
-                    "cost_usd",
-                )
-                latency_ms += reflection_latency_ms
-                if cost_usd is None:
-                    cost_usd = reflection_cost_usd
-                elif reflection_cost_usd is not None:
-                    cost_usd += reflection_cost_usd
-                reflection_tokens_in = _int_meta(reflection_call_meta, "tokens_in")
-                reflection_tokens_out = _int_meta(reflection_call_meta, "tokens_out")
-                tokens_in = (tokens_in or 0) + (reflection_tokens_in or 0)
-                tokens_out = (tokens_out or 0) + (reflection_tokens_out or 0)
-                reflection_meta = {
-                    "reflection_requested": True,
-                    "reflection_raw_present": bool(reflection_raw),
-                    "reflection_latency_ms": reflection_latency_ms,
-                    "reflection_tokens_in": reflection_tokens_in,
-                    "reflection_tokens_out": reflection_tokens_out,
-                    "reflection_cost_usd": reflection_cost_usd,
-                }
+                    if isinstance(reflection_parsed, dict):
+                        parsed_note = reflection_parsed
+                    reflection_latency_ms = _float_meta(reflection_call_meta, "e2e_ms")
+                    reflection_cost_usd = _optional_float_meta(
+                        reflection_call_meta,
+                        "cost_usd",
+                    )
+                    latency_ms += reflection_latency_ms
+                    if cost_usd is None:
+                        cost_usd = reflection_cost_usd
+                    elif reflection_cost_usd is not None:
+                        cost_usd += reflection_cost_usd
+                    reflection_tokens_in = _int_meta(reflection_call_meta, "tokens_in")
+                    reflection_tokens_out = _int_meta(reflection_call_meta, "tokens_out")
+                    tokens_in = (tokens_in or 0) + (reflection_tokens_in or 0)
+                    tokens_out = (tokens_out or 0) + (reflection_tokens_out or 0)
+                    reflection_meta = {
+                        "reflection_requested": True,
+                        "reflection_raw_present": bool(reflection_raw),
+                        "reflection_latency_ms": reflection_latency_ms,
+                        "reflection_tokens_in": reflection_tokens_in,
+                        "reflection_tokens_out": reflection_tokens_out,
+                        "reflection_cost_usd": reflection_cost_usd,
+                    }
+                except Exception as exc:
+                    reflection_meta = {
+                        "reflection_requested": True,
+                        "reflection_failed": True,
+                        "reflection_error_type": type(exc).__name__,
+                    }
 
             if correct:
                 policy_state_after = policy_state_before
             else:
-                policy_state_after = parse_policy_state(
-                    task.type,
-                    policy_state_before,
-                    parsed_note,
-                )
+                try:
+                    policy_state_after = parse_policy_state(
+                        task.type,
+                        policy_state_before,
+                        parsed_note,
+                    )
+                except ValueError:
+                    reflection_meta["reflection_note_rejected"] = True
+                    policy_state_after = parse_policy_state(
+                        task.type,
+                        policy_state_before,
+                        None,
+                    )
 
             cumulative_latency_ms += latency_ms
             cumulative_cost_usd += cost_usd or 0.0

@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +44,11 @@ _BANNED_POLICY_TOKENS = (
     "raw_prompt",
     "raw_response",
 )
+_BANNED_POLICY_PATTERNS = (
+    re.compile(r"\b(answer|value|index|indices|point)\b", re.IGNORECASE),
+    re.compile(r"\b[xy]\s*[:=]\s*-?\d+(\.\d+)?\b", re.IGNORECASE),
+    re.compile(r"\(\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*\)"),
+)
 _CI_NOT_APPLICABLE_REASON = "single adaptive session; repeated-run CI deferred to Phase 3"
 
 
@@ -64,6 +70,8 @@ def _validate_policy_note_texts(values: list[str]) -> list[str]:
         banned = _contains_banned_token(value)
         if banned is not None:
             raise ValueError(f"adaptive policy state contains banned token: {banned}")
+        if any(pattern.search(value) for pattern in _BANNED_POLICY_PATTERNS):
+            raise ValueError("adaptive policy state contains instance-specific answer detail")
     return values
 
 

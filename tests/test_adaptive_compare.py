@@ -33,6 +33,7 @@ def _write_legacy_results(results_dir: Path) -> None:
             {"type": "Patch_Select", "n": 5, "pass_at_1": 0.10},
             {"type": "Click_Order", "n": 5, "pass_at_1": 0.50},
             {"type": "Image_Matching", "n": 5, "pass_at_1": 0.10},
+            {"type": "Object_Match", "n": 5, "pass_at_1": 0.10},
         ],
     )
     _write_csv(
@@ -165,6 +166,33 @@ def _write_adaptive_summary(path: Path) -> None:
                 "confidence_interval_high": "",
                 "confidence_interval_not_applicable_reason": "",
             },
+            {
+                "schema_version": "cognition.revision.adaptive_summary.v1",
+                "run_id": "adaptive-run",
+                "provider": "openai",
+                "model": "gpt-5",
+                "task_type": "Object_Match",
+                "attempt_budget_k": 3,
+                "sampling_mode": "without-replacement",
+                "feedback_mode": "binary-pass-fail",
+                "memory_mode": "explicit-policy-notes",
+                "solve_request_count": 3,
+                "reflection_request_count": 1,
+                "n_attempts": 3,
+                "n_success": 0,
+                "success_rate": 0.0,
+                "expected_attempts": "",
+                "attempts_to_success": "",
+                "cumulative_latency_ms": 3300.0,
+                "cumulative_cost_usd": 0.012,
+                "scientific_wrong_count": 1,
+                "protocol_failure_count": 1,
+                "infrastructure_failure_count": 1,
+                "stopping_reason": "budget_exhausted",
+                "confidence_interval_low": "",
+                "confidence_interval_high": "",
+                "confidence_interval_not_applicable_reason": "",
+            },
         ],
     )
 
@@ -289,10 +317,10 @@ def test_comparison_rows_add_labels_cutoff_note_and_bottleneck_tags(
 
     click_order = by_task["Click_Order"]
     assert click_order.baseline_label == "broken"
-    assert click_order.adaptive_label == "borderline"
+    assert click_order.adaptive_label == "broken"
     assert "spatial precision" in click_order.structural_bottleneck_tags
     assert "ordering" in click_order.structural_bottleneck_tags
-    assert "instruction sensitivity" in click_order.structural_bottleneck_tags
+    assert "instruction sensitivity" not in click_order.structural_bottleneck_tags
 
     patch = by_task["Patch_Select"]
     assert patch.baseline_label == "hard"
@@ -337,6 +365,15 @@ def test_persistent_failure_note_excludes_infrastructure_only_or_protocol_only(
     assert infra_or_protocol.protocol_failure_count > 0
     assert infra_or_protocol.infrastructure_failure_count > 0
     assert infra_or_protocol.persistent_failure_note is None
+
+    mixed_failure = by_task["Object_Match"]
+    assert mixed_failure.adaptive_label == "hard"
+    assert mixed_failure.adaptive_observed_success is False
+    assert mixed_failure.scientific_wrong_count > 0
+    assert mixed_failure.protocol_failure_count > 0
+    assert mixed_failure.infrastructure_failure_count > 0
+    assert mixed_failure.persistent_failure_note is None
+
     assert infra_or_protocol.confidence_interval_low is None
     assert infra_or_protocol.confidence_interval_high is None
     assert (
@@ -394,7 +431,7 @@ def test_cli_writes_comparison_outputs_and_prints_json_summary(
 
     summary = json.loads(capsys.readouterr().out)
     assert exit_code == 0
-    assert summary["row_count"] == 4
+    assert summary["row_count"] == 5
     assert summary["output_csv"].endswith("adaptive_comparison.csv")
     assert summary["output_json"].endswith("adaptive_comparison.json")
     assert output_csv.exists()

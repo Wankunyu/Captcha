@@ -74,8 +74,8 @@ def test_adapted_prompt_and_reflection_prompt_do_not_leak_sentinel_ground_truth(
         task.type,
         policy_state,
         {
-            "tried_strategy_summary": "The attempted point was selected from visible marks.",
-            "next_prompt_rule": "Inspect all visible target-like marks before choosing one point.",
+            "tried_strategy_summary": "The previous strategy over-focused on one visible mark.",
+            "next_prompt_rule": "Inspect all visible target-like marks before choosing.",
         },
     )
 
@@ -126,20 +126,58 @@ def test_parse_policy_state_updates_memory_and_rejects_leaky_notes() -> None:
                 "next_prompt_rule": "Use the answer directly.",
             },
         )
+    with pytest.raises(ValueError, match="instance-specific answer detail"):
+        adaptive_attacker.parse_policy_state(
+            "Dice_Count",
+            previous,
+            {
+                "tried_strategy_summary": "I answered value 0.",
+                "next_prompt_rule": "Avoid index 2.",
+            },
+        )
+    with pytest.raises(ValueError, match="instance-specific answer detail"):
+        adaptive_attacker.parse_policy_state(
+            "Geometry_Click",
+            previous,
+            {
+                "tried_strategy_summary": "The point was x=10 y=20.",
+                "next_prompt_rule": "Move away from (10, 20).",
+            },
+        )
 
 
 def test_classify_failure_values() -> None:
-    assert adaptive_attacker.classify_failure("{}", {}, True) == "none"
+    assert adaptive_attacker.classify_failure("{}", {}, True, schema_valid=True) == "none"
     assert (
-        adaptive_attacker.classify_failure("{}", {}, False, provider_exception=RuntimeError("boom"))
+        adaptive_attacker.classify_failure(
+            "{}",
+            {},
+            False,
+            schema_valid=True,
+            provider_exception=RuntimeError("boom"),
+        )
         == "infrastructure_failure"
     )
-    assert adaptive_attacker.classify_failure("__ERROR__: timeout", None, False) == (
+    assert adaptive_attacker.classify_failure(
+        "__ERROR__: timeout", None, False, schema_valid=False
+    ) == (
         "infrastructure_failure"
     )
-    assert adaptive_attacker.classify_failure("not json", None, False) == "protocol_failure"
-    assert adaptive_attacker.classify_failure("[]", [], False) == "protocol_failure"
-    assert adaptive_attacker.classify_failure("{}", {"answer_type": "number"}, False) == (
+    assert adaptive_attacker.classify_failure(
+        "not json", None, False, schema_valid=False
+    ) == "protocol_failure"
+    assert adaptive_attacker.classify_failure("[]", [], False, schema_valid=False) == (
+        "protocol_failure"
+    )
+    assert adaptive_attacker.classify_failure(
+        "{}", {"answer_type": "number"}, False, schema_valid=False
+    ) == "protocol_failure"
+    assert adaptive_attacker.classify_failure(
+        "{}",
+        {"answer_type": "number", "value": 0},
+        False,
+        schema_valid=True,
+    ) == (
         "scientific_wrong"
     )
 
@@ -149,17 +187,21 @@ class FakeAdaptiveProvider:
         self,
         solve_responses: list[tuple[str, object, dict]],
         reflection_note: dict[str, str] | None = None,
+        reflection_exception: Exception | None = None,
     ) -> None:
         self.solve_responses = list(solve_responses)
         self.reflection_note = reflection_note or {
             "tried_strategy_summary": "The previous strategy was too shallow.",
             "next_prompt_rule": "Inspect the full visual field before answering.",
         }
+        self.reflection_exception = reflection_exception
         self.calls: list[dict] = []
 
     def infer(self, **kwargs):
         self.calls.append(kwargs)
         if kwargs["images"] == []:
+            if self.reflection_exception is not None:
+                raise self.reflection_exception
             return (
                 json.dumps(self.reflection_note),
                 dict(self.reflection_note),
@@ -335,6 +377,71 @@ def test_infrastructure_and_protocol_failures_do_not_trigger_reflection(
     assert sum(call["images"] == [] for call in fake_provider.calls) == 0
 
 
+def test_schema_invalid_parsed_answers_are_protocol_failures(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    malformed = (
+        '{"answer_type":"number"}',
+        {"answer_type": "number"},
+        {"e2e_ms": 8.0, "tokens_in": 4, "tokens_out": 1},
+    )
+    fake_provider = FakeAdaptiveProvider([malformed, malformed])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(2), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    rows = _attempt_rows(run_dir)
+    assert [row["failure_class"] for row in rows] == [
+        "protocol_failure",
+        "protocol_failure",
+    ]
+    assert sum(call["images"] == [] for call in fake_provider.calls) == 0
+
+
+def test_reflection_failure_is_recorded_without_losing_solve_attempt(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider(
+        [_number_response(0), _number_response(0)],
+        reflection_exception=RuntimeError("reflection unavailable"),
+    )
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(2), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    rows = _attempt_rows(run_dir)
+    assert len(rows) == 2
+    assert rows[0]["failure_class"] == "scientific_wrong"
+    assert rows[0]["prompt_adaptation_metadata"]["reflection_request_count"] == 1
+    assert rows[0]["prompt_adaptation_metadata"]["reflection_failed"] is True
+    assert rows[0]["prompt_adaptation_metadata"]["reflection_error_type"] == "RuntimeError"
+
+
+def test_rejected_reflection_note_is_recorded_without_aborting_attempt(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider(
+        [_number_response(0), _number_response(0)],
+        reflection_note={
+            "tried_strategy_summary": "I answered value 0.",
+            "next_prompt_rule": "Avoid index 2.",
+        },
+    )
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(2), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    rows = _attempt_rows(run_dir)
+    assert len(rows) == 2
+    assert rows[0]["prompt_adaptation_metadata"]["reflection_note_rejected"] is True
+    assert rows[0]["policy_state_after"]["failed_attempt_count"] == 1
+    assert rows[0]["policy_state_after"]["tried_strategy_summaries"] == []
+    assert rows[0]["policy_state_after"]["next_prompt_rules"] == []
+
+
 def test_scientific_wrong_reflects_only_when_another_solve_attempt_remains(
     tmp_path,
     monkeypatch,
@@ -389,3 +496,56 @@ def test_resume_skips_completed_adaptive_attempts_before_provider_construction(
     rows = _attempt_rows(run_dir)
     assert len(rows) == 1
     assert rows[0]["stopping_reason"] == "first_success"
+
+
+def test_resume_rejects_changed_adaptive_configuration(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider([_number_response(0)])
+    _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider)
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    monkeypatch.setattr(run_eval, "build_tasks", lambda *args, **kwargs: _tasks(1))
+
+    with pytest.raises(ValueError, match="resume configuration"):
+        _run_adaptive(tmp_path, attempt_budget_k=3, resume=True)
+
+
+def test_max_per_type_selection_is_controlled_by_adaptive_seed(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    tasks = _tasks(5)
+    observed_max_per_type: list[int | None] = []
+
+    def fake_build_tasks(*args, **kwargs):
+        observed_max_per_type.append(args[2] if len(args) > 2 else kwargs.get("max_per_type"))
+        return list(tasks)
+
+    monkeypatch.setattr(run_eval, "build_tasks", fake_build_tasks)
+
+    def run_seeded(run_id: str) -> list[str]:
+        fake_provider = FakeAdaptiveProvider([_number_response(0), _number_response(0)])
+        monkeypatch.setattr(run_eval, "make_provider", lambda *args, **kwargs: fake_provider)
+        adaptive_attacker.run_adaptive_experiment(
+            dataset_root=str(tmp_path / "captcha_data"),
+            types=["Dice_Count"],
+            provider="openai",
+            model="gpt-5",
+            run_id=run_id,
+            output_root=str(tmp_path / "results" / "revision"),
+            attempt_budget_k=2,
+            max_per_type=2,
+            prompts_file=None,
+            secrets_file="",
+            seed=99,
+            overwrite=True,
+        )
+        return [
+            row["puzzle_id"]
+            for row in _attempt_rows(tmp_path / "results" / "revision" / run_id)
+        ]
+
+    assert run_seeded("seed-a") == run_seeded("seed-b")
+    assert observed_max_per_type == [None, None]
