@@ -13,7 +13,7 @@ This roadmap turns the latest shepherding plan into reproducible paper and artif
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Reproducibility and Safety Foundation** - Establish install, preflight, manifest, attempt-log, secret-safety, prompt/few-shot hash, cost-preview, and validator contracts before additional provider runs. Completed 2026-05-16.
-- [ ] **Phase 2: Adaptive Attacker Main-Body Evidence** - Run, analyze, and package session-memory adaptive attacker evidence for the main paper body.
+- [x] **Phase 2: Adaptive Attacker Main-Body Evidence** - Run, analyze, and package session-memory adaptive attacker evidence for the main paper body. Completed 2026-05-18.
 - [ ] **Phase 3: Dataset Scope, Statistical Confidence, and Limitations** - Produce dataset-scope, statistical-confidence, retry-calibration, infrastructure-error, and limitations artifacts.
 - [ ] **Phase 4: SOTA Solver and Larger Benchmark Strengthening** - Add fair comparison hooks for Halligan, Oedipus, specialized CAPTCHA solvers, and compatible larger external benchmark subsets.
 - [ ] **Phase 5: Defense Methodology and HCI Scope** - Convert measured structural hardness evidence into an actionable practitioner methodology with explicit human-clarity and HCI limitations.
@@ -57,7 +57,7 @@ Plans:
 - [x] 02-02-PLAN.md - Add provider-free adaptive preflight with request counts, hashes, output paths, and adaptive semantics.
 - [x] 02-03-PLAN.md - Implement the offline dataset-based adaptive attacker loop with explicit local memory.
 - [x] 02-04-PLAN.md - Build task-type comparison table inputs for Exp2, Bernoulli Success@k, fixed retry, and adaptive outcomes.
-- [ ] 02-05-PLAN.md - Add offline end-to-end validation and adaptive reproduction notes with optional gated paid-smoke documentation.
+- [x] 02-05-PLAN.md - Add offline end-to-end validation and adaptive reproduction notes with optional gated paid-smoke documentation.
 
 ### Phase 3: Dataset Scope, Statistical Confidence, and Limitations
 **Goal**: Researchers can quantify uncertainty, dataset support, removed/incompatible task types, threshold sensitivity, retry-model validity, infrastructure-vs-scientific failures, and benchmark generalizability limits.
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Reproducibility and Safety Foundation | 5/5 | Complete | 2026-05-16 |
-| 2. Adaptive Attacker Main-Body Evidence | 4/5 | Executing | - |
+| 2. Adaptive Attacker Main-Body Evidence | 5/5 | Complete | 2026-05-18 |
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 0/TBD | Not started | - |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 0/TBD | Not started | - |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |

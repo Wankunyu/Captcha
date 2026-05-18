@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-05-18T03:59:56.647Z"
+status: verifying
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-05-18T04:07:25.477Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-18
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 90%
 | Phase 02 P02 | 4min | 2 tasks | 2 files |
 | Phase 02 P03 | 8min | 2 tasks | 2 files |
 | Phase 02 P04 | 10min | 3 tasks | 2 files |
+| Phase 02 P05 | 4min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - Comparison rows remain task-type primary under the same attempt_budget_k for Bernoulli, fixed retry, and adaptive outcomes.
 - Provider/runtime/protocol failures remain visible as counts but never create persistent hard-family notes without scientific_wrong_count > 0.
 - Structural bottleneck tags preserve the AdaptiveComparisonRow list schema from 02-01 while staying explanatory, not the primary evaluation unit.
+- The complete Phase 2 adaptive workflow is validated with an offline fake-provider E2E test before any optional paid provider run.
+- Optional paid smoke requires adaptive preflight and inspection of expected_request_count_max before a budget decision.
+- README makes offline pytest/ruff validation the default path and marks paid smoke as explicitly non-default.
 
 ### Pending Todos
 
@@ -115,8 +119,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-18T03:59:56.642Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-05-18T04:07:25.472Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
 
 **Planned Phase:** 02 (Adaptive Attacker Main-Body Evidence) — 5 plans — 2026-05-18T02:32:27.766Z
