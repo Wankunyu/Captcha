@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-05-18T03:28:03.939Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-05-18T03:36:21.857Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
-  percent: 60
+  completed_plans: 7
+  percent: 70
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-18
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -45,7 +45,7 @@ Progress: [██████░░░░] 60%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
-| 02 | 1 | 18min | 18min |
+| 02 | 2 | 22min | 11min |
 
 **Recent Trend:**
 
@@ -54,6 +54,7 @@ Progress: [██████░░░░] 60%
 
 *Updated after each plan completion*
 | Phase 02 P01 | 18min | 2 tasks | 2 files |
+| Phase 02 P02 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,10 @@ Recent decisions affecting current work:
 - Adaptive artifacts live in a separate module so Phase 1 AttemptRecord v1 remains unchanged.
 - Adaptive summaries separate scientific_wrong, protocol_failure, and infrastructure_failure counts.
 - Confidence interval fields are nullable in Phase 2 and carry an explicit repeated-run deferral reason.
+- Adaptive preflight reports solve_request_count, reflection_request_count_max, and expected_request_count_max separately.
+- Pricing preview reads only explicit non-secret pricing metadata, never local secret configuration.
+- Prompt/few-shot inputs and prompt prefix/suffix values are recorded as hashes, not raw prompt text.
+- Adaptive output directories fail closed unless --overwrite or --resume is explicit.
 
 ### Pending Todos
 
@@ -78,7 +83,7 @@ None yet.
 ### Blockers/Concerns
 
 - [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
-- [Phase 2]: Adaptive schemas and artifact writer are ready; adaptive preflight and offline loop still need implementation before paid runs.
+- [Phase 2]: Adaptive schemas, artifact writer, and adaptive preflight are ready; offline loop still needs implementation before paid runs.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -101,8 +106,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-18T03:28:03.934Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-05-18T03:36:21.852Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
 
 **Planned Phase:** 02 (Adaptive Attacker Main-Body Evidence) — 5 plans — 2026-05-18T02:32:27.766Z
