@@ -25,7 +25,10 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _policy_state(task_type: str = "Dice_Count", failed_attempt_count: int = 0) -> AdaptivePolicyState:
+def _policy_state(
+    task_type: str = "Dice_Count",
+    failed_attempt_count: int = 0,
+) -> AdaptivePolicyState:
     return AdaptivePolicyState(
         task_type=task_type,
         failed_attempt_count=failed_attempt_count,
