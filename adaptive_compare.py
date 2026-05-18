@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import argparse
+import contextlib
 import csv
+import io
 import json
 from pathlib import Path
 from typing import Any, Iterable
@@ -56,7 +59,8 @@ _LEGACY_COLUMNS = [
 def load_legacy_results(
     results_dir: str, provider: str | None = None, model: str | None = None
 ) -> pd.DataFrame:
-    viz = CAPTCHAVisualizer(results_dir=results_dir)
+    with contextlib.redirect_stdout(io.StringIO()):
+        viz = CAPTCHAVisualizer(results_dir=results_dir)
     if viz.data.empty:
         return pd.DataFrame(columns=_LEGACY_COLUMNS)
 
@@ -325,6 +329,62 @@ def write_comparison(
     return csv_path, json_path
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Build adaptive comparison CSV/JSON rows from Exp2, Exp3, "
+            "and adaptive summaries."
+        )
+    )
+    parser.add_argument("--results-dir", default="./results")
+    parser.add_argument("--adaptive-summary", required=True)
+    parser.add_argument("--output-csv", required=True)
+    parser.add_argument("--output-json", required=True)
+    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--provider", default=None)
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--attempt-budget-k", type=int, required=True)
+    parser.add_argument("--cutoff", type=float, default=0.40)
+    parser.add_argument("--borderline-margin", type=float, default=0.05)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        rows = build_comparison_rows(
+            results_dir=args.results_dir,
+            adaptive_summary_path=args.adaptive_summary,
+            run_id=args.run_id,
+            provider=args.provider,
+            model=args.model,
+            attempt_budget_k=args.attempt_budget_k,
+            cutoff=args.cutoff,
+            borderline_margin=args.borderline_margin,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    output_csv, output_json = write_comparison(
+        rows,
+        args.output_csv,
+        args.output_json,
+    )
+    print(
+        json.dumps(
+            {
+                "row_count": len(rows),
+                "output_csv": str(output_csv),
+                "output_json": str(output_json),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
 def _normalize_exp2(df: pd.DataFrame) -> pd.DataFrame:
     exp2 = df[df["experiment"] == "exp2"].copy()
     if exp2.empty:
@@ -500,3 +560,7 @@ def _to_str_or_none(value: object) -> str | None:
     if _is_null(value):
         return None
     return str(value)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
