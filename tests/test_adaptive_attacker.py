@@ -144,6 +144,15 @@ def test_parse_policy_state_updates_memory_and_rejects_leaky_notes() -> None:
                 "next_prompt_rule": "Move away from (10, 20).",
             },
         )
+    with pytest.raises(ValueError, match="instance-specific answer detail"):
+        adaptive_attacker.parse_policy_state(
+            "Dice_Count",
+            previous,
+            {
+                "tried_strategy_summary": "count was 3.",
+                "next_prompt_rule": "Do not repeat dice17.png.",
+            },
+        )
 
 
 def test_classify_failure_values() -> None:
@@ -399,6 +408,36 @@ def test_schema_invalid_parsed_answers_are_protocol_failures(
     assert sum(call["images"] == [] for call in fake_provider.calls) == 0
 
 
+def test_schema_validator_rejects_nested_arrays_and_scorer_coercion(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    assert not adaptive_attacker._schema_valid(
+        {"answer_type": "multi_select", "indices": ["1"]},
+        run_eval.build_json_schema("Patch_Select"),
+    )
+    assert not adaptive_attacker._schema_valid(
+        {"answer_type": "click_order", "points": [{"x": 1}]},
+        run_eval.build_json_schema("Click_Order"),
+    )
+    fake_provider = FakeAdaptiveProvider(
+        [
+            (
+                '{"answer_type":"number","value":"3"}',
+                {"answer_type": "number", "value": "3"},
+                {"e2e_ms": 8.0, "tokens_in": 4, "tokens_out": 1},
+            )
+        ]
+    )
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=1)
+
+    rows = _attempt_rows(run_dir)
+    assert rows[0]["correct"] is False
+    assert rows[0]["failure_class"] == "protocol_failure"
+
+
 def test_reflection_failure_is_recorded_without_losing_solve_attempt(
     tmp_path,
     monkeypatch,
@@ -484,6 +523,7 @@ def test_resume_skips_completed_adaptive_attempts_before_provider_construction(
     fake_provider = FakeAdaptiveProvider([_number_response(3)])
     run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider)
     _run_adaptive(tmp_path, attempt_budget_k=2)
+    original_manifest = (run_dir / "run_manifest.json").read_text(encoding="utf-8")
 
     monkeypatch.setattr(run_eval, "build_tasks", lambda *args, **kwargs: _tasks(1))
 
@@ -496,6 +536,7 @@ def test_resume_skips_completed_adaptive_attempts_before_provider_construction(
     rows = _attempt_rows(run_dir)
     assert len(rows) == 1
     assert rows[0]["stopping_reason"] == "first_success"
+    assert (run_dir / "run_manifest.json").read_text(encoding="utf-8") == original_manifest
 
 
 def test_resume_rejects_changed_adaptive_configuration(
@@ -512,6 +553,28 @@ def test_resume_rejects_changed_adaptive_configuration(
         _run_adaptive(tmp_path, attempt_budget_k=3, resume=True)
 
 
+def test_resume_rejects_changed_selected_task_identity(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider([_number_response(0)])
+    _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider)
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+    changed_tasks = [
+        run_eval.TaskItem(
+            "Dice_Count",
+            "dice99.png",
+            "Count the dice.",
+            ["dice99.png"],
+            {"sum": 3},
+        )
+    ]
+    monkeypatch.setattr(run_eval, "build_tasks", lambda *args, **kwargs: changed_tasks)
+
+    with pytest.raises(ValueError, match="manifest"):
+        _run_adaptive(tmp_path, attempt_budget_k=2, resume=True)
+
+
 def test_max_per_type_selection_is_controlled_by_adaptive_seed(
     tmp_path,
     monkeypatch,
@@ -521,7 +584,9 @@ def test_max_per_type_selection_is_controlled_by_adaptive_seed(
 
     def fake_build_tasks(*args, **kwargs):
         observed_max_per_type.append(args[2] if len(args) > 2 else kwargs.get("max_per_type"))
-        return list(tasks)
+        if len(observed_max_per_type) % 2:
+            return list(tasks)
+        return list(reversed(tasks))
 
     monkeypatch.setattr(run_eval, "build_tasks", fake_build_tasks)
 

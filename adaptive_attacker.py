@@ -158,35 +158,49 @@ def classify_failure(
 
 
 def _schema_valid(value: Any, schema: dict[str, Any]) -> bool:
-    if schema.get("type") == "object" and not isinstance(value, dict):
+    expected_type = schema.get("type")
+    if expected_type == "object" and not isinstance(value, dict):
         return False
-    if not isinstance(value, dict):
-        return True
-    for field in schema.get("required", []):
-        if field not in value:
+    if expected_type == "array" and not isinstance(value, list):
+        return False
+    if expected_type == "string" and not isinstance(value, str):
+        return False
+    if expected_type == "integer" and (
+        not isinstance(value, int) or isinstance(value, bool)
+    ):
+        return False
+    if expected_type == "number" and (
+        not isinstance(value, (int, float)) or isinstance(value, bool)
+    ):
+        return False
+
+    enum_values = schema.get("enum")
+    if enum_values is not None and value not in enum_values:
+        return False
+
+    if isinstance(value, dict):
+        for field in schema.get("required", []):
+            if field not in value:
+                return False
+        properties = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            extra_fields = set(value) - set(properties)
+            if extra_fields:
+                return False
+        for field, field_schema in properties.items():
+            if field in value and not _schema_valid(value[field], field_schema):
+                return False
+
+    if isinstance(value, list):
+        min_items = schema.get("minItems")
+        max_items = schema.get("maxItems")
+        if isinstance(min_items, int) and len(value) < min_items:
             return False
-    for field, field_schema in schema.get("properties", {}).items():
-        if field not in value:
-            continue
-        field_value = value[field]
-        expected_type = field_schema.get("type")
-        if expected_type == "string" and not isinstance(field_value, str):
+        if isinstance(max_items, int) and len(value) > max_items:
             return False
-        if expected_type == "integer" and (
-            not isinstance(field_value, int) or isinstance(field_value, bool)
-        ):
-            return False
-        if expected_type == "number" and (
-            not isinstance(field_value, int | float) or isinstance(field_value, bool)
-        ):
-            return False
-        if expected_type == "array" and not isinstance(field_value, list):
-            return False
-        if expected_type == "object" and not _schema_valid(field_value, field_schema):
-            return False
-        enum_values = field_schema.get("enum")
-        if enum_values is not None and field_value not in enum_values:
-            return False
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            return all(_schema_valid(item, item_schema) for item in value)
     return True
 
 
@@ -195,13 +209,43 @@ def _dataset_summary(
     tasks: list[run_eval.TaskItem],
 ) -> dict[str, Any]:
     by_type: dict[str, int] = {}
+    selected_puzzle_ids_by_type: dict[str, list[str]] = {}
+    prompt_sha256_by_type: dict[str, dict[str, str | None]] = {}
+    gt_sha256_by_type: dict[str, dict[str, str | None]] = {}
+    image_sha256_by_type: dict[str, dict[str, list[str | None]]] = {}
     for task in tasks:
         by_type[task.type] = by_type.get(task.type, 0) + 1
+        selected_puzzle_ids_by_type.setdefault(task.type, []).append(task.puzzle_id)
+        prompt_sha256_by_type.setdefault(task.type, {})[task.puzzle_id] = sha256_text(
+            task.prompt
+        )
+        gt_sha256_by_type.setdefault(task.type, {})[task.puzzle_id] = sha256_text(
+            json.dumps(task.gt, ensure_ascii=False, sort_keys=True)
+        )
+        image_sha256_by_type.setdefault(task.type, {})[task.puzzle_id] = [
+            sha256_file(image_path) for image_path in task.images
+        ]
     return {
         "dataset_root": dataset_root,
         "selected_task_count": len(tasks),
         "selected_task_types": sorted(by_type),
         "by_type": dict(sorted(by_type.items())),
+        "selected_puzzle_ids_by_type": {
+            task_type: selected_puzzle_ids_by_type[task_type]
+            for task_type in sorted(selected_puzzle_ids_by_type)
+        },
+        "selected_prompt_sha256_by_type": {
+            task_type: dict(sorted(values.items()))
+            for task_type, values in sorted(prompt_sha256_by_type.items())
+        },
+        "selected_ground_truth_sha256_by_type": {
+            task_type: dict(sorted(values.items()))
+            for task_type, values in sorted(gt_sha256_by_type.items())
+        },
+        "selected_image_sha256_by_type": {
+            task_type: dict(sorted(values.items()))
+            for task_type, values in sorted(image_sha256_by_type.items())
+        },
     }
 
 
@@ -337,6 +381,9 @@ def _validate_resume_manifest(manifest_path: Path, current_manifest: RunManifest
         or existing.get("retry_policy") != expected_retry_policy
         or existing.get("prompt_config") != current_manifest.prompt_config.model_dump(mode="json")
         or existing.get("dataset_summary") != current_manifest.dataset_summary
+        or existing.get("code_revision") != current_manifest.code_revision
+        or existing.get("python_version") != current_manifest.python_version
+        or existing.get("dependency_versions") != current_manifest.dependency_versions
     ):
         raise ValueError("existing adaptive manifest does not match resume configuration")
 
@@ -419,9 +466,12 @@ def run_adaptive_experiment(
     task_pools = group_tasks_by_type(tasks)
     rng = random.Random(seed)
     for task_type, pool in list(task_pools.items()):
+        pool = sorted(pool, key=lambda task: task.puzzle_id)
         rng.shuffle(pool)
         if max_per_type is not None and max_per_type > 0:
             task_pools[task_type] = pool[:max_per_type]
+        else:
+            task_pools[task_type] = pool
     selected_tasks = [task for pool in task_pools.values() for task in pool]
 
     writer = AdaptiveArtifactWriter(
@@ -473,8 +523,10 @@ def run_adaptive_experiment(
         output_paths=_manifest_output_paths(writer),
     )
     if resume and existing_attempts:
-        _validate_resume_manifest(writer.run_dir / "run_manifest.json", manifest)
-    manifest_path = _write_manifest(writer, manifest)
+        manifest_path = writer.run_dir / "run_manifest.json"
+        _validate_resume_manifest(manifest_path, manifest)
+    else:
+        manifest_path = _write_manifest(writer, manifest)
 
     remaining_task_types = [
         task_type for task_type in task_pools if task_type not in terminal_by_type
@@ -547,12 +599,12 @@ def run_adaptive_experiment(
                 meta = {"e2e_ms": 0.0, "tokens_in": 0, "tokens_out": 0}
                 schema = run_eval.build_json_schema(task.type)
 
+            schema_valid = _schema_valid(parsed, schema)
             correct = (
                 False
-                if provider_exception is not None
+                if provider_exception is not None or not schema_valid
                 else run_eval.evaluate_pass1(task, parsed)
             )
-            schema_valid = _schema_valid(parsed, schema)
             failure_class = classify_failure(
                 raw,
                 parsed,

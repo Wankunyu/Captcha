@@ -213,6 +213,15 @@ def test_policy_state_rejects_banned_text() -> None:
             next_prompt_rules=["Avoid the point x=10 y=20"],
             updated_at=_now(),
         )
+    for text in ("count was 3", "clicked 120, 88", "dice17.png failed"):
+        with pytest.raises(ValueError, match="instance-specific answer detail"):
+            AdaptivePolicyState(
+                task_type="Dice_Count",
+                failed_attempt_count=1,
+                tried_strategy_summaries=[text],
+                next_prompt_rules=[],
+                updated_at=_now(),
+            )
 
 
 def test_adaptive_writer_appends_jsonl_in_order_and_rejects_duplicate_or_unsafe_runs(
