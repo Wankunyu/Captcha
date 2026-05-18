@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 Phase: 3
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-18
+Last activity: 2026-05-18 - Completed quick task 260519-al4: Align Phase 2 adaptive comparison cutoff semantics with the paper-facing 40% threshold and Phase 3 sensitivity framing
 
 Progress: [███-------] 33%
 
@@ -106,6 +106,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260515-v59 | Update revision roadmap from Shepherding.docx | 2026-05-16 | docs-only | [.planning/quick/260515-v59-update-revision-roadmap-from-shepherding/](./quick/260515-v59-update-revision-roadmap-from-shepherding/) |
+| 260519-al4 | Align Phase 2 adaptive comparison cutoff semantics with the paper-facing 40% threshold and Phase 3 sensitivity framing | 2026-05-18 | 5638e17 | [.planning/quick/260519-al4-align-phase-2-adaptive-comparison-cutoff/](./quick/260519-al4-align-phase-2-adaptive-comparison-cutoff/) |
 
 ## Deferred Items
 
