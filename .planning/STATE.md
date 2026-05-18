@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 planned; ready to execute
-last_updated: "2026-05-18T03:07:49.039Z"
-last_activity: 2026-05-18 -- Phase 02 execution started
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-05-18T03:28:03.939Z"
+last_activity: 2026-05-18
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
-  percent: 50
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 02
-Last activity: 2026-05-18 -- Phase 02 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-05-18
 
-Progress: [#####-----] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -45,6 +45,7 @@ Progress: [#####-----] 50%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
+| 02 | 1 | 18min | 18min |
 
 **Recent Trend:**
 
@@ -52,6 +53,7 @@ Progress: [#####-----] 50%
 - Trend: N/A
 
 *Updated after each plan completion*
+| Phase 02 P01 | 18min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -65,6 +67,9 @@ Recent decisions affecting current work:
 - [Roadmap]: Treat external baseline feasibility as uncertain until primary artifacts, licenses, datasets, metrics, and schemas are inspected.
 - [Roadmap]: Preserve Phase 1 plans, but execute future phases in the latest shepherding-response order from Shepherding.docx.
 - [Deadline]: The current revision package targets May 28 AoE for revised paper, color-coded diff, point-by-point changes, and final artifact package.
+- Adaptive artifacts live in a separate module so Phase 1 AttemptRecord v1 remains unchanged.
+- Adaptive summaries separate scientific_wrong, protocol_failure, and infrastructure_failure counts.
+- Confidence interval fields are nullable in Phase 2 and carry an explicit repeated-run deferral reason.
 
 ### Pending Todos
 
@@ -73,7 +78,7 @@ None yet.
 ### Blockers/Concerns
 
 - [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
-- [Phase 2]: Adaptive attacker semantics need a precise state, feedback, memory, and stopping-rule model before paid runs.
+- [Phase 2]: Adaptive schemas and artifact writer are ready; adaptive preflight and offline loop still need implementation before paid runs.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -96,8 +101,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: Phase 2 planned
-Stopped at: Phase 2 planned; ready to execute
-Resume file: .planning/phases/02-adaptive-attacker-main-body-evidence/02-01-PLAN.md
+Last session: 2026-05-18T03:28:03.934Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
 
 **Planned Phase:** 02 (Adaptive Attacker Main-Body Evidence) — 5 plans — 2026-05-18T02:32:27.766Z
