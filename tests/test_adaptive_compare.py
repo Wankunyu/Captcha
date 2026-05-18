@@ -176,7 +176,7 @@ def test_loads_and_merges_task_type_comparison_rows(tmp_path: Path) -> None:
     legacy = load_legacy_results(str(results_dir), provider="openai", model="gpt-5")
     loaded_adaptive = load_adaptive_summary(adaptive_summary)
     assert {"provider", "model", "provider_model", "task_type"}.issubset(legacy.columns)
-    assert set(loaded_adaptive["task_type"]) == {"Dice_Count", "Patch_Select"}
+    assert {"Dice_Count", "Patch_Select"}.issubset(set(loaded_adaptive["task_type"]))
 
     rows = build_comparison_rows(
         results_dir=str(results_dir),

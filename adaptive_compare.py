@@ -15,6 +15,31 @@ from exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
 from visualize_results import CAPTCHAVisualizer
 
 
+CUTOFF_NOTE = "40% operational cutoff with +/- 5% borderline margin; not a universal security boundary."  # noqa: E501
+CI_NOT_APPLICABLE_REASON = "single adaptive session; repeated-run CI deferred to Phase 3"
+PERSISTENT_FAILURE_NOTE = (
+    "adaptive remained hard under binary-feedback explicit-memory budget"
+)
+STRUCTURAL_BOTTLENECK_TAGS = {
+    "Geometry_Click": ["spatial precision"],
+    "Place_Dot": ["spatial precision"],
+    "Pick_Area": ["spatial precision"],
+    "Misleading_Click": ["spatial precision"],
+    "Click_Order": ["spatial precision", "ordering"],
+    "Dice_Count": ["counting"],
+    "Dart_Count": ["counting"],
+    "Patch_Select": ["object-location binding"],
+    "Select_Animal": ["object-location binding"],
+    "Select_Animal_Optimized": ["object-location binding"],
+    "Image_Recognition": ["object-location binding"],
+    "Unusual_Detection": ["object-location binding"],
+    "Image_Matching": ["template diversity"],
+    "Object_Match": ["template diversity"],
+    "Path_Finder": ["template diversity"],
+    "Connect_Icon": ["template diversity"],
+    "Rotation_Match": ["template diversity"],
+    "Bingo": ["ordering"],
+}
 _LEGACY_COLUMNS = [
     "provider",
     "model",
@@ -65,7 +90,21 @@ def load_adaptive_summary(path: str | Path) -> pd.DataFrame:
             payload = json.load(handle)
         rows = payload.get("rows", payload if isinstance(payload, list) else [])
         return pd.DataFrame(rows)
-    return pd.read_csv(summary_path).where(pd.notna(pd.read_csv(summary_path)), None)
+    df = pd.read_csv(summary_path)
+    return df.where(pd.notna(df), None)
+
+
+def classify_rate(
+    rate: float | None, *, cutoff: float = 0.40, margin: float = 0.05
+) -> str | None:
+    if rate is None:
+        return None
+    epsilon = 1e-12
+    if rate < cutoff - margin - epsilon:
+        return "hard"
+    if rate <= cutoff + margin + epsilon:
+        return "borderline"
+    return "broken"
 
 
 def build_comparison_rows(
@@ -124,6 +163,42 @@ def build_comparison_rows(
         adaptive_observed_success = n_success > 0 or bool(
             success_rate is not None and success_rate > 0
         )
+        baseline_label = classify_rate(
+            exp2_pass_at_1, cutoff=cutoff, margin=borderline_margin
+        )
+        adaptive_label = classify_rate(
+            success_rate, cutoff=cutoff, margin=borderline_margin
+        )
+        classification_change = (
+            f"{baseline_label}->{adaptive_label}"
+            if baseline_label is not None and adaptive_label is not None
+            else ""
+        )
+        bottleneck_tags = _structural_bottleneck_tags(
+            str(record["task_type"]), baseline_label, adaptive_label
+        )
+        scientific_wrong_count = _to_int(
+            record.get("scientific_wrong_count"), default=0
+        )
+        protocol_failure_count = _to_int(
+            record.get("protocol_failure_count"), default=0
+        )
+        infrastructure_failure_count = _to_int(
+            record.get("infrastructure_failure_count"), default=0
+        )
+        confidence_interval_low = _to_float_or_none(
+            record.get("confidence_interval_low")
+        )
+        confidence_interval_high = _to_float_or_none(
+            record.get("confidence_interval_high")
+        )
+        confidence_interval_not_applicable_reason = _ci_not_applicable_reason(
+            low=confidence_interval_low,
+            high=confidence_interval_high,
+            reason=_to_str_or_none(
+                record.get("confidence_interval_not_applicable_reason")
+            ),
+        )
         rows.append(
             AdaptiveComparisonRow(
                 run_id=run_id,
@@ -161,32 +236,73 @@ def build_comparison_rows(
                 adaptive_cumulative_cost_usd=_to_float(
                     record.get("cumulative_cost_usd")
                 ),
-                scientific_wrong_count=_to_int(
-                    record.get("scientific_wrong_count"), default=0
+                scientific_wrong_count=scientific_wrong_count,
+                protocol_failure_count=protocol_failure_count,
+                infrastructure_failure_count=infrastructure_failure_count,
+                baseline_label=baseline_label or "",
+                adaptive_label=adaptive_label or "",
+                classification_change=classification_change,
+                cutoff_note=CUTOFF_NOTE,
+                structural_bottleneck_tags=bottleneck_tags,
+                persistent_failure_note=_persistent_failure_note(
+                    adaptive_label=adaptive_label,
+                    adaptive_observed_success=adaptive_observed_success,
+                    scientific_wrong_count=scientific_wrong_count,
+                    protocol_failure_count=protocol_failure_count,
+                    infrastructure_failure_count=infrastructure_failure_count,
                 ),
-                protocol_failure_count=_to_int(
-                    record.get("protocol_failure_count"), default=0
-                ),
-                infrastructure_failure_count=_to_int(
-                    record.get("infrastructure_failure_count"), default=0
-                ),
-                baseline_label="",
-                adaptive_label="",
-                classification_change="",
-                cutoff_note="",
-                structural_bottleneck_tags=[],
-                confidence_interval_low=_to_float_or_none(
-                    record.get("confidence_interval_low")
-                ),
-                confidence_interval_high=_to_float_or_none(
-                    record.get("confidence_interval_high")
-                ),
-                confidence_interval_not_applicable_reason=_to_str_or_none(
-                    record.get("confidence_interval_not_applicable_reason")
+                confidence_interval_low=confidence_interval_low,
+                confidence_interval_high=confidence_interval_high,
+                confidence_interval_not_applicable_reason=(
+                    confidence_interval_not_applicable_reason
                 ),
             )
         )
     return rows
+
+
+def _structural_bottleneck_tags(
+    task_type: str, baseline_label: str | None, adaptive_label: str | None
+) -> list[str]:
+    tags = list(STRUCTURAL_BOTTLENECK_TAGS.get(task_type, []))
+    if (
+        baseline_label is not None
+        and adaptive_label is not None
+        and baseline_label != adaptive_label
+    ):
+        tags.append("instruction sensitivity")
+    return tags
+
+
+def _persistent_failure_note(
+    *,
+    adaptive_label: str | None,
+    adaptive_observed_success: bool,
+    scientific_wrong_count: int,
+    protocol_failure_count: int,
+    infrastructure_failure_count: int,
+) -> str | None:
+    if (
+        adaptive_label == "hard"
+        and adaptive_observed_success is False
+        and scientific_wrong_count > 0
+    ):
+        return PERSISTENT_FAILURE_NOTE
+    if (
+        adaptive_observed_success is False
+        and scientific_wrong_count == 0
+        and (protocol_failure_count > 0 or infrastructure_failure_count > 0)
+    ):
+        return None
+    return None
+
+
+def _ci_not_applicable_reason(
+    *, low: float | None, high: float | None, reason: str | None
+) -> str | None:
+    if low is None and high is None:
+        return reason or CI_NOT_APPLICABLE_REASON
+    return reason
 
 
 def write_comparison(
