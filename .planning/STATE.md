@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_execute
+status: executing
 stopped_at: Phase 2 planned; ready to execute
-last_updated: "2026-05-18T02:32:27.771Z"
-last_activity: 2026-05-18 -- Phase 02 planned with 5 verified plans; ready to execute.
+last_updated: "2026-05-18T03:07:49.039Z"
+last_activity: 2026-05-18 -- Phase 02 execution started
 progress:
   total_phases: 6
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 2: Adaptive Attacker Main-Body Evidence
+**Current focus:** Phase 02 — Adaptive Attacker Main-Body Evidence
 
 ## Current Position
 
-Phase: 2 of 6 (Adaptive Attacker Main-Body Evidence)
-Plan: 0 of 5 planned
-Status: Ready to execute
-Last activity: 2026-05-18 -- Phase 02 planned with 5 verified plans; ready to execute.
+Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 02
+Last activity: 2026-05-18 -- Phase 02 execution started
 
 Progress: [#####-----] 50%
 
