@@ -161,11 +161,44 @@ def _cost_preview(
     reflection_request_count_max: int,
     expected_request_count_max: int,
 ) -> AdaptivePreflightCostPreview:
+    if not args.pricing_file:
+        return AdaptivePreflightCostPreview(
+            solve_request_count=solve_request_count,
+            reflection_request_count_max=reflection_request_count_max,
+            expected_request_count_max=expected_request_count_max,
+            unavailable_reason="pricing metadata not provided",
+        )
+
+    try:
+        pricing_data = _load_mapping(args.pricing_file, "pricing metadata")
+    except Exception as exc:
+        return AdaptivePreflightCostPreview(
+            solve_request_count=solve_request_count,
+            reflection_request_count_max=reflection_request_count_max,
+            expected_request_count_max=expected_request_count_max,
+            pricing_source=args.pricing_file,
+            unavailable_reason=f"pricing metadata unreadable: {exc}",
+        )
+
+    model_pricing = (
+        pricing_data.get("pricing", {}).get(args.provider, {}).get(args.model)
+    )
+    if not isinstance(model_pricing, dict) or "per_request_usd" not in model_pricing:
+        return AdaptivePreflightCostPreview(
+            solve_request_count=solve_request_count,
+            reflection_request_count_max=reflection_request_count_max,
+            expected_request_count_max=expected_request_count_max,
+            pricing_source=args.pricing_file,
+            unavailable_reason="pricing metadata lacks per_request_usd for provider/model",
+        )
+
     return AdaptivePreflightCostPreview(
         solve_request_count=solve_request_count,
         reflection_request_count_max=reflection_request_count_max,
         expected_request_count_max=expected_request_count_max,
-        unavailable_reason="pricing metadata not provided",
+        approximate_cost_usd=expected_request_count_max
+        * float(model_pricing["per_request_usd"]),
+        pricing_source=args.pricing_file,
     )
 
 
@@ -180,6 +213,10 @@ def build_report(args: argparse.Namespace) -> AdaptivePreflightReport:
         _load_mapping(args.few_shot_config, "few-shot config")
 
     run_dir = revision_run_dir(args.output_root, args.run_id)
+    if run_dir.exists() and not args.overwrite and not args.resume:
+        raise FileExistsError(
+            f"Adaptive output directory exists; use --overwrite or --resume: {run_dir}"
+        )
 
     tasks: list[AdaptivePreflightTaskSummary] = []
     selected_task_types: list[str] = []
