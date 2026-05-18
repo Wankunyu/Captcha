@@ -1,4 +1,6 @@
+import json
 import inspect
+from pathlib import Path
 
 import pytest
 
@@ -140,3 +142,250 @@ def test_classify_failure_values() -> None:
     assert adaptive_attacker.classify_failure("{}", {"answer_type": "number"}, False) == (
         "scientific_wrong"
     )
+
+
+class FakeAdaptiveProvider:
+    def __init__(
+        self,
+        solve_responses: list[tuple[str, object, dict]],
+        reflection_note: dict[str, str] | None = None,
+    ) -> None:
+        self.solve_responses = list(solve_responses)
+        self.reflection_note = reflection_note or {
+            "tried_strategy_summary": "The previous strategy was too shallow.",
+            "next_prompt_rule": "Inspect the full visual field before answering.",
+        }
+        self.calls: list[dict] = []
+
+    def infer(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs["images"] == []:
+            return (
+                json.dumps(self.reflection_note),
+                dict(self.reflection_note),
+                {"e2e_ms": 5.0, "tokens_in": 3, "tokens_out": 2, "cost_usd": 0.002},
+            )
+        if not self.solve_responses:
+            raise AssertionError("Unexpected solve call")
+        return self.solve_responses.pop(0)
+
+
+def _number_response(value: int, *, latency_ms: float = 10.0) -> tuple[str, object, dict]:
+    parsed = {"answer_type": "number", "value": value}
+    return (
+        json.dumps(parsed),
+        parsed,
+        {"e2e_ms": latency_ms, "tokens_in": 11, "tokens_out": 7, "cost_usd": 0.01},
+    )
+
+
+def _protocol_response() -> tuple[str, object, dict]:
+    return ("not-json", None, {"e2e_ms": 8.0, "tokens_in": 4, "tokens_out": 1})
+
+
+def _infrastructure_response() -> tuple[str, object, dict]:
+    return ("__ERROR__: timeout", None, {"e2e_ms": 9.0, "tokens_in": 0, "tokens_out": 0})
+
+
+def _tasks(count: int, *, sentinel: str | None = None) -> list[run_eval.TaskItem]:
+    return [
+        run_eval.TaskItem(
+            "Dice_Count",
+            f"dice{i}.png",
+            "Count the dice.",
+            [f"dice{i}.png"],
+            {"sum": 3, "sentinel": sentinel} if sentinel else {"sum": 3},
+        )
+        for i in range(count)
+    ]
+
+
+def _patch_adaptive_run(
+    monkeypatch,
+    tmp_path: Path,
+    tasks: list[run_eval.TaskItem],
+    fake_provider: FakeAdaptiveProvider,
+    events: list[str] | None = None,
+):
+    run_dir = tmp_path / "results" / "revision" / "adaptive-run"
+    monkeypatch.setattr(run_eval, "build_tasks", lambda *args, **kwargs: tasks)
+
+    def fake_make_provider(*args, **kwargs):
+        assert (run_dir / "run_manifest.json").exists()
+        if events is not None:
+            events.append("provider")
+        return fake_provider
+
+    monkeypatch.setattr(run_eval, "make_provider", fake_make_provider)
+    return run_dir
+
+
+def _run_adaptive(
+    tmp_path: Path,
+    *,
+    attempt_budget_k: int,
+    resume: bool = False,
+) -> dict:
+    return adaptive_attacker.run_adaptive_experiment(
+        dataset_root=str(tmp_path / "captcha_data"),
+        types=["Dice_Count"],
+        provider="openai",
+        model="gpt-5",
+        run_id="adaptive-run",
+        output_root=str(tmp_path / "results" / "revision"),
+        attempt_budget_k=attempt_budget_k,
+        max_per_type=None,
+        prompts_file=None,
+        secrets_file="",
+        stream=False,
+        overwrite=not resume,
+        resume=resume,
+    )
+
+
+def _attempt_rows(run_dir: Path) -> list[dict]:
+    return [
+        json.loads(line)
+        for line in (run_dir / "adaptive_attempts.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+
+def test_manifest_is_written_before_provider_and_summary_is_derived(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    events: list[str] = []
+    fake_provider = FakeAdaptiveProvider([_number_response(3)])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider, events)
+
+    result = _run_adaptive(tmp_path, attempt_budget_k=3)
+
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    rows = _attempt_rows(run_dir)
+    assert events == ["provider"]
+    assert manifest["retry_policy"]["mode"] == "session_memory_adaptive"
+    assert manifest["retry_policy"]["sampling_mode"] == "without-replacement"
+    assert manifest["retry_policy"]["feedback_mode"] == "binary-pass-fail"
+    assert manifest["retry_policy"]["memory_mode"] == "explicit-policy-notes"
+    assert manifest["retry_policy"]["stopping_rule"] == "first-success-or-budget"
+    assert rows[0]["stopping_reason"] == "first_success"
+    assert rows[0]["failure_class"] == "none"
+    assert (run_dir / "adaptive_summary.csv").exists()
+    assert (run_dir / "adaptive_summary.json").exists()
+    assert result["by_type"]["Dice_Count"]["stopping_reason"] == "first_success"
+
+
+def test_without_replacement_and_budget_exhaustion_have_no_duplicate_puzzle_ids(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider(
+        [_number_response(0), _number_response(0), _number_response(0)]
+    )
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(3), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=3)
+
+    rows = _attempt_rows(run_dir)
+    puzzle_ids = [row["puzzle_id"] for row in rows]
+    assert len(rows) == 3
+    assert len(puzzle_ids) == len(set(puzzle_ids))
+    assert rows[-1]["stopping_reason"] == "budget_exhausted"
+    assert sum(call["images"] == [] for call in fake_provider.calls) == 2
+
+
+def test_first_success_stops_task_type(tmp_path, monkeypatch) -> None:
+    fake_provider = FakeAdaptiveProvider([_number_response(0), _number_response(3)])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(3), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=3)
+
+    rows = _attempt_rows(run_dir)
+    assert len(rows) == 2
+    assert rows[-1]["stopping_reason"] == "first_success"
+    assert rows[-1]["correct"] is True
+
+
+def test_pool_exhaustion_stops_when_pool_smaller_than_budget(tmp_path, monkeypatch) -> None:
+    fake_provider = FakeAdaptiveProvider([_number_response(0)])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=3)
+
+    rows = _attempt_rows(run_dir)
+    assert len(rows) == 1
+    assert rows[0]["stopping_reason"] == "pool_exhausted"
+    assert sum(call["images"] == [] for call in fake_provider.calls) == 0
+
+
+def test_infrastructure_and_protocol_failures_do_not_trigger_reflection(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider([_infrastructure_response(), _protocol_response()])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(2), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    rows = _attempt_rows(run_dir)
+    assert [row["failure_class"] for row in rows] == [
+        "infrastructure_failure",
+        "protocol_failure",
+    ]
+    assert sum(call["images"] == [] for call in fake_provider.calls) == 0
+
+
+def test_scientific_wrong_reflects_only_when_another_solve_attempt_remains(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider([_number_response(0), _number_response(0)])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(2), fake_provider)
+
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    rows = _attempt_rows(run_dir)
+    reflection_calls = [call for call in fake_provider.calls if call["images"] == []]
+    assert len(reflection_calls) == 1
+    assert "Feedback: FAIL" in reflection_calls[0]["prompt"]
+    assert rows[0]["prompt_adaptation_metadata"]["reflection_request_count"] == 1
+    assert rows[1]["prompt_adaptation_metadata"]["reflection_request_count"] == 0
+
+
+def test_run_loop_does_not_persist_sentinel_from_task_state(tmp_path, monkeypatch) -> None:
+    sentinel = "SECRET_GT_COORDINATE_999"
+    fake_provider = FakeAdaptiveProvider([_number_response(0), _number_response(0)])
+    run_dir = _patch_adaptive_run(
+        monkeypatch,
+        tmp_path,
+        _tasks(2, sentinel=sentinel),
+        fake_provider,
+    )
+
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    serialized_calls = "\n".join(str(call) for call in fake_provider.calls)
+    serialized_records = (run_dir / "adaptive_attempts.jsonl").read_text(encoding="utf-8")
+    assert sentinel not in serialized_calls
+    assert sentinel not in serialized_records
+
+
+def test_resume_skips_completed_adaptive_attempts_before_provider_construction(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    fake_provider = FakeAdaptiveProvider([_number_response(3)])
+    run_dir = _patch_adaptive_run(monkeypatch, tmp_path, _tasks(1), fake_provider)
+    _run_adaptive(tmp_path, attempt_budget_k=2)
+
+    monkeypatch.setattr(run_eval, "build_tasks", lambda *args, **kwargs: _tasks(1))
+
+    def fail_provider(*args, **kwargs):
+        raise AssertionError("resume should skip completed adaptive attempts")
+
+    monkeypatch.setattr(run_eval, "make_provider", fail_provider)
+    _run_adaptive(tmp_path, attempt_budget_k=2, resume=True)
+
+    rows = _attempt_rows(run_dir)
+    assert len(rows) == 1
+    assert rows[0]["stopping_reason"] == "first_success"
