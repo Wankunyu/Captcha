@@ -6,10 +6,12 @@ import pytest
 
 from adaptive_compare import (
     CUTOFF_NOTE,
+    build_parser,
     build_comparison_rows,
     classify_rate,
     load_adaptive_summary,
     load_legacy_results,
+    main,
     write_comparison,
 )
 from exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
@@ -341,3 +343,90 @@ def test_persistent_failure_note_excludes_infrastructure_only_or_protocol_only(
         infra_or_protocol.confidence_interval_not_applicable_reason
         == "single adaptive session; repeated-run CI deferred to Phase 3"
     )
+
+
+def test_cli_writes_comparison_outputs_and_prints_json_summary(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    results_dir = tmp_path / "results"
+    adaptive_summary = tmp_path / "adaptive_summary.csv"
+    output_csv = tmp_path / "tables" / "adaptive_comparison.csv"
+    output_json = tmp_path / "tables" / "adaptive_comparison.json"
+    _write_legacy_results(results_dir)
+    _write_adaptive_summary(adaptive_summary)
+
+    parser = build_parser()
+    assert parser.parse_args(
+        [
+            "--adaptive-summary",
+            str(adaptive_summary),
+            "--output-csv",
+            str(output_csv),
+            "--output-json",
+            str(output_json),
+            "--run-id",
+            "adaptive-run",
+            "--attempt-budget-k",
+            "3",
+        ]
+    ).borderline_margin == 0.05
+
+    exit_code = main(
+        [
+            "--results-dir",
+            str(results_dir),
+            "--adaptive-summary",
+            str(adaptive_summary),
+            "--output-csv",
+            str(output_csv),
+            "--output-json",
+            str(output_json),
+            "--run-id",
+            "adaptive-run",
+            "--provider",
+            "openai",
+            "--model",
+            "gpt-5",
+            "--attempt-budget-k",
+            "3",
+        ]
+    )
+
+    summary = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert summary["row_count"] == 4
+    assert summary["output_csv"].endswith("adaptive_comparison.csv")
+    assert summary["output_json"].endswith("adaptive_comparison.json")
+    assert output_csv.exists()
+    assert output_json.exists()
+
+
+def test_cli_exits_nonzero_when_required_rows_are_absent(tmp_path: Path) -> None:
+    results_dir = tmp_path / "results"
+    adaptive_summary = tmp_path / "adaptive_summary.csv"
+    _write_legacy_results(results_dir)
+    _write_adaptive_summary(adaptive_summary)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--results-dir",
+                str(results_dir),
+                "--adaptive-summary",
+                str(adaptive_summary),
+                "--output-csv",
+                str(tmp_path / "adaptive_comparison.csv"),
+                "--output-json",
+                str(tmp_path / "adaptive_comparison.json"),
+                "--run-id",
+                "missing-run",
+                "--provider",
+                "openai",
+                "--model",
+                "gpt-5",
+                "--attempt-budget-k",
+                "3",
+            ]
+        )
+
+    assert exc_info.value.code != 0
