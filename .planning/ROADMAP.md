@@ -51,7 +51,13 @@ Plans:
   3. Adaptive attempt records capture prior failures, policy state, prompt adaptation metadata, parsed answer, correctness, latency, token usage, cumulative cost, and stopping reason.
   4. Fixed retry, Bernoulli Success@k, and adaptive outcomes are compared under the same task-family budget.
   5. Main-body adaptive tables or figure-input CSVs report success rate, expected attempts, cost/latency where available, task-family changes, and persistent hard-family failures grouped by structural bottleneck.
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 02-01-PLAN.md - Define adaptive schemas, policy-memory safety validators, and append-only adaptive artifact writer.
+- [ ] 02-02-PLAN.md - Add provider-free adaptive preflight with request counts, hashes, output paths, and adaptive semantics.
+- [ ] 02-03-PLAN.md - Implement the offline dataset-based adaptive attacker loop with explicit local memory.
+- [ ] 02-04-PLAN.md - Build task-type comparison table inputs for Exp2, Bernoulli Success@k, fixed retry, and adaptive outcomes.
+- [ ] 02-05-PLAN.md - Add offline end-to-end validation and adaptive reproduction notes with optional gated paid-smoke documentation.
 
 ### Phase 3: Dataset Scope, Statistical Confidence, and Limitations
 **Goal**: Researchers can quantify uncertainty, dataset support, removed/incompatible task types, threshold sensitivity, retry-model validity, infrastructure-vs-scientific failures, and benchmark generalizability limits.
