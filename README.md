@@ -95,6 +95,59 @@ results/revision/<run_id>/
   preflight_report.json
 ```
 
+## Phase 2 Adaptive Attacker Workflow
+
+Phase 2 adaptive artifacts are written under `results/revision/<run_id>/` and use
+binary pass/fail feedback, fresh-instance sampling without replacement,
+experiment-controlled policy notes, and first-success-or-budget stopping.
+
+### Offline adaptive preflight
+
+```bash
+uv run python adaptive_preflight.py --dataset-root ./captcha_data --types Dice_Count Patch_Select --prompts-file ./prompts_optimized.yaml --output-root ./results/revision --run-id local-adaptive-preflight --provider openai --model gpt-5 --prompt-mode opt --max-per-type 2 --attempt-budget-k 6 --write-report
+```
+
+The report includes `solve_request_count`, `reflection_request_count_max`,
+`expected_request_count_max`, prompt/few-shot hashes, output paths,
+`sampling_mode=without-replacement`, `feedback_mode=binary-pass-fail`,
+`memory_mode=explicit-policy-notes`, and
+`stopping_rule=first-success-or-budget`.
+
+### Required offline validation
+
+```bash
+uv run pytest tests/test_adaptive_artifacts.py tests/test_adaptive_preflight.py tests/test_adaptive_attacker.py tests/test_adaptive_compare.py tests/test_adaptive_end_to_end.py -q
+uv run ruff check adaptive_artifacts.py adaptive_preflight.py adaptive_attacker.py adaptive_compare.py tests
+```
+
+This is the default verification path and does not run paid provider calls.
+
+### Adaptive run
+
+```bash
+uv run python adaptive_attacker.py --dataset-root ./captcha_data --types Dice_Count Patch_Select --prompts-file ./prompts_optimized.yaml --output-root ./results/revision --run-id adaptive-mainbody-local --provider openai --model gpt-5 --prompt-mode opt --max-per-type 20 --attempt-budget-k 6
+```
+
+This command is dataset-based and offline with respect to CAPTCHA services, but
+it may make provider API calls if real credentials are configured locally.
+
+### Comparison table input
+
+```bash
+uv run python adaptive_compare.py --results-dir ./results --adaptive-summary ./results/revision/adaptive-mainbody-local/adaptive_summary.csv --output-csv ./results/revision/adaptive-mainbody-local/adaptive_comparison.csv --output-json ./results/revision/adaptive-mainbody-local/adaptive_comparison.json --run-id adaptive-mainbody-local --provider openai --model gpt-5 --attempt-budget-k 6
+```
+
+### Optional paid smoke
+
+Optional paid smoke is not part of default verification. First run adaptive
+preflight and inspect `expected_request_count_max`; proceed only after an
+explicit budget decision.
+
+```bash
+uv run python adaptive_preflight.py --dataset-root ./captcha_data --types Dice_Count --prompts-file ./prompts_optimized.yaml --output-root ./results/revision --run-id local-paid-smoke --provider openai --model gpt-5 --prompt-mode opt --max-per-type 1 --attempt-budget-k 2 --write-report
+uv run python adaptive_attacker.py --dataset-root ./captcha_data --types Dice_Count --prompts-file ./prompts_optimized.yaml --output-root ./results/revision --run-id local-paid-smoke --provider openai --model gpt-5 --prompt-mode opt --max-per-type 1 --attempt-budget-k 2
+```
+
 ## Running Experiments
 
 ### Notebook Usage (test.ipynb)
