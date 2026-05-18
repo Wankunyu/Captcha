@@ -445,22 +445,19 @@ These commands match the Phase 1 validation style. [VERIFIED: .planning/phases/0
 | A3 | Structural bottleneck tags can be initialized from task schemas/names and refined from adaptive outcomes. | Structural Bottleneck Tags | Paper wording could overstate tags unless authors confirm the mapping. |
 | A4 | Sentinel-based prompt tests are sufficient to catch ground-truth leakage in offline tests. | Test Strategy, Security Domain | More static checks may be needed if prompt construction grows complex. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should model self-reflection be a separate provider call or folded into the next solve prompt?**
    - What we know: D-04 allows constrained model self-reflection after failure. [CITED: .planning/phases/02-adaptive-attacker-main-body-evidence/02-CONTEXT.md]
-   - What's unclear: The context does not explicitly say whether the reflection call counts as an additional paid request. [CITED: .planning/phases/02-adaptive-attacker-main-body-evidence/02-CONTEXT.md]
-   - Recommendation: Plan separate accounting fields and make request count conservative. [ASSUMED]
+   - RESOLVED: Treat reflection as separately accounted adaptive overhead, not as a solve attempt in the task-type budget `k`. Adaptive preflight and summaries must report `solve_request_count`, `reflection_request_count`, `reflection_request_count_max`, and `expected_request_count_max` so the main comparison remains fair on solve budget while cost and latency remain conservative and visible. [RESOLVED: 02-01 through 02-05 plans]
 
 2. **Which provider/model pair is the canonical Phase 2 paid run target?**
    - What we know: Existing results include multiple providers/models under `results/exp1`, `results/exp2`, and `results/exp3`. [VERIFIED: results/]
-   - What's unclear: The Phase 2 context does not lock a single provider/model. [CITED: .planning/phases/02-adaptive-attacker-main-body-evidence/02-CONTEXT.md]
-   - Recommendation: Implement provider/model CLI filters and validate offline first; choose the paid target during execution preflight. [ASSUMED]
+   - RESOLVED: Do not hard-code a canonical paid provider/model in planning. Implement provider/model CLI filters, validate offline first, and choose any paid target at execution/preflight time with budget-visible preflight output. Optional paid smoke remains non-default and explicitly gated. [RESOLVED: 02-02, 02-03, 02-05 plans]
 
 3. **Should confidence intervals appear in Phase 2 or Phase 3?**
    - What we know: ADAPT-05 requests confidence intervals where applicable, while Phase 3 owns broader statistical confidence work. [VERIFIED: .planning/REQUIREMENTS.md][VERIFIED: .planning/ROADMAP.md]
-   - What's unclear: One adaptive run per task type gives binary observed outcomes, so intervals may not be meaningful without repeated runs. [ASSUMED]
-   - Recommendation: Include CI fields as nullable with an explicit `not_applicable_reason` unless repeated adaptive runs are planned. [ASSUMED]
+   - RESOLVED: Phase 2 comparison outputs include nullable CI fields plus an explicit `ci_not_applicable_reason` when repeated adaptive sessions are unavailable. Full statistical confidence, threshold sensitivity, and interval expansion are deferred to Phase 3. [RESOLVED: 02-04 and 02-05 plans]
 
 ## Sources
 
