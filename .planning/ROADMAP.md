@@ -56,7 +56,7 @@ Plans:
 - [x] 02-01-PLAN.md - Define adaptive schemas, policy-memory safety validators, and append-only adaptive artifact writer.
 - [x] 02-02-PLAN.md - Add provider-free adaptive preflight with request counts, hashes, output paths, and adaptive semantics.
 - [x] 02-03-PLAN.md - Implement the offline dataset-based adaptive attacker loop with explicit local memory.
-- [ ] 02-04-PLAN.md - Build task-type comparison table inputs for Exp2, Bernoulli Success@k, fixed retry, and adaptive outcomes.
+- [x] 02-04-PLAN.md - Build task-type comparison table inputs for Exp2, Bernoulli Success@k, fixed retry, and adaptive outcomes.
 - [ ] 02-05-PLAN.md - Add offline end-to-end validation and adaptive reproduction notes with optional gated paid-smoke documentation.
 
 ### Phase 3: Dataset Scope, Statistical Confidence, and Limitations
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Reproducibility and Safety Foundation | 5/5 | Complete | 2026-05-16 |
-| 2. Adaptive Attacker Main-Body Evidence | 3/5 | Executing | - |
+| 2. Adaptive Attacker Main-Body Evidence | 4/5 | Executing | - |
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 0/TBD | Not started | - |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 0/TBD | Not started | - |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |

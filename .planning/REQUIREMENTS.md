@@ -22,9 +22,9 @@ Requirements for the current shepherded revision milestone. Each requirement map
 - [x] **ADAPT-01**: Researcher can run a session-memory adaptive attacker experiment that carries explicit task-level memory across fresh CAPTCHA instances.
 - [x] **ADAPT-02**: Adaptive attacker semantics define binary pass/fail feedback only, with no ground-truth labels, coordinates, counts, or per-instance corrective hints exposed to the attacker.
 - [x] **ADAPT-03**: Adaptive attempt records include prior failures, policy state, prompt adaptation metadata, selected task, parsed answer, correctness, latency, token usage, cumulative cost metadata, and stopping reason.
-- [ ] **ADAPT-04**: Researcher can compare fixed retry, i.i.d. Bernoulli Success@k prediction, and adaptive session-memory outcomes under the same task-family budget.
+- [x] **ADAPT-04**: Researcher can compare fixed retry, i.i.d. Bernoulli Success@k prediction, and adaptive session-memory outcomes under the same task-family budget.
 - [x] **ADAPT-05**: Adaptive summaries report success rate, expected attempts, attempts-to-success, cumulative latency, cost estimates, confidence intervals where applicable, and classification changes by task family.
-- [ ] **ADAPT-06**: Main-body adaptive attacker tables or figure-input CSVs identify robust hard families, improved borderline or instruction-sensitive families, and persistent failures grouped by structural bottleneck.
+- [x] **ADAPT-06**: Main-body adaptive attacker tables or figure-input CSVs identify robust hard families, improved borderline or instruction-sensitive families, and persistent failures grouped by structural bottleneck.
 
 ### Dataset Scope, Statistical Confidence, and Limitations
 
@@ -119,9 +119,9 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | ADAPT-01 | Phase 2 | Complete |
 | ADAPT-02 | Phase 2 | Complete |
 | ADAPT-03 | Phase 2 | Complete |
-| ADAPT-04 | Phase 2 | Pending |
+| ADAPT-04 | Phase 2 | Complete |
 | ADAPT-05 | Phase 2 | Complete |
-| ADAPT-06 | Phase 2 | Pending |
+| ADAPT-06 | Phase 2 | Complete |
 | STAT-01 | Phase 3 | Pending |
 | STAT-02 | Phase 3 | Pending |
 | STAT-03 | Phase 3 | Pending |

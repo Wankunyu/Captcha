@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-05-18T03:46:51.224Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-05-18T03:59:56.647Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 02 (Adaptive Attacker Main-Body Evidence) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-18
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -45,7 +45,7 @@ Progress: [████████░░] 80%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
-| 02 | 3 | 30min | 10min |
+| 02 | 4 | 40min | 10min |
 
 **Recent Trend:**
 
@@ -56,6 +56,7 @@ Progress: [████████░░] 80%
 | Phase 02 P01 | 18min | 2 tasks | 2 files |
 | Phase 02 P02 | 4min | 2 tasks | 2 files |
 | Phase 02 P03 | 8min | 2 tasks | 2 files |
+| Phase 02 P04 | 10min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - Adaptive resume skips provider construction when selected task types already have terminal adaptive attempts.
 - Adaptive run manifests are written before local config loading and provider construction.
 - Adaptive reflection is hard-coded to Feedback: FAIL and only used after scientific wrong answers when another solve attempt remains.
+- Comparison rows remain task-type primary under the same attempt_budget_k for Bernoulli, fixed retry, and adaptive outcomes.
+- Provider/runtime/protocol failures remain visible as counts but never create persistent hard-family notes without scientific_wrong_count > 0.
+- Structural bottleneck tags preserve the AdaptiveComparisonRow list schema from 02-01 while staying explanatory, not the primary evaluation unit.
 
 ### Pending Todos
 
@@ -88,7 +92,7 @@ None yet.
 ### Blockers/Concerns
 
 - [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
-- [Phase 2]: Adaptive schemas, artifact writer, and adaptive preflight are ready; offline loop still needs implementation before paid runs.
+- [Phase 2]: Adaptive schemas, preflight, offline loop, and comparison builder are ready; offline end-to-end validation remains for 02-05 before paid runs.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -111,8 +115,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-18T03:46:50.721Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-05-18T03:59:56.642Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
 
 **Planned Phase:** 02 (Adaptive Attacker Main-Body Evidence) — 5 plans — 2026-05-18T02:32:27.766Z
