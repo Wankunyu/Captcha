@@ -46,26 +46,30 @@ This phase may define and run a selective extended-dataset validation slice when
 ### Threshold Sensitivity Labels
 
 - **D-17:** Phase 3 must produce threshold-sensitivity labels as a first-class artifact, not only prose.
-- **D-18:** Carry forward Phase 2's `40%` operational cutoff and `+/- 5%` borderline margin by default unless planning finds a strong statistical reason to adjust them.
-- **D-19:** Threshold outputs must report each task or family label as hard, borderline, or broken; its margin relative to the operational cutoff; and whether the conclusion is threshold-sensitive.
-- **D-20:** The artifact and paper-ready prose must explicitly state that the cutoff is an operational reporting heuristic, not a universal CAPTCHA security boundary.
-- **D-21:** Threshold-sensitive families should be flagged for cautious wording in the paper, especially when confidence intervals overlap the cutoff or when sample counts are underpowered.
+- **D-18:** Align with the submitted paper by carrying forward the existing `40%` working CAPTCHA threshold as the primary cutoff.
+- **D-19:** Do not describe `+/- 5%` as an existing paper rule. Phase 3 should instead use a `30%-50%` threshold-sensitive review band to catch tasks near the paper's 40% cutoff, including cases like `Geometry_Click` that sit below 40% but trend upward.
+- **D-20:** Threshold outputs must report each task or family label as hard, borderline/near-broken, or broken; its margin relative to the `40%` cutoff; whether it falls in the `30%-50%` review band; and whether trend evidence makes the conclusion threshold-sensitive.
+- **D-21:** Trend-sensitive cases should be flagged when a task is below `40%` but moves materially upward under optimized prompts, few-shot prompts, retry, adaptive, or extended-dataset evaluation.
+- **D-22:** Confidence intervals should be treated as contingency or appendix-ready statistical backup for possible reviewer follow-up, not as the main manuscript emphasis for this phase. The main paper emphasis should be the statistical impact of dataset imbalance, sample counts, underpowered categories, and threshold-sensitive interpretation.
+- **D-23:** The artifact and paper-ready prose must explicitly state that the `40%` cutoff is an operational reporting heuristic, not a universal CAPTCHA security boundary; the `30%-50%` band is a revision-time caution band, not a new security tier.
 
 ### Retry Calibration and Failure Taxonomy
 
-- **D-22:** Phase 3 must produce retry-calibration artifacts that align Bernoulli `Success@k` predictions with observed retry outcomes and adaptive-compatible outcomes where available.
-- **D-23:** Prediction-error outputs should be task-type primary, with optional family-level summaries for interpretation. At minimum, include predicted `Success@k`, observed success, absolute error, signed error, sample count, attempt budget `k`, provider, model, and task type.
-- **D-24:** Adaptive-compatible calibration should preserve Phase 2's comparison contract: task type is the primary unit, adaptive runs use the same attempt budget when compared, and structural bottleneck tags remain explanatory rather than the primary evaluation unit.
-- **D-25:** Paper-ready summaries must separate scientific model failures from protocol failures and infrastructure failures. Infrastructure or provider/runtime errors must not be counted as evidence of structural CAPTCHA robustness.
-- **D-26:** Failure-taxonomy summaries should expose counts and rates for `scientific_wrong`, `protocol_failure`, and `infrastructure_failure`, and should state how each class affects inclusion in pass-rate, retry-calibration, threshold, and limitation claims.
+- **D-24:** Phase 3 must produce retry-calibration artifacts that align Bernoulli `Success@k` predictions with observed retry outcomes and adaptive-compatible outcomes where available.
+- **D-25:** Prediction-error outputs should be task-type primary, with optional family-level summaries for interpretation. At minimum, include provider, model, task type, task family, Exp2 `Pass@1`, attempt budget `k`, Bernoulli predicted `Success@k`, observed fixed-retry success if available, observed adaptive-compatible success if available, signed error (`observed - predicted`), absolute error, sample count, and failure counts.
+- **D-26:** Adaptive-compatible calibration should preserve Phase 2's comparison contract: task type is the primary unit, adaptive runs use the same attempt budget when compared, and structural bottleneck tags remain explanatory rather than the primary evaluation unit.
+- **D-27:** Failure-taxonomy summaries must separate scientific model failures from protocol failures and infrastructure failures. Infrastructure or provider/runtime errors must not be counted as evidence of structural CAPTCHA robustness.
+- **D-28:** Calibration and paper-ready summaries should report both `raw_observed_rate` and `scientific_rate`: `raw_observed_rate` transparently reflects all run outcomes, while `scientific_rate` excludes protocol/infrastructure failures and is the preferred basis for main paper claims about model/CAPTCHA behavior.
+- **D-29:** Failure-taxonomy outputs should expose counts and rates for `scientific_wrong`, `protocol_failure`, and `infrastructure_failure`, and should state how each class affects inclusion in pass-rate, retry-calibration, threshold, and limitation claims.
+- **D-30:** If a task or family appears hard primarily because of infrastructure or protocol failures, the paper-ready summary must attach a caveat rather than treating it as a structural MLLM failure.
 
 ### the agent's Discretion
 
 - The planner may choose exact artifact filenames and CLI flag names for the dataset audit, extended-data manifest, comparison table, and limitations prose generator.
-- The planner may choose the exact confidence-interval method, provided the method is documented and appropriate for small sample counts.
+- The planner may choose the exact confidence-interval method and where it appears in artifacts, provided CI material is documented, appropriate for small sample counts, and positioned as contingency or appendix-ready backup rather than the main manuscript thread.
 - The planner may choose the exact minimum sample-count threshold for "underpowered" task families, provided the threshold is explicit and surfaced in outputs.
 - The planner may choose which existing Phase 2 adaptive comparison utilities to reuse or extend, provided Phase 2 schemas and threat-model semantics remain intact.
-- The planner may refine the exact threshold-sensitive flag logic, provided it preserves margin-to-cutoff reporting and does not turn the cutoff into a universal security claim.
+- The planner may refine the exact trend-sensitive flag logic, provided it preserves margin-to-cutoff reporting, the `30%-50%` review band, and does not turn the cutoff into a universal security claim.
 - The planner may choose the exact retry-calibration table layout, provided the required prediction-error and failure-taxonomy fields are present.
 
 </decisions>
@@ -138,6 +142,7 @@ This phase may define and run a selective extended-dataset validation slice when
 - Threshold-sensitivity outputs should extend or complement `adaptive_compare.py` so Phase 2 classification labels remain consistent with Phase 3's statistical caveats.
 - Retry-calibration outputs should reuse `exp2_to_exp3_predict.py` formulas where possible and add observed-vs-predicted diagnostics rather than duplicating model logic.
 - Failure-taxonomy outputs should consume existing Phase 2 adaptive fields and any legacy provider-error indicators in a way that keeps scientific, protocol, and infrastructure failures visibly separate.
+- CI/uncertainty fields may exist in machine-readable outputs, but paper-facing generators should default to dataset imbalance, sample counts, underpowered flags, margin-to-cutoff, and threshold/trend sensitivity rather than foregrounding CI.
 - Statistical summaries should feed paper-ready CSV/JSON tables and limitations prose rather than notebook-only state.
 
 </code_context>
@@ -151,6 +156,7 @@ This phase may define and run a selective extended-dataset validation slice when
 - From the advisor discussion: if exact category matches cannot be found, describe the additions as new CAPTCHA types in clear prose.
 - The comparison should answer whether old conclusions remain valid on new data, not pretend the extended dataset fully solves representativeness limitations.
 - The user explicitly promoted threshold sensitivity labels and retry calibration/failure taxonomy from discussion gray areas into Phase 3 completion requirements.
+- The user clarified that confidence intervals are a precautionary backup for possible later reviewer requests, while the current shepherd-facing paper emphasis should be the statistical impact of dataset imbalance rather than CI-heavy reporting.
 
 </specifics>
 

@@ -61,7 +61,7 @@
 
 **User's choice:** Produce structured threshold-sensitivity labels.
 
-**Notes:** The user identified this as a Phase 3 completion requirement. The phase should decide whether to keep Phase 2's 40% cutoff plus +/- 5% borderline margin, flag threshold-sensitive families, and prevent the paper from presenting the cutoff as a universal security boundary.
+**Notes:** The user identified this as a Phase 3 completion requirement. After checking the submitted paper, the locked direction is to keep the paper's existing 40% working threshold, use a 30%-50% review band for threshold-sensitive cases, and treat that band as a caution mechanism rather than a new security tier. CI material is only contingency or appendix-ready backup for possible reviewer follow-up; the main manuscript emphasis should be dataset imbalance, sample counts, underpowered categories, and threshold/trend sensitivity.
 
 ---
 
@@ -75,14 +75,14 @@
 
 **User's choice:** Add retry calibration plus failure taxonomy.
 
-**Notes:** The user identified this as a Phase 3 completion requirement. Bernoulli `Success@k` predictions should be aligned with observed retry or adaptive-compatible outcomes, prediction errors should be task-type primary with optional family summaries, and infrastructure/protocol/scientific failures should be separated in paper-ready summaries.
+**Notes:** The user identified this as a Phase 3 completion requirement and accepted the recommended lock. Bernoulli `Success@k` predictions should be aligned with observed retry or adaptive-compatible outcomes. Prediction errors should be task-type primary with optional family summaries. Summaries should report both `raw_observed_rate` and `scientific_rate`, with main paper claims preferring `scientific_rate` and treating infrastructure/protocol failures as reliability or limitation evidence rather than CAPTCHA robustness evidence.
 
 ---
 
 ## the agent's Discretion
 
 - Exact artifact names, CLI flags, and minimum underpowered-sample thresholds may be chosen during planning.
-- Confidence interval method may be selected during planning if documented and suitable for small sample counts.
+- Confidence interval method and placement may be selected during planning, but CI should remain contingency or appendix-ready backup rather than the main manuscript thread.
 - Exact threshold-sensitive flag logic may be refined during planning if it preserves margin-to-cutoff reporting.
 - Exact retry-calibration table layout may be chosen during planning if it includes prediction-error and failure-taxonomy fields.
 
