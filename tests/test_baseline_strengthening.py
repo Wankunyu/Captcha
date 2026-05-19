@@ -5,15 +5,20 @@ from pathlib import Path
 import pytest
 
 from baseline_strengthening import (
+    build_baseline_comparison_rows,
     build_external_import_validation_rows,
+    build_paper_baseline_rows,
     load_baseline_coverage_sources,
     load_external_import_rows,
     main,
+    render_baseline_notes,
     validate_coverage_rows,
 )
 from phase4_artifacts import (
+    BASELINE_COMPARISON_SCHEMA_VERSION,
     BASELINE_COVERAGE_SCHEMA_VERSION,
     EXTERNAL_IMPORT_VALIDATION_SCHEMA_VERSION,
+    PAPER_BASELINE_TABLE_SCHEMA_VERSION,
 )
 
 
@@ -318,3 +323,199 @@ def test_secondary_smoke_replacement_requires_user_confirmation(tmp_path) -> Non
         run_id="replacement-test",
     )
     assert confirmed[0].user_confirmed_replacement is True
+
+
+def test_build_table_preserves_non_comparable_literature_rows(tmp_path) -> None:
+    metadata_path = tmp_path / "phase4_baseline_sources.json"
+    _write_json(metadata_path, {"rows": _coverage_rows()})
+    coverage_rows = load_baseline_coverage_sources(metadata_path, run_id="table-test")
+    import_rows = build_external_import_validation_rows(
+        coverage_rows,
+        _import_rows(),
+        run_id="table-test",
+    )
+
+    comparison_rows = build_baseline_comparison_rows(
+        coverage_rows,
+        import_rows,
+        run_id="table-test",
+    )
+    paper_rows = build_paper_baseline_rows(comparison_rows, run_id="table-test")
+
+    oedipus_comparison = next(row for row in comparison_rows if row.system_name == "Oedipus")
+    oedipus_paper = next(row for row in paper_rows if row.system_name == "Oedipus")
+
+    assert oedipus_comparison.primary_status == "literature-only"
+    assert oedipus_comparison.reported_metric_name == "success_rate"
+    assert oedipus_comparison.reported_metric_value == 0.635
+    assert oedipus_comparison.reported_metric_unit == "rate"
+    assert oedipus_comparison.normalized_success_rate is None
+    assert oedipus_comparison.directly_comparable is False
+    assert "literature-only" in oedipus_comparison.comparability_caveat
+    assert oedipus_paper.directly_comparable is False
+    assert oedipus_paper.comparability_note
+
+
+def test_build_table_normalizes_only_validated_metrics(tmp_path) -> None:
+    metadata_path = tmp_path / "phase4_baseline_sources.json"
+    _write_json(metadata_path, {"rows": _coverage_rows()})
+    coverage_rows = load_baseline_coverage_sources(metadata_path, run_id="normalize-test")
+    import_fixture = _import_rows()
+    import_fixture[1]["sample_count"] = 0
+    import_rows = build_external_import_validation_rows(
+        coverage_rows,
+        import_fixture,
+        run_id="normalize-test",
+    )
+
+    comparison_rows = build_baseline_comparison_rows(
+        coverage_rows,
+        import_rows,
+        run_id="normalize-test",
+    )
+    by_key = {row.source_key: row for row in comparison_rows}
+
+    assert by_key["Halligan::arkose/dice_match"].normalized_success_rate == 0.61
+    assert (
+        by_key["Halligan::OpenCaptchaWorld/Hold_Button"].normalized_success_rate
+        is None
+    )
+    assert by_key["Halligan::OpenCaptchaWorld/Hold_Button"].directly_comparable is False
+    assert "metric-mismatch" in by_key["Oedipus::Oedipus/reasoning_captcha"].caveat_tags
+    assert by_key["Oedipus::Oedipus/reasoning_captcha"].normalized_success_rate is None
+
+
+def test_notes_summarize_status_and_comparability_counts(tmp_path) -> None:
+    metadata_path = tmp_path / "phase4_baseline_sources.json"
+    _write_json(metadata_path, {"rows": _coverage_rows()})
+    coverage_rows = load_baseline_coverage_sources(metadata_path, run_id="notes-test")
+    import_rows = build_external_import_validation_rows(
+        coverage_rows,
+        _import_rows(),
+        run_id="notes-test",
+    )
+    comparison_rows = build_baseline_comparison_rows(
+        coverage_rows,
+        import_rows,
+        run_id="notes-test",
+    )
+    paper_rows = build_paper_baseline_rows(comparison_rows, run_id="notes-test")
+
+    notes = render_baseline_notes(paper_rows, import_rows)
+
+    for heading in (
+        "## Status Counts",
+        "## Unavailable And Incompatible Evidence",
+        "## Non-Comparable Rows",
+        "## Approximate Comparison Basis",
+    ):
+        assert heading in notes
+    assert "literature-only" in notes
+    assert "Oedipus" in notes
+    assert "Non-comparable rows:" in notes
+    assert "Approximate comparisons preserve reported metrics" in notes
+    assert "secret" not in notes.lower()
+
+
+def test_full_phase4_cli_chain_with_halligan_smoke_fixture(tmp_path, capsys) -> None:
+    metadata_path = tmp_path / "phase4_baseline_sources.json"
+    import_path = tmp_path / "halligan_import_rows.csv"
+    output_root = tmp_path / "results" / "revision"
+    _write_json(metadata_path, {"rows": _coverage_rows()})
+    _write_csv(import_path, _import_rows())
+
+    assert main(
+        [
+            "coverage",
+            "--source-metadata",
+            str(metadata_path),
+            "--output-root",
+            str(output_root),
+            "--run-id",
+            "chain-test",
+        ]
+    ) == 0
+    coverage_summary = json.loads(capsys.readouterr().out)
+    assert "secret" not in json.dumps(coverage_summary).lower()
+
+    assert main(
+        [
+            "validate-import",
+            "--coverage-json",
+            coverage_summary["output_json"],
+            "--import-rows",
+            str(import_path),
+            "--output-root",
+            str(output_root),
+            "--run-id",
+            "chain-test",
+        ]
+    ) == 0
+    import_summary = json.loads(capsys.readouterr().out)
+    assert "secret" not in json.dumps(import_summary).lower()
+
+    assert main(
+        [
+            "build-table",
+            "--coverage-json",
+            coverage_summary["output_json"],
+            "--import-validation-json",
+            import_summary["output_json"],
+            "--output-root",
+            str(output_root),
+            "--run-id",
+            "chain-test",
+        ]
+    ) == 0
+    table_summary = json.loads(capsys.readouterr().out)
+    assert table_summary["comparison_json"].endswith(
+        "chain-test/baseline_comparison.json"
+    )
+    assert table_summary["paper_table_json"].endswith(
+        "chain-test/paper_baseline_table.json"
+    )
+    assert Path(table_summary["comparison_csv"]).exists()
+    assert Path(table_summary["paper_table_csv"]).exists()
+    assert "secret" not in json.dumps(table_summary).lower()
+
+    paper_payload = json.loads(
+        Path(table_summary["paper_table_json"]).read_text(encoding="utf-8")
+    )
+    assert paper_payload["schema_version"] == PAPER_BASELINE_TABLE_SCHEMA_VERSION
+    first_paper_row = paper_payload["rows"][0]
+    for field in (
+        "system_class",
+        "primary_status",
+        "directly_comparable",
+        "comparability_note",
+        "reported_metric_display",
+        "normalized_success_rate",
+    ):
+        assert field in first_paper_row
+
+    comparison_payload = json.loads(
+        Path(table_summary["comparison_json"]).read_text(encoding="utf-8")
+    )
+    assert comparison_payload["schema_version"] == BASELINE_COMPARISON_SCHEMA_VERSION
+    assert comparison_payload["rows"][0]["reported_metric_name"]
+    assert "reported_metric_value" in comparison_payload["rows"][0]
+    assert comparison_payload["rows"][0]["reported_metric_unit"]
+
+    assert main(
+        [
+            "notes",
+            "--paper-table-json",
+            table_summary["paper_table_json"],
+            "--import-validation-json",
+            import_summary["output_json"],
+            "--output-root",
+            str(output_root),
+            "--run-id",
+            "chain-test",
+        ]
+    ) == 0
+    notes_summary = json.loads(capsys.readouterr().out)
+    assert notes_summary["output_md"].endswith("chain-test/baseline_notes.md")
+    notes = Path(notes_summary["output_md"]).read_text(encoding="utf-8")
+    assert "## Non-Comparable Rows" in notes
+    assert "secret" not in notes.lower()
