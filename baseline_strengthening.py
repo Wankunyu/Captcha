@@ -1,16 +1,21 @@
 import argparse
 import csv
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
 
 from phase4_artifacts import (
+    BaselineComparisonRow,
     BaselineCoverageRow,
     ExternalImportValidationRow,
+    PaperBaselineRow,
+    write_baseline_comparison,
     write_baseline_coverage,
     write_external_import_validation,
+    write_paper_baseline_table,
 )
 from revision_artifacts import revision_run_dir
 
@@ -18,6 +23,14 @@ from revision_artifacts import revision_run_dir
 NAMED_BASELINE_SYSTEMS = {"Halligan", "Oedipus"}
 MAX_SECONDARY_SYSTEMS = 2
 DEFAULT_SOURCE_METADATA = Path("baseline_sources/phase4_baseline_sources.json")
+DIRECTLY_COMPARABLE_STATUSES = {"direct-run", "adapter-run"}
+BLOCKING_CAVEAT_TAGS = {
+    "metric-mismatch",
+    "dataset-mismatch",
+    "threat-model-mismatch",
+    "artifact-unavailable",
+    "license-unclear",
+}
 
 
 def _read_json(path: Path) -> Any:
@@ -149,6 +162,13 @@ def _load_baseline_coverage_artifact(path: Path, run_id: str) -> list[BaselineCo
 
 def load_external_import_rows(path: Path) -> list[dict[str, object]]:
     return _read_table(path)
+
+
+def load_import_validation_rows(path: Path) -> list[ExternalImportValidationRow]:
+    return [
+        ExternalImportValidationRow.model_validate(row)
+        for row in _read_table(path)
+    ]
 
 
 def _validation_status(condition: bool) -> str:
@@ -289,6 +309,256 @@ def build_external_import_validation_rows(
     return rows
 
 
+def _all_pass(row: ExternalImportValidationRow | None) -> bool:
+    if row is None:
+        return False
+    return all(
+        getattr(row, field_name) == "pass"
+        for field_name in (
+            "required_fields_status",
+            "metric_definition_status",
+            "task_label_status",
+            "sample_count_status",
+            "artifact_license_status",
+            "data_use_status",
+            "comparability_status",
+            "validation_status",
+        )
+    )
+
+
+def _comparison_caveat(
+    coverage_row: BaselineCoverageRow,
+    import_row: ExternalImportValidationRow | None,
+    directly_comparable: bool,
+) -> str:
+    if directly_comparable:
+        return ""
+    reasons: list[str] = []
+    if coverage_row.primary_status == "literature-only":
+        reasons.append("literature-only evidence is not a direct head-to-head result")
+    elif coverage_row.primary_status == "approximate":
+        reasons.append("approximate evidence preserves reported metrics without direct parity")
+    elif coverage_row.primary_status in {"unavailable", "incompatible"}:
+        reasons.append(f"{coverage_row.primary_status} evidence requires caveated reporting")
+    if coverage_row.caveat_tags:
+        reasons.append(f"caveats: {', '.join(coverage_row.caveat_tags)}")
+    if import_row is None:
+        reasons.append("no validated import diagnostic row")
+    elif not _all_pass(import_row):
+        reasons.append("one or more import validation checks did not pass")
+    return "; ".join(reasons)
+
+
+def _comparison_basis(
+    coverage_row: BaselineCoverageRow,
+    import_row: ExternalImportValidationRow | None,
+    directly_comparable: bool,
+) -> str:
+    if directly_comparable:
+        return "validated import row with matching metric, sample, task, and use terms"
+    if import_row is not None:
+        return "validated import diagnostic present but not directly comparable"
+    if coverage_row.primary_status in {"literature-only", "approximate"}:
+        return "literature-only approximate context"
+    return f"{coverage_row.primary_status} coverage evidence"
+
+
+def build_baseline_comparison_rows(
+    coverage_rows: list[BaselineCoverageRow],
+    import_validation_rows: list[ExternalImportValidationRow],
+    run_id: str,
+) -> list[BaselineComparisonRow]:
+    import_by_key = {row.source_key: row for row in import_validation_rows}
+    rows: list[BaselineComparisonRow] = []
+    for coverage_row in coverage_rows:
+        key = _source_key(coverage_row.system_name, coverage_row.external_task_label)
+        import_row = import_by_key.get(key)
+        blocking_caveats = set(coverage_row.caveat_tags) & BLOCKING_CAVEAT_TAGS
+        directly_comparable = (
+            coverage_row.primary_status in DIRECTLY_COMPARABLE_STATUSES
+            and not blocking_caveats
+            and _all_pass(import_row)
+        )
+        normalized_success_rate = (
+            import_row.normalized_success_rate
+            if directly_comparable and import_row is not None
+            else None
+        )
+        metric_definition_status = (
+            import_row.metric_definition_status if import_row else "not_applicable"
+        )
+        sample_count_status = import_row.sample_count_status if import_row else "not_applicable"
+        comparability_status = import_row.comparability_status if import_row else "not_applicable"
+        rows.append(
+            BaselineComparisonRow(
+                run_id=run_id,
+                system_name=coverage_row.system_name,
+                source_key=key,
+                system_class=coverage_row.system_class,
+                evidence_source_type=coverage_row.evidence_source_type,
+                primary_status=coverage_row.primary_status,
+                caveat_tags=coverage_row.caveat_tags,
+                reported_metric_name=coverage_row.reported_metric_name,
+                reported_metric_value=coverage_row.reported_metric_value,
+                reported_metric_unit=coverage_row.reported_metric_unit,
+                normalized_success_rate=normalized_success_rate,
+                metric_definition_status=metric_definition_status,
+                sample_count_status=sample_count_status,
+                comparability_status=comparability_status,
+                directly_comparable=directly_comparable,
+                comparability_caveat=_comparison_caveat(
+                    coverage_row,
+                    import_row,
+                    directly_comparable,
+                ),
+                comparability_note=(
+                    ""
+                    if directly_comparable
+                    else "Approximate/contextual evidence only; do not read as direct parity."
+                ),
+                comparison_basis=_comparison_basis(
+                    coverage_row,
+                    import_row,
+                    directly_comparable,
+                ),
+                source_url=coverage_row.source_url,
+            )
+        )
+    return rows
+
+
+def _reported_metric_display(row: BaselineComparisonRow) -> str:
+    if row.reported_metric_value is None:
+        return f"{row.reported_metric_name}: not reported"
+    return (
+        f"{row.reported_metric_name}={row.reported_metric_value} "
+        f"{row.reported_metric_unit}"
+    )
+
+
+def build_paper_baseline_rows(
+    comparison_rows: list[BaselineComparisonRow],
+    run_id: str,
+) -> list[PaperBaselineRow]:
+    rows: list[PaperBaselineRow] = []
+    for row in comparison_rows:
+        rows.append(
+            PaperBaselineRow(
+                run_id=run_id,
+                system_name=row.system_name,
+                system_class=row.system_class,
+                primary_status=row.primary_status,
+                reported_metric_display=_reported_metric_display(row),
+                reported_metric_name=row.reported_metric_name,
+                reported_metric_value=row.reported_metric_value,
+                reported_metric_unit=row.reported_metric_unit,
+                normalized_success_rate=row.normalized_success_rate,
+                directly_comparable=row.directly_comparable,
+                comparability_caveat=row.comparability_caveat,
+                comparability_note=(
+                    ""
+                    if row.directly_comparable
+                    else row.comparability_note or row.comparability_caveat
+                ),
+                caveat_tags=row.caveat_tags,
+                source_note=row.source_url,
+                paper_table_note=row.comparison_basis,
+            )
+        )
+    return rows
+
+
+def _counts_by(rows: list[PaperBaselineRow], field_name: str) -> dict[str, int]:
+    return dict(sorted(Counter(str(getattr(row, field_name)) for row in rows).items()))
+
+
+def _format_counts(title: str, counts: dict[str, int]) -> str:
+    if not counts:
+        return f"{title}: none"
+    return "\n".join(f"- {key}: {value}" for key, value in counts.items())
+
+
+def render_baseline_notes(
+    paper_rows: list[PaperBaselineRow],
+    import_validation_rows: list[ExternalImportValidationRow] | None = None,
+) -> str:
+    status_counts = _counts_by(paper_rows, "primary_status")
+    non_comparable_rows = [row for row in paper_rows if not row.directly_comparable]
+    unavailable_or_incompatible = [
+        row
+        for row in paper_rows
+        if row.primary_status in {"unavailable", "incompatible"}
+    ]
+    approximate_rows = [
+        row
+        for row in non_comparable_rows
+        if row.primary_status in {"literature-only", "approximate"}
+        or row.normalized_success_rate is None
+    ]
+    import_counts = (
+        dict(
+            sorted(
+                Counter(row.validation_status for row in import_validation_rows or []).items()
+            )
+        )
+        if import_validation_rows
+        else {}
+    )
+    lines = [
+        "# Phase 4 Baseline Comparison Notes",
+        "",
+        "## Status Counts",
+        _format_counts("Primary-status row counts", status_counts),
+        _format_counts("Import-validation row counts", import_counts),
+        "",
+        "## Unavailable And Incompatible Evidence",
+        *(
+            [
+                f"- {row.system_name}: {row.primary_status}; {row.comparability_note}"
+                for row in unavailable_or_incompatible
+            ]
+            or ["None."]
+        ),
+        "",
+        "## Non-Comparable Rows",
+        f"Non-comparable rows: {len(non_comparable_rows)}",
+        *[
+            f"- {row.system_name} ({row.primary_status}): {row.comparability_note}"
+            for row in non_comparable_rows
+        ],
+        "",
+        "## Approximate Comparison Basis",
+        (
+            "Approximate comparisons preserve reported metrics and mark "
+            "directly_comparable=false unless validation proves metric, sample, task, "
+            "license/data-use, and threat-model parity."
+        ),
+        *[
+            f"- {row.system_name}: {row.reported_metric_display}; {row.paper_table_note}"
+            for row in approximate_rows
+        ],
+    ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def write_baseline_notes(
+    paper_rows: list[PaperBaselineRow],
+    output_md: Path,
+    import_validation_rows: list[ExternalImportValidationRow] | None = None,
+) -> Path:
+    output_md.parent.mkdir(parents=True, exist_ok=True)
+    output_md.write_text(
+        render_baseline_notes(paper_rows, import_validation_rows),
+        encoding="utf-8",
+    )
+    return output_md
+
+
+def _load_paper_baseline_rows(path: Path) -> list[PaperBaselineRow]:
+    return [PaperBaselineRow.model_validate(row) for row in _read_table(path)]
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build Phase 4 baseline coverage and import-validation artifacts."
@@ -315,6 +585,29 @@ def build_parser() -> argparse.ArgumentParser:
     validate_import.add_argument("--run-id", required=True)
     validate_import.add_argument("--output-csv", default=None)
     validate_import.add_argument("--output-json", default=None)
+
+    build_table = subparsers.add_parser(
+        "build-table",
+        help="Build baseline comparison and paper-table artifacts.",
+    )
+    build_table.add_argument("--coverage-json", required=True)
+    build_table.add_argument("--import-validation-json", required=True)
+    build_table.add_argument("--output-root", default="./results/revision")
+    build_table.add_argument("--run-id", required=True)
+    build_table.add_argument("--comparison-csv", default=None)
+    build_table.add_argument("--comparison-json", default=None)
+    build_table.add_argument("--paper-table-csv", default=None)
+    build_table.add_argument("--paper-table-json", default=None)
+
+    notes = subparsers.add_parser(
+        "notes",
+        help="Render concise paper-facing notes for baseline table artifacts.",
+    )
+    notes.add_argument("--paper-table-json", required=True)
+    notes.add_argument("--import-validation-json", default=None)
+    notes.add_argument("--output-root", default="./results/revision")
+    notes.add_argument("--run-id", required=True)
+    notes.add_argument("--output-md", default=None)
     return parser
 
 
@@ -357,6 +650,63 @@ def _run_validate_import(args: argparse.Namespace) -> dict[str, object]:
     }
 
 
+def _run_build_table(args: argparse.Namespace) -> dict[str, object]:
+    run_dir = revision_run_dir(args.output_root, args.run_id)
+    comparison_csv = _path_or_default(
+        args.comparison_csv,
+        run_dir / "baseline_comparison.csv",
+    )
+    comparison_json = _path_or_default(
+        args.comparison_json,
+        run_dir / "baseline_comparison.json",
+    )
+    paper_table_csv = _path_or_default(
+        args.paper_table_csv,
+        run_dir / "paper_baseline_table.csv",
+    )
+    paper_table_json = _path_or_default(
+        args.paper_table_json,
+        run_dir / "paper_baseline_table.json",
+    )
+    coverage_rows = _load_baseline_coverage_artifact(
+        Path(args.coverage_json),
+        run_id=args.run_id,
+    )
+    import_rows = load_import_validation_rows(Path(args.import_validation_json))
+    comparison_rows = build_baseline_comparison_rows(
+        coverage_rows,
+        import_rows,
+        run_id=args.run_id,
+    )
+    paper_rows = build_paper_baseline_rows(comparison_rows, run_id=args.run_id)
+    write_baseline_comparison(comparison_csv, comparison_json, comparison_rows)
+    write_paper_baseline_table(paper_table_csv, paper_table_json, paper_rows)
+    return {
+        "comparison_row_count": len(comparison_rows),
+        "paper_row_count": len(paper_rows),
+        "comparison_csv": str(comparison_csv),
+        "comparison_json": str(comparison_json),
+        "paper_table_csv": str(paper_table_csv),
+        "paper_table_json": str(paper_table_json),
+    }
+
+
+def _run_notes(args: argparse.Namespace) -> dict[str, object]:
+    run_dir = revision_run_dir(args.output_root, args.run_id)
+    output_md = _path_or_default(args.output_md, run_dir / "baseline_notes.md")
+    paper_rows = _load_paper_baseline_rows(Path(args.paper_table_json))
+    import_rows = (
+        load_import_validation_rows(Path(args.import_validation_json))
+        if args.import_validation_json
+        else []
+    )
+    write_baseline_notes(paper_rows, output_md, import_rows)
+    return {
+        "paper_row_count": len(paper_rows),
+        "output_md": str(output_md),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -365,6 +715,10 @@ def main(argv: list[str] | None = None) -> int:
             summary = _run_coverage(args)
         elif args.command == "validate-import":
             summary = _run_validate_import(args)
+        elif args.command == "build-table":
+            summary = _run_build_table(args)
+        elif args.command == "notes":
+            summary = _run_notes(args)
         else:
             parser.error(f"unknown command: {args.command}")
     except (OSError, ValueError, ValidationError, json.JSONDecodeError) as exc:
