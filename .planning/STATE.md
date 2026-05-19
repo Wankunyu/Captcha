@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-05-19T01:23:28.078Z"
+status: verifying
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-05-19T01:36:13.420Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -25,18 +25,18 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 ## Current Position
 
-Phase: 3 (Dataset Scope, Statistical Confidence, and Limitations) - EXECUTING
+Phase: 3 (Dataset Scope, Statistical Confidence, and Limitations) - VERIFYING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-19
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 12
+- Total plans completed: 14
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 93%
 | Phase 03 P01 | 11min | 3 tasks | 6 files |
 | Phase 03 P02 | 7 min | 2 tasks | 2 files |
 | Phase 03 P03 | 11 min | 2 tasks | 5 files |
+| Phase 03 P04 | 9 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - Retry calibration keeps task type as the primary comparison unit and emits family rows only as interpretive summaries under the same attempt budget.
 - Failure taxonomy treats adaptive failure-class counts as claim-eligible evidence and marks retry-only legacy rows as aggregate_only_caveated.
 - Scientific-claim-eligible failure taxonomy rows carry hardness_caveat=None instead of an empty string.
+- Limitations prose is generated from Phase 3 machine-readable artifacts rather than notebook state.
+- Artifact indexing records input paths, output paths, schema version, run_id, and claim-boundary keys for traceability.
+- README keeps Phase 3 artifact generation offline and separates existing/provider-generated evidence from default reproduction commands.
 
 ### Pending Todos
 
@@ -109,7 +113,7 @@ None yet.
 
 - [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
-- [Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, and infrastructure-vs-scientific failure artifacts are planned and ready to execute.
+- [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -133,10 +137,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: Completed 03-03-PLAN.md
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-05-19T01:36:13.414Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
 
-**Next Phase:** 03 (Dataset Scope, Statistical Confidence, and Limitations) — ready to execute
+**Next Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) - ready to plan
 
 **Planned Phase:** 3 (Dataset Scope, Statistical Confidence, and Limitations) — 4 plans — 2026-05-19T00:20:25.541Z

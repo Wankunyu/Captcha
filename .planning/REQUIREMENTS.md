@@ -132,8 +132,8 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | STAT-03 | Phase 3 | Complete |
 | STAT-04 | Phase 3 | Complete |
 | STAT-05 | Phase 3 | Complete |
-| STAT-06 | Phase 3 | Pending |
-| STAT-07 | Phase 3 | Pending |
+| STAT-06 | Phase 3 | Complete |
+| STAT-07 | Phase 3 | Complete |
 | BASE-01 | Phase 4 | Pending |
 | BASE-02 | Phase 4 | Pending |
 | BASE-03 | Phase 4 | Pending |
