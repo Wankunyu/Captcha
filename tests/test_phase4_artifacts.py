@@ -167,6 +167,43 @@ def test_unknown_vocabularies_raise_validation_errors() -> None:
         _import_validation_row(validation_status="unknown")
 
 
+def test_phase4_status_and_system_class_vocabularies_allow_locked_values() -> None:
+    for status in (
+        "direct-run",
+        "adapter-run",
+        "literature-only",
+        "approximate",
+        "incompatible",
+        "unavailable",
+    ):
+        row = _coverage_row(
+            primary_status=status,
+            license="MIT" if status in {"direct-run", "adapter-run"} else "",
+            data_use_constraints=(
+                "offline benchmark only" if status in {"direct-run", "adapter-run"} else ""
+            ),
+            status_reason=(
+                "audited unavailable or incompatible evidence"
+                if status in {"incompatible", "unavailable"}
+                else ""
+            ),
+            checked_sources=["paper"],
+            missing_items=(
+                ["direct artifact URL"] if status in {"incompatible", "unavailable"} else []
+            ),
+            last_checked_date="2026-05-19",
+        )
+        assert row.primary_status == status
+
+    for system_class in (
+        "off_the_shelf_mllm_api",
+        "specialized_solver",
+        "benchmark_dataset",
+        "hybrid_or_unknown",
+    ):
+        assert _coverage_row(system_class=system_class).system_class == system_class
+
+
 def test_coverage_rows_enforce_audit_fields_for_unavailable_and_incompatible() -> None:
     for status in ("unavailable", "incompatible"):
         valid = _coverage_row(
