@@ -28,9 +28,12 @@ Requirements for the current shepherded revision milestone. Each requirement map
 
 ### Dataset Scope, Statistical Confidence, and Limitations
 
-- [ ] **STAT-01**: Researcher can generate a dataset scope audit that reports included, excluded, incompatible, and underpowered CAPTCHA task families with sample counts and reasons.
-- [ ] **STAT-02**: Dataset documentation identifies the two removed CaptchaWorld task types and explains why they are incompatible with the evaluation pipeline.
-- [ ] **STAT-03**: Dataset contribution notes cover cleaning, standardization, label and metadata alignment, answer-format normalization, removal of incompatible task types, and task-family grouping.
+- [x] **STAT-01
+**: Researcher can generate a dataset scope audit that reports included, excluded, incompatible, and underpowered CAPTCHA task families with sample counts and reasons.
+- [x] **STAT-02
+**: Dataset documentation identifies the two removed CaptchaWorld task types and explains why they are incompatible with the evaluation pipeline.
+- [x] **STAT-03
+**: Dataset contribution notes cover cleaning, standardization, label and metadata alignment, answer-format normalization, removal of incompatible task types, and task-family grouping.
 - [ ] **STAT-04**: Pass-rate summaries include confidence intervals by task and task family.
 - [ ] **STAT-05**: Threshold-based hard/borderline/broken labels report their margin relative to the paper's operational cutoff and flag threshold-sensitive families without treating the cutoff as a universal security boundary.
 - [ ] **STAT-06**: Existing Exp2-to-Exp3 retry predictions are compared against observed retry or adaptive-compatible outcomes, including prediction error by task family.
@@ -122,9 +125,9 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | ADAPT-04 | Phase 2 | Complete |
 | ADAPT-05 | Phase 2 | Complete |
 | ADAPT-06 | Phase 2 | Complete |
-| STAT-01 | Phase 3 | Pending |
-| STAT-02 | Phase 3 | Pending |
-| STAT-03 | Phase 3 | Pending |
+| STAT-01 | Phase 3 | Complete |
+| STAT-02 | Phase 3 | Complete |
+| STAT-03 | Phase 3 | Complete |
 | STAT-04 | Phase 3 | Pending |
 | STAT-05 | Phase 3 | Pending |
 | STAT-06 | Phase 3 | Pending |

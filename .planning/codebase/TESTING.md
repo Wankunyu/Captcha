@@ -5,16 +5,19 @@
 ## Test Framework
 
 **Runner:**
-- Automated runner: Not detected.
-- There is no `pytest`, `unittest`, `nose`, `tox`, `nox`, or coverage configuration in the project root.
-- Manual and notebook-driven workflows are the active validation pattern: `test.ipynb`, `test_statistic.ipynb`, `plot.ipynb`, `run_single_experiment.py`, and `exp2_to_exp3_predict.py`.
+- Automated runner: `pytest` through `uv run pytest`.
+- Focused regression tests now live under `tests/` for revision artifact schemas, preflight contracts, adaptive workflows, task aliases, and Phase 3 dataset/manifest artifacts.
+- Manual and notebook-driven workflows remain available through `test.ipynb`, `test_statistic.ipynb`, `plot.ipynb`, `run_single_experiment.py`, and `exp2_to_exp3_predict.py`.
 
 **Assertion Library:**
-- Not detected for automated tests.
-- The only source-level `assert` found is a top-level configuration check in `run_eval.py`; most validation uses explicit `raise FileNotFoundError`, `raise RuntimeError`, `raise ValueError`, or `raise SystemExit`.
+- Pytest assertions and `pytest.raises` are used in `tests/test_*.py`.
+- Runtime validation still uses explicit `raise FileNotFoundError`, `raise RuntimeError`, `raise ValueError`, or `raise SystemExit` in CLI and artifact code.
 
 **Run Commands:**
 ```bash
+uv run pytest -q
+uv run pytest tests/test_phase3_artifacts.py tests/test_dataset_scope_audit.py tests/test_extended_dataset_manifest.py -q
+uv run ruff check .
 python run_single_experiment.py --help
 python run_single_experiment.py 1 --types Dice_Count --max-per-type 2
 python exp2_to_exp3_predict.py --results-dir ./results --output ./exp2_to_exp3_predictions.csv
@@ -24,7 +27,7 @@ python compress_few_shot_assets.py
 ## Test File Organization
 
 **Location:**
-- Automated test files are not present.
+- Automated pytest files live under `tests/`.
 - Manual experiment smoke workflows live at repository root in `test.ipynb`.
 - Statistical validation workflows live at repository root in `test_statistic.ipynb`.
 - Visualization validation workflows live at repository root in `plot.ipynb`.
@@ -32,8 +35,8 @@ python compress_few_shot_assets.py
 
 **Naming:**
 - Notebook names beginning with `test` are analysis notebooks, not automated test modules: `test.ipynb`, `test_statistic.ipynb`.
-- Python source files are executable modules rather than test modules: `run_eval.py`, `run_single_experiment.py`, `visualize_results.py`, `compress_few_shot_assets.py`, `exp2_to_exp3_predict.py`.
-- No `test_*.py`, `*_test.py`, `*.spec.py`, or `tests/` directory is present.
+- Python source files are executable modules rather than test modules: `run_eval.py`, `run_single_experiment.py`, `visualize_results.py`, `compress_few_shot_assets.py`, `exp2_to_exp3_predict.py`, `dataset_scope_audit.py`, and `extended_dataset_manifest.py`.
+- Automated tests use `tests/test_*.py` names.
 
 **Structure:**
 ```text
@@ -43,6 +46,7 @@ captcha/
 ├── plot.ipynb                  # Manual chart-generation notebook
 ├── run_single_experiment.py    # CLI smoke entry point for experiments 1-4
 ├── exp2_to_exp3_predict.py     # CLI for prediction output validation
+├── tests/                      # Offline pytest regression tests
 ├── captcha_data/               # Dataset fixtures with ground_truth.json per task type
 ├── results/                    # Generated CSV/token summaries used by analysis
 ├── error_analysis/             # Generated error CSV/JSON summaries
@@ -137,8 +141,9 @@ tasks = load_tasks_from_ground_truth(
 ## Test Types
 
 **Unit Tests:**
-- Not present as automated files.
-- Unit-testable surfaces include `extract_json`, `guess_mime`, `_is_rect_hit`, `_point_dist`, `_normalize_points`, `_clean_indices`, `evaluate_pass1`, `build_json_schema`, `compress_images`, and prediction helpers in `exp2_to_exp3_predict.py`.
+- Automated unit/regression tests are present under `tests/`.
+- Current covered surfaces include revision artifact writers, task aliases, adaptive artifacts and comparison, Phase 3 schema rows, dataset scope audit, and extended dataset manifest comparison helpers.
+- Additional unit-testable surfaces include `extract_json`, `guess_mime`, `_is_rect_hit`, `_point_dist`, `_normalize_points`, `_clean_indices`, `evaluate_pass1`, `build_json_schema`, `compress_images`, and prediction helpers in `exp2_to_exp3_predict.py`.
 
 **Integration Tests:**
 - Manual integration checks run through `run_single_experiment.py` and `test.ipynb`.

@@ -11,6 +11,9 @@ captcha/
 |-- experiments_helper.py          # Error collection, stats summaries, and legacy task loading helper
 |-- visualize_results.py           # Result loader and PDF chart generation
 |-- exp2_to_exp3_predict.py        # Exp2 pass@1 to Exp3 prediction utility
+|-- phase3_artifacts.py            # Phase 3 strict artifact schemas and CSV/JSON writers
+|-- dataset_scope_audit.py         # Phase 3 offline dataset scope audit CLI
+|-- extended_dataset_manifest.py   # Phase 3 extended-data manifest and validation-slice CLI
 |-- prepare_few_shot_examples.py   # Few-shot YAML generation from dataset metadata
 |-- compress_few_shot_assets.py    # Few-shot image compression utility
 |-- few_shot_answers.py            # Hard-coded few-shot answer lookup table
@@ -24,6 +27,7 @@ captcha/
 |-- results/                       # Experiment CSVs, token logs, and token summaries
 |-- error_analysis/                # Error reports and failure diagnostics
 |-- figures/                       # Generated PDF visualizations
+|-- tests/                         # Focused offline pytest regression tests
 |-- plot.ipynb                     # Interactive visualization notebook
 |-- test_statistic.ipynb           # Statistical analysis notebook
 |-- test.ipynb                     # Interactive experiment notebook
@@ -39,7 +43,7 @@ captcha/
 
 **Root Python Modules:**
 - Purpose: Hold all executable and importable Python code in a flat root-level script layout.
-- Contains: `run_eval.py`, `run_single_experiment.py`, `experiments_helper.py`, `visualize_results.py`, `exp2_to_exp3_predict.py`, `prepare_few_shot_examples.py`, `compress_few_shot_assets.py`, and `few_shot_answers.py`.
+- Contains: `run_eval.py`, `run_single_experiment.py`, `experiments_helper.py`, `visualize_results.py`, `exp2_to_exp3_predict.py`, `phase3_artifacts.py`, `dataset_scope_audit.py`, `extended_dataset_manifest.py`, `prepare_few_shot_examples.py`, `compress_few_shot_assets.py`, and `few_shot_answers.py`.
 - Key files: `run_eval.py` for core behavior, `run_single_experiment.py` for the primary CLI, and `visualize_results.py` for chart generation.
 
 **`captcha_data/`:**
@@ -86,6 +90,9 @@ captcha/
 - `prepare_few_shot_examples.py`: Use this to regenerate `few_shot_examples.yaml`.
 - `compress_few_shot_assets.py`: Use this to optimize images listed in `few_shot_image_manifest.json`.
 - `exp2_to_exp3_predict.py`: Use this to generate Exp2-to-Exp3 prediction CSVs.
+- `dataset_scope_audit.py`: Use this to generate Phase 3 dataset scope CSV/JSON rows under `results/revision/<run_id>/`.
+- `extended_dataset_manifest.py`: Use this to validate extended-data manifests, write validation-slice task CSVs, optional comparison CSV/JSON files, and dataset contribution notes.
+- `phase3_artifacts.py`: Use this for strict Phase 3 row schemas and shared CSV/JSON writers.
 
 **Configuration:**
 - `secrets.yaml`: Provider API credentials and pricing configuration; note existence only and do not copy values.
@@ -120,8 +127,8 @@ captcha/
 - `figures/*.pdf`: Publication-ready visualizations.
 
 **Testing:**
-- Not detected as a formal test suite.
-- Existing validation is embedded in `run_eval.evaluate_pass1()` and exercised through experiment runs and notebooks such as `test.ipynb`.
+- Focused offline pytest tests live under `tests/`.
+- Revision-critical schema, preflight, adaptive, Phase 3 dataset-scope, and manifest contracts are validated with `uv run pytest`.
 
 ## Naming Conventions
 
