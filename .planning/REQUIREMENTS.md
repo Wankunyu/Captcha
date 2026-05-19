@@ -44,11 +44,11 @@ Requirements for the current shepherded revision milestone. Each requirement map
 ### SOTA Solver and Larger Benchmark Strengthening
 
 - [x] **BASE-01**: Researcher can create a benchmark coverage matrix mapping local CAPTCHA families to reviewer-cited larger datasets and specialized solver baselines.
-- [ ] **BASE-02**: Baseline comparison rows include Halligan, Oedipus, and other relevant dedicated CAPTCHA solver or benchmark systems where available.
+- [x] **BASE-02**: Baseline comparison rows include Halligan, Oedipus, and other relevant dedicated CAPTCHA solver or benchmark systems where available.
 - [x] **BASE-03**: Each baseline row distinguishes solver architecture, threat model, dataset scale, CAPTCHA families, reported metrics, artifact availability, latency/cost coverage, failure-mode analysis, and defense-methodology relevance.
 - [x] **BASE-04**: Baseline comparisons label each row as direct-run, adapter-run, literature-only, approximate, incompatible, or unavailable.
 - [x] **BASE-05**: External baseline or larger-dataset imports validate required fields, metric definitions, task labels, sample counts, and comparability assumptions before appearing in paper-ready outputs.
-- [ ] **BASE-06**: The framework can run or import at least one smoke subset for a compatible larger external benchmark or baseline comparison when artifacts are available and feasible within the shepherding timeline.
+- [x] **BASE-06**: The framework can run or import at least one smoke subset for a compatible larger external benchmark or baseline comparison when artifacts are available and feasible within the shepherding timeline.
 
 ### Defense Methodology and HCI Scope
 
@@ -135,11 +135,11 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | STAT-06 | Phase 3 | Complete |
 | STAT-07 | Phase 3 | Complete |
 | BASE-01 | Phase 4 | Complete |
-| BASE-02 | Phase 4 | Pending |
+| BASE-02 | Phase 4 | Complete |
 | BASE-03 | Phase 4 | Complete |
 | BASE-04 | Phase 4 | Complete |
 | BASE-05 | Phase 4 | Complete |
-| BASE-06 | Phase 4 | Pending |
+| BASE-06 | Phase 4 | Complete |
 | DEF-01 | Phase 5 | Pending |
 | DEF-02 | Phase 5 | Pending |
 | DEF-03 | Phase 5 | Pending |
