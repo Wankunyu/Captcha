@@ -21,10 +21,10 @@ Produce credible, reproducible revision evidence that directly strengthens the p
 - ✓ Existing codebase map documents the current stack, architecture, testing gaps, integrations, and technical concerns under `.planning/codebase/` — existing.
 - ✓ Safe, reproducible experiment contracts are established before new costly provider runs: install metadata, offline preflight, manifests, attempt logs, prompt/few-shot hashes, cost preview, secret-safe reporting, and focused validators — validated in Phase 1.
 - ✓ Session-memory adaptive attacker evidence flow is implemented and verified: explicit binary pass/fail semantics, task-level policy memory, adaptive attempt/summary artifacts, fixed-retry/Bernoulli/adaptive comparison inputs, structural bottleneck tags, and offline reproduction docs — validated in Phase 2.
+- ✓ Dataset scope and statistical interpretation artifacts are implemented and verified: dataset scope audit, removed incompatible task-type documentation, extended validation-slice comparison, Wilson confidence intervals, threshold-sensitivity labels, retry calibration, failure taxonomy, limitations prose, and offline reproduction commands — validated in Phase 3.
 
 ### Active
 
-- [ ] Revise dataset scope and statistical interpretation: CaptchaWorld limitations, removed incompatible task types, sample-size caveats, confidence reporting, and boundaries on population-level claims.
 - [ ] Strengthen benchmark credibility through a structured comparison against Halligan, Oedipus, specialized CAPTCHA solvers, and a feasible larger external benchmark subset where artifacts are compatible.
 - [ ] Convert defense guidance into a reusable practitioner methodology with structural hardening transformations, red-team evaluation, deployment-monitoring knobs, and clear HCI/usability limits.
 - [ ] Produce final paper and artifact-delivery evidence: ethics/disclosure details, stakeholder contacts, reviewer-request traceability, claim ledger, color-coded diff support, and an availability-ready artifact package by May 28 AoE.
@@ -70,7 +70,7 @@ The current codebase has several known risks that matter for revision work: `run
 | Keep Phase 1 as the safety/reproducibility gate before additional provider runs | The shepherding deadline is tight, and every later claim needs preflight, prompt/few-shot hashes, cost visibility, secret safety, and append-only attempt records. | Phase 1 complete |
 | Prioritize adaptive attacker main-body evidence immediately after the foundation | The shepherding plan explicitly moves session-memory adaptive results from appendix to main body and uses them to address fixed-prompt/i.i.d. concerns. | Phase 2 complete |
 | Treat benchmark strengthening as baseline/dataset integration rather than a full solver rewrite by default | Reviewers asked for comparisons to SOTA solvers and larger datasets, but a scoped comparison layer is more feasible for revision than reimplementing entire external systems. | — Pending |
-| Add statistical confidence reporting as a first-class output | Reviewer concerns about sample size, thresholding, and Bernoulli assumptions require quantitative uncertainty reporting, not only prose. | — Pending |
+| Add statistical confidence reporting as a first-class output | Reviewer concerns about sample size, thresholding, and Bernoulli assumptions require quantitative uncertainty reporting, not only prose. | Phase 3 complete |
 | Keep defense work methodology-focused and HCI-scoped | Shepherding asks for actionable guidance, but the revision must avoid claiming formal usability validation without a human-subjects study. | Roadmap updated |
 | Treat ethics, disclosure, and artifact availability as implementation deliverables | The final package must include traceability, disclosure details, and availability-ready artifacts, not just prose edits. | Roadmap updated |
 
@@ -92,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-18 after Phase 2 completion*
+*Last updated: 2026-05-19 after Phase 3 completion*
