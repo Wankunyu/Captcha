@@ -519,3 +519,59 @@ def test_full_phase4_cli_chain_with_halligan_smoke_fixture(tmp_path, capsys) -> 
     notes = Path(notes_summary["output_md"]).read_text(encoding="utf-8")
     assert "## Non-Comparable Rows" in notes
     assert "secret" not in notes.lower()
+
+
+def test_build_table_rejects_stale_coverage_artifact_missing_named_system(
+    tmp_path,
+) -> None:
+    coverage_json = tmp_path / "coverage_matrix.json"
+    import_json = tmp_path / "import_diagnostics.json"
+    rows = [
+        row
+        for row in validate_coverage_rows(_coverage_rows(), run_id="stale-test")
+        if row.system_name != "Oedipus"
+    ]
+    _write_json(
+        coverage_json,
+        {
+            "schema_version": BASELINE_COVERAGE_SCHEMA_VERSION,
+            "rows": [row.model_dump(mode="json") for row in rows],
+        },
+    )
+    _write_json(
+        import_json,
+        {
+            "schema_version": EXTERNAL_IMPORT_VALIDATION_SCHEMA_VERSION,
+            "rows": [],
+        },
+    )
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "build-table",
+                "--coverage-json",
+                str(coverage_json),
+                "--import-validation-json",
+                str(import_json),
+                "--output-root",
+                str(tmp_path / "results" / "revision"),
+                "--run-id",
+                "stale-test",
+            ]
+        )
+
+
+def test_build_table_rejects_duplicate_import_source_keys(tmp_path) -> None:
+    metadata_path = tmp_path / "phase4_baseline_sources.json"
+    _write_json(metadata_path, {"rows": _coverage_rows()})
+    coverage_rows = load_baseline_coverage_sources(metadata_path, run_id="dupe-test")
+    import_fixture = [*_import_rows(), _import_rows()[0]]
+    import_rows = build_external_import_validation_rows(
+        coverage_rows,
+        import_fixture,
+        run_id="dupe-test",
+    )
+
+    with pytest.raises(ValueError, match="duplicate import validation source_key"):
+        build_baseline_comparison_rows(coverage_rows, import_rows, run_id="dupe-test")

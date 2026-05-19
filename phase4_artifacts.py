@@ -60,6 +60,16 @@ def _row_to_json_dict(row: BaseModel | dict[str, Any]) -> dict[str, Any]:
     return row
 
 
+def _row_to_csv_dict(row: BaseModel | dict[str, Any]) -> dict[str, Any]:
+    payload = _row_to_json_dict(row)
+    return {
+        key: json.dumps(value, ensure_ascii=False)
+        if isinstance(value, (list, dict))
+        else value
+        for key, value in payload.items()
+    }
+
+
 def _require_text(value: str, field_name: str, status: str) -> None:
     if not value.strip():
         raise ValueError(f"{field_name} is required when primary_status is {status}")
@@ -337,7 +347,7 @@ def write_csv(
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
-            writer.writerow(_row_to_json_dict(row))
+            writer.writerow(_row_to_csv_dict(row))
 
 
 def write_json(

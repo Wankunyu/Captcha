@@ -316,6 +316,11 @@ def test_writers_create_parent_dirs_and_emit_schema_payloads(tmp_path) -> None:
         paper_payload = json.load(handle)
 
     assert coverage_rows[0]["schema_version"] == BASELINE_COVERAGE_SCHEMA_VERSION
+    assert json.loads(coverage_rows[0]["caveat_tags"]) == ["dataset-mismatch"]
+    assert json.loads(coverage_rows[0]["captcha_families"]) == [
+        "visual reasoning",
+        "interaction",
+    ]
     assert coverage_payload["schema_version"] == BASELINE_COVERAGE_SCHEMA_VERSION
     assert import_payload["schema_version"] == EXTERNAL_IMPORT_VALIDATION_SCHEMA_VERSION
     assert comparison_payload["schema_version"] == BASELINE_COMPARISON_SCHEMA_VERSION

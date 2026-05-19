@@ -154,6 +154,11 @@ def load_baseline_coverage_sources(path: Path, run_id: str) -> list[BaselineCove
 
 def _load_baseline_coverage_artifact(path: Path, run_id: str) -> list[BaselineCoverageRow]:
     rows = _read_table(path)
+    system_names = {str(row.get("system_name") or "") for row in rows}
+    if not NAMED_BASELINE_SYSTEMS <= system_names:
+        raise ValueError("coverage artifact must include Halligan and Oedipus")
+    if len(_secondary_systems(rows)) > MAX_SECONDARY_SYSTEMS:
+        raise ValueError("coverage artifact may include at most two additional systems")
     return [
         BaselineCoverageRow.model_validate(_coverage_model_payload(row, run_id))
         for row in rows
@@ -327,6 +332,17 @@ def _all_pass(row: ExternalImportValidationRow | None) -> bool:
     )
 
 
+def _unique_import_index(
+    rows: list[ExternalImportValidationRow],
+) -> dict[str, ExternalImportValidationRow]:
+    indexed: dict[str, ExternalImportValidationRow] = {}
+    for row in rows:
+        if row.source_key in indexed:
+            raise ValueError(f"duplicate import validation source_key: {row.source_key}")
+        indexed[row.source_key] = row
+    return indexed
+
+
 def _comparison_caveat(
     coverage_row: BaselineCoverageRow,
     import_row: ExternalImportValidationRow | None,
@@ -369,7 +385,7 @@ def build_baseline_comparison_rows(
     import_validation_rows: list[ExternalImportValidationRow],
     run_id: str,
 ) -> list[BaselineComparisonRow]:
-    import_by_key = {row.source_key: row for row in import_validation_rows}
+    import_by_key = _unique_import_index(import_validation_rows)
     rows: list[BaselineComparisonRow] = []
     for coverage_row in coverage_rows:
         key = _source_key(coverage_row.system_name, coverage_row.external_task_label)
