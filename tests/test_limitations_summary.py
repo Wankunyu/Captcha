@@ -467,6 +467,52 @@ def test_write_limitations_summary_writes_markdown_and_artifact_index(
     assert index["output_artifacts"]["limitations_summary_md"] == str(output_md)
 
 
+def test_integrated_phase3_artifact_chain_renders_summary_and_indexes_files(
+    tmp_path: Path,
+) -> None:
+    inputs = _fixture_inputs(tmp_path)
+    text = render_limitations_summary(
+        dataset_scope_rows=load_rows(inputs["dataset_scope_json"]),
+        extended_manifest_rows=load_rows(inputs["extended_manifest_json"]),
+        extended_validation_rows=load_rows(inputs["extended_validation_comparison_json"]),
+        contribution_notes_md=inputs["contribution_notes_md"].read_text(encoding="utf-8"),
+        pass_rate_rows=load_rows(inputs["pass_rate_confidence_json"]),
+        threshold_rows=load_rows(inputs["threshold_sensitivity_json"]),
+        retry_rows=load_rows(inputs["retry_calibration_json"]),
+        failure_rows=load_rows(inputs["failure_taxonomy_json"]),
+    )
+
+    assert "Scope-status counts" in text
+    assert "Extended manifest origin counts" in text
+    assert "Agreement-status counts" in text
+    assert "Confidence interval method" in text
+    assert "30%-50% review band rows" in text
+    assert "Mean absolute retry-calibration error by task family" in text
+    assert "Claim-use row counts" in text
+
+    output_md = tmp_path / "revision" / "phase3-local" / "limitations_summary.md"
+    index_json = tmp_path / "revision" / "phase3-local" / "phase3_artifact_index.json"
+    write_limitations_summary(
+        inputs=inputs,
+        output_md=output_md,
+        artifact_index_json=index_json,
+        run_id="phase3-local",
+    )
+    index_text = index_json.read_text(encoding="utf-8")
+
+    for artifact_name in [
+        "dataset_scope_audit.json",
+        "extended_dataset_manifest.json",
+        "extended_validation_comparison.json",
+        "dataset_contribution_notes.md",
+        "pass_rate_confidence.json",
+        "threshold_sensitivity.json",
+        "retry_calibration.json",
+        "failure_taxonomy.json",
+    ]:
+        assert artifact_name in index_text
+
+
 @pytest.mark.parametrize("bad_run_id", ["../phase3", "bad/run"])
 def test_cli_rejects_invalid_run_ids_before_writing_outputs(
     tmp_path: Path,
