@@ -46,7 +46,10 @@ REQUIRED_STRINGS = [
         "not a universal CAPTCHA security boundary."
     ),
     "The 30%-50% review band is a revision-time caution band, not a new security tier.",
-    "Infrastructure and protocol failures are not counted as scientific evidence of structural robustness.",
+    (
+        "Infrastructure and protocol failures are not counted as scientific evidence "
+        "of structural robustness."
+    ),
     "Original, supplemented-category, and new-category evidence are reported separately.",
     (
         "Selective validation-slice outcomes are compared against original-dataset "
@@ -198,7 +201,9 @@ def _fixture_inputs(tmp_path: Path) -> dict[str, Path]:
                     "validation_slice_rate": 0.7,
                     "validation_sample_count": 10,
                     "agreement_status": "diverges_from_original",
-                    "divergence_reason": "validation slice crosses the original 40% cutoff direction",
+                    "divergence_reason": (
+                        "validation slice crosses the original 40% cutoff direction"
+                    ),
                     "comparison_caveat": "new-category evidence is selective",
                     "outcome_source_path": "validation/rotation.csv",
                 },
@@ -213,7 +218,9 @@ def _fixture_inputs(tmp_path: Path) -> dict[str, Path]:
                     "validation_slice_rate": None,
                     "validation_sample_count": 0,
                     "agreement_status": "inconclusive",
-                    "divergence_reason": "missing original conclusion, zero sample count, or unsupported slice",
+                    "divergence_reason": (
+                        "missing original conclusion, zero sample count, or unsupported slice"
+                    ),
                     "comparison_caveat": "missing validation samples keep this inconclusive",
                     "outcome_source_path": "validation/text.csv",
                 },
@@ -222,7 +229,10 @@ def _fixture_inputs(tmp_path: Path) -> dict[str, Path]:
         ),
         "contribution_notes_md": _write_text(
             artifact_dir / "dataset_contribution_notes.md",
-            "# Dataset Contribution Notes\n\nCleaning, standardization, label alignment, and answer-format normalization were recorded offline.\n",
+            (
+                "# Dataset Contribution Notes\n\nCleaning, standardization, label "
+                "alignment, and answer-format normalization were recorded offline.\n"
+            ),
         ),
         "pass_rate_confidence_json": _write_json(
             artifact_dir / "pass_rate_confidence.json",
