@@ -148,6 +148,36 @@ uv run python adaptive_preflight.py --dataset-root ./captcha_data --types Dice_C
 uv run python adaptive_attacker.py --dataset-root ./captcha_data --types Dice_Count --prompts-file ./prompts_optimized.yaml --output-root ./results/revision --run-id local-paid-smoke --provider openai --model gpt-5 --prompt-mode opt --max-per-type 1 --attempt-budget-k 2
 ```
 
+## Phase 3 Dataset And Statistical Artifacts
+
+Phase 3 artifact generation is offline and dataset-based. These commands do not perform browser automation against live services.
+These commands do not read or print `secrets.yaml`.
+Provider/model evidence should come from existing result CSV/JSON artifacts or
+separately budget-gated, preflighted runs.
+
+```bash
+uv run python dataset_scope_audit.py --run-id phase3-local --output-root results/revision
+uv run python extended_dataset_manifest.py --input-manifest path/to/extended_manifest.json --validation-outcomes path/to/validation_slice_outcomes.json --original-conclusions results/revision/phase3-local/threshold_sensitivity.json --run-id phase3-local --output-root results/revision
+uv run python statistical_confidence.py --results-dir results --adaptive-summary results/revision/<adaptive_run_id>/adaptive_summary.csv --adaptive-comparison results/revision/<adaptive_run_id>/adaptive_comparison.csv --extended-validation-comparison results/revision/phase3-local/extended_validation_comparison.json --run-id phase3-local --output-root results/revision
+uv run python retry_calibration.py --results-dir results --adaptive-summary results/revision/<adaptive_run_id>/adaptive_summary.csv --run-id phase3-local --output-root results/revision --attempt-budget-k 10
+uv run python failure_taxonomy.py --adaptive-summary results/revision/<adaptive_run_id>/adaptive_summary.csv --retry-calibration results/revision/phase3-local/retry_calibration.csv --run-id phase3-local --output-root results/revision
+uv run python limitations_summary.py --dataset-scope-json results/revision/phase3-local/dataset_scope_audit.json \
+  --extended-manifest-json results/revision/phase3-local/extended_dataset_manifest.json \
+  --extended-validation-comparison-json results/revision/phase3-local/extended_validation_comparison.json \
+  --contribution-notes-md results/revision/phase3-local/dataset_contribution_notes.md \
+  --pass-rate-confidence-json results/revision/phase3-local/pass_rate_confidence.json \
+  --threshold-sensitivity-json results/revision/phase3-local/threshold_sensitivity.json \
+  --retry-calibration-json results/revision/phase3-local/retry_calibration.json \
+  --failure-taxonomy-json results/revision/phase3-local/failure_taxonomy.json \
+  --run-id phase3-local \
+  --output-root results/revision
+```
+
+The `--validation-outcomes` file may point to already-produced offline
+selective validation outputs. Supplying this file is what creates
+`extended_validation_comparison.json`, the original-vs-new comparison artifact;
+Phase 3 does not mandate paid provider execution.
+
 ## Running Experiments
 
 ### Notebook Usage (test.ipynb)
