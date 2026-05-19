@@ -336,7 +336,7 @@ class FailureTaxonomyRow(BaseModel):
     scientific_rate: float | None = Field(default=None, ge=0, le=1)
     failure_taxonomy_source: str
     claim_use: str
-    hardness_caveat: str
+    hardness_caveat: str | None = None
 
     @field_validator("schema_version")
     @classmethod
