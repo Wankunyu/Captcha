@@ -301,7 +301,10 @@ def test_threshold_label_rules_and_cutoff_note_text() -> None:
         "CAPTCHA security boundary. 30%-50% is a revision-time caution band, not a new "
         "security tier."
     )
-    assert "+/- 5%" not in Path("statistical_confidence.py").read_text(encoding="utf-8")
+    disallowed_margin_text = "+" + "/- 5%"
+    assert disallowed_margin_text not in Path("statistical_confidence.py").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_build_threshold_rows_prefers_exp2_and_flags_exp3_trend(
