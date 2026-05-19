@@ -34,8 +34,10 @@ Requirements for the current shepherded revision milestone. Each requirement map
 **: Dataset documentation identifies the two removed CaptchaWorld task types and explains why they are incompatible with the evaluation pipeline.
 - [x] **STAT-03
 **: Dataset contribution notes cover cleaning, standardization, label and metadata alignment, answer-format normalization, removal of incompatible task types, and task-family grouping.
-- [ ] **STAT-04**: Pass-rate summaries include confidence intervals by task and task family.
-- [ ] **STAT-05**: Threshold-based hard/borderline/broken labels report their margin relative to the paper's operational cutoff and flag threshold-sensitive families without treating the cutoff as a universal security boundary.
+- [x] **STAT-04
+**: Pass-rate summaries include confidence intervals by task and task family.
+- [x] **STAT-05
+**: Threshold-based hard/borderline/broken labels report their margin relative to the paper's operational cutoff and flag threshold-sensitive families without treating the cutoff as a universal security boundary.
 - [ ] **STAT-06**: Existing Exp2-to-Exp3 retry predictions are compared against observed retry or adaptive-compatible outcomes, including prediction error by task family.
 - [ ] **STAT-07**: Revision artifacts and prose distinguish scientific model failures from provider exceptions, timeouts, malformed responses, and other infrastructure errors, and state that CaptchaWorld supports structural-pattern claims rather than population-level deployment estimates.
 
@@ -128,8 +130,8 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | STAT-01 | Phase 3 | Complete |
 | STAT-02 | Phase 3 | Complete |
 | STAT-03 | Phase 3 | Complete |
-| STAT-04 | Phase 3 | Pending |
-| STAT-05 | Phase 3 | Pending |
+| STAT-04 | Phase 3 | Complete |
+| STAT-05 | Phase 3 | Complete |
 | STAT-06 | Phase 3 | Pending |
 | STAT-07 | Phase 3 | Pending |
 | BASE-01 | Phase 4 | Pending |
