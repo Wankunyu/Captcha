@@ -91,7 +91,11 @@ Plans:
   4. External baseline or larger-dataset imports validate fields, metric definitions, task labels, sample counts, and comparability assumptions before appearing in paper-ready outputs.
   5. Researcher can run or import at least one smoke subset for a compatible larger external benchmark or baseline comparison when artifacts are available and feasible within the shepherding timeline.
   6. Paper-ready baseline tables separate off-the-shelf MLLM API results from specialized solver results and document dataset or threat-model differences.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 04-01-PLAN.md - Define strict Phase 4 baseline/import/comparison/paper-table schemas and writers.
+- [ ] 04-02-PLAN.md - Add offline coverage and Halligan-first import-validation CLI paths.
+- [ ] 04-03-PLAN.md - Build comprehensive paper-ready baseline tables and concise notes.
 
 ### Phase 5: Defense Methodology and HCI Scope
 **Goal**: Researchers can generate an actionable defense methodology grounded in measured structural hardness evidence while clearly scoping human-clarity and formal HCI claims.
