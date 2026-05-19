@@ -502,22 +502,22 @@ All implementation-shaping claims in this research are sourced from local projec
 |---|-------|---------|---------------|
 | None | No `[ASSUMED]` claims were intentionally introduced. | All sections | Planner can proceed without additional user confirmation except for explicit Open Questions below. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Can the team locate a direct Oedipus dataset/code artifact URL and license?**
+1. **RESOLVED: Can the team locate a direct Oedipus dataset/code artifact URL and license?**
    - What we know: Oedipus reports an open-sourced dataset and source code available on request to avoid misuse. [CITED: https://geleideng.github.io/publication/oedipus/oedipus.pdf]
    - What's unclear: Direct artifact URL, license terms, checksums, and whether offline import is feasible without contacting authors were not verified. [VERIFIED: web search]
-   - Recommendation: Plan Oedipus as `literature-only` first; add an explicit artifact-research task before any adapter/direct-run status. [VERIFIED: 04-CONTEXT.md]
+   - Resolution: Phase 4 starts Oedipus as `literature-only` with artifact/license caveats. It may not be promoted to `direct-run` or `adapter-run` until an artifact URL, license terms, checksums, and offline-safe use constraints are verified. [VERIFIED: 04-CONTEXT.md; VERIFIED: 04-01-PLAN.md; VERIFIED: 04-02-PLAN.md]
 
-2. **Should Halligan direct execution be attempted after validated import?**
+2. **RESOLVED: Should Halligan direct execution be attempted after validated import?**
    - What we know: Halligan artifact exists under MIT license and AE describes offline benchmark setup. [CITED: https://zenodo.org/records/15709075; CITED: https://secartifacts.github.io/usenixsec2025/appendix-files/sec25cycle2ae-final17.pdf]
    - What's unclear: Current local Docker daemon is not running and Pixi is missing; artifact contents were not unpacked or audited. [VERIFIED: environment probe]
-   - Recommendation: Do not block BASE-06 on direct execution; import Halligan Table 4 first, then optionally ask the user before installing/starting direct-run dependencies. [VERIFIED: 04-CONTEXT.md]
+   - Resolution: Phase 4 uses validated Halligan import as the first smoke path and does not block BASE-06 on direct execution. Direct Halligan execution is optional future work and requires user approval before dependency installation, artifact unpacking, or Docker/Pixi setup. [VERIFIED: 04-CONTEXT.md; VERIFIED: 04-02-PLAN.md]
 
-3. **Which secondary source should be used if a named-system smoke cannot be validated?**
+3. **RESOLVED: Which secondary source should be used if a named-system smoke cannot be validated?**
    - What we know: Upstream Open CaptchaWorld is closely compatible with local task names and has a current Hugging Face dataset card with 862 rows. [CITED: https://huggingface.co/datasets/OpenCaptchaWorld/Open_CaptchaWorld; VERIFIED: local captcha_data inventory]
    - What's unclear: Repo README says MIT while the dataset card says Apache-2.0, so data-use terms need resolution before adapter-run claims. [CITED: https://github.com/MetaAgentX/OpenCaptchaWorld; CITED: https://huggingface.co/datasets/OpenCaptchaWorld/Open_CaptchaWorld]
-   - Recommendation: Treat as a proposed secondary candidate and pause for user confirmation before it replaces Halligan/Oedipus smoke priority. [VERIFIED: 04-CONTEXT.md]
+   - Resolution: Open CaptchaWorld upstream remains a proposed secondary candidate only. It must not replace Halligan/Oedipus smoke priority unless the user confirms the substitution, and its license/data-use mismatch must be resolved before any `direct-run` or `adapter-run` claim. [VERIFIED: 04-CONTEXT.md; VERIFIED: 04-02-PLAN.md]
 
 ## Environment Availability
 
