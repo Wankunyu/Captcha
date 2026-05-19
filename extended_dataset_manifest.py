@@ -275,7 +275,8 @@ def _comparison_status(
         or manifest_row.compatibility_status != "ready_for_static_pipeline"
         or manifest_row.evaluation_status not in {"selected_for_validation", "evaluated"}
     ):
-        return "inconclusive", "missing original conclusion, zero sample count, or unsupported slice"
+        reason = "missing original conclusion, zero sample count, or unsupported slice"
+        return "inconclusive", reason
     if original_direction == validation_direction:
         return "supports_original", ""
     return (
@@ -367,36 +368,50 @@ def write_dataset_contribution_notes(
         f"{row.normalization_decisions}"
         for row in rows
     )
-    scope_line = (
-        f"\nDataset scope audit source: `{dataset_scope_json}`.\n"
-        if dataset_scope_json is not None
-        else ""
+    content_lines = [
+        "# Dataset Contribution Notes",
+        "",
+        "## Cleaning",
+        "Ambiguous, incomplete, or non-static samples are excluded before validation-slice use.",
+        row_lines,
+        "",
+        "## Standardization",
+        "Rows are standardized into local manifest records with source ids, task types,",
+        "task families, sample counts, source paths, compatibility status, and",
+        "evaluation status.",
+        "",
+        "## Label And Metadata Alignment",
+        "Manifest rows preserve label format, metadata alignment notes, source paths, and",
+        (
+            "task-family grouping so original, supplemented-category, and "
+            "new-category evidence remain separate."
+        ),
+        "",
+        "## Answer-Format Normalization",
+        "Answer formats are normalized into static JSON-compatible fields before any",
+        "offline evaluation consumes the slice.",
+        "",
+        "## Removal Decisions",
+        f"- `{HOLD_BUTTON_TASK}`: {HOLD_BUTTON_REASON}.",
+        f"- `{SLIDE_PUZZLE_TASK}`: {SLIDE_PUZZLE_REASON}.",
+    ]
+    if dataset_scope_json is not None:
+        content_lines.extend(["", f"Dataset scope audit source: `{dataset_scope_json}`."])
+    content_lines.extend(
+        [
+            "",
+            "## Task-Family Grouping",
+            "Task-family grouping is recorded per row and is not collapsed across original,",
+            "supplemented-category, or new-category evidence.",
+            "",
+            "## Extended Validation Slice",
+            "The extended-data rows define a selective validation slice. The slice asks",
+            "whether conclusions drawn from the original dataset still hold on the new",
+            "dataset slice, while retaining the limitation that CaptchaWorld and",
+            "extensions do not provide population-level deployment estimates.",
+        ]
     )
-    content = f"""# Dataset Contribution Notes
-
-## Cleaning
-Ambiguous, incomplete, or non-static samples are excluded before validation-slice use.
-{row_lines}
-
-## Standardization
-Rows are standardized into local manifest records with source ids, task types, task families, sample counts, source paths, compatibility status, and evaluation status.
-
-## Label And Metadata Alignment
-Manifest rows preserve label format, metadata alignment notes, source paths, and task-family grouping so original, supplemented-category, and new-category evidence remain separate.
-
-## Answer-Format Normalization
-Answer formats are normalized into static JSON-compatible fields before any offline evaluation consumes the slice.
-
-## Removal Decisions
-- `{HOLD_BUTTON_TASK}`: {HOLD_BUTTON_REASON}.
-- `{SLIDE_PUZZLE_TASK}`: {SLIDE_PUZZLE_REASON}.
-{scope_line}
-## Task-Family Grouping
-Task-family grouping is recorded per row and is not collapsed across original, supplemented-category, or new-category evidence.
-
-## Extended Validation Slice
-The extended-data rows define a selective validation slice. The slice asks whether conclusions drawn from the original dataset still hold on the new dataset slice, while retaining the limitation that CaptchaWorld and extensions do not provide population-level deployment estimates.
-"""
+    content = "\n".join(content_lines) + "\n"
     output_md.write_text(content, encoding="utf-8")
     return output_md
 
