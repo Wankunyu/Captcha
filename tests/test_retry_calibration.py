@@ -218,6 +218,8 @@ def test_family_rows_average_predictions_and_sum_counts(tmp_path: Path) -> None:
     assert click_family.scientific_wrong_count == 3
     assert click_family.protocol_failure_count == 1
     assert click_family.infrastructure_failure_count == 0
+    assert click_family.raw_observed_rate == pytest.approx(2 / (2 + 3 + 1 + 0))
+    assert click_family.scientific_rate == pytest.approx(2 / (2 + 3))
     assert click_family.bernoulli_success_at_k == pytest.approx(
         (
             predict_q_from_exp2(0.20, 10, 3)
