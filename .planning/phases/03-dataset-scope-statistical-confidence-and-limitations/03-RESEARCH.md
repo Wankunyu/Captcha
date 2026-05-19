@@ -417,20 +417,19 @@ All claims in this research were verified from local project files, local comman
 
 ## Open Questions
 
-1. **Which extended categories will be collected?**
-   - What we know: The user wants at least two new categories if feasible and pragmatic selection over taxonomy purity. [VERIFIED: 03-CONTEXT.md]
-   - What's unclear: The concrete external/source dataset categories are not chosen yet. [VERIFIED: no extended dataset manifest found]
-   - Recommendation: Planner should add a Wave 0 selection task that produces `extended_dataset_manifest.json` before evaluator work. [VERIFIED: 03-CONTEXT.md]
+All Phase 3 research open questions are RESOLVED for planning iteration 1.
 
-2. **Should adaptive-on-extended be run in Phase 3 or only enabled?**
-   - What we know: It may be run and must preserve Phase 2 semantics if run. [VERIFIED: 03-CONTEXT.md]
-   - What's unclear: Provider budget and exact task slice are not locked. [VERIFIED: 03-CONTEXT.md]
-   - Recommendation: Plan it as optional/gated with preflight and focus on most claim-relevant new/supplemented categories. [VERIFIED: 03-CONTEXT.md, adaptive_preflight.py]
+1. **RESOLVED: Extended categories are selected and configured through the local manifest.**
+   - Decision: Phase 3 will not hard-code concrete new CAPTCHA category names in research or plans. The executor will implement `extended_dataset_manifest.py` so a curated local manifest records supplemented categories, new categories, sample counts, normalization decisions, compatibility, evaluation status, and limitations. [VERIFIED: 03-CONTEXT.md]
+   - Planning effect: The manifest must require at least one supplemented-category row and at least one new-category row; fewer than two new-category rows requires an explicit `new_category_limitation` explaining availability or timeline constraints. [VERIFIED: 03-CONTEXT.md]
 
-3. **What underpowered threshold should be locked?**
-   - What we know: Several current task datasets have fewer than 20 samples, and Wilson intervals are recommended for small proportions. [VERIFIED: local dataset inventory; CITED: https://www.itl.nist.gov/div898/software/dataplot/refman1/auxillar/propconf.htm]
-   - What's unclear: The user left the exact minimum sample-count threshold to planner discretion. [VERIFIED: 03-CONTEXT.md]
-   - Recommendation: Use `n < 20` as the explicit task-level underpowered flag and expose it as a CLI parameter. [VERIFIED: local dataset inventory]
+2. **RESOLVED: Adaptive-on-extended is supported as an optional budget-gated validation slice with offline artifact ingestion and comparison.**
+   - Decision: Phase 3 must support adaptive-on-extended outcomes when they already exist as offline artifacts, but it does not require a paid provider run. Any adaptive validation slice must preserve Phase 2 semantics: offline dataset instances, binary pass/fail feedback only, explicit local policy-memory notes, no ground-truth labels or corrective hints, and append-only adaptive attempt records. [VERIFIED: 03-CONTEXT.md, 02-VERIFICATION.md]
+   - Planning effect: Plans must include selective validation-slice outcome ingestion and original-vs-new comparison artifacts that surface agreement, divergence, and caveats. The comparison may ingest already-produced offline selective validation outputs rather than mandate new paid execution. [VERIFIED: 03-CONTEXT.md]
+
+3. **RESOLVED: The default underpowered threshold is `n < 20`, configurable by CLI.**
+   - Decision: Use `n < 20` as the default task-level underpowered flag for dataset scope and statistical outputs unless overridden with `--underpowered-n`. [VERIFIED: local dataset inventory]
+   - Planning effect: Dataset audit and confidence-summary rows must expose the threshold used, mark underpowered rows explicitly, and allow a caller override for sensitivity checks. [VERIFIED: 03-CONTEXT.md]
 
 ## Environment Availability
 
