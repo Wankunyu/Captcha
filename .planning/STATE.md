@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-05-18T23:21:51.164Z"
-last_activity: 2026-05-18
+status: ready_to_execute
+stopped_at: Phase 3 planned
+last_updated: "2026-05-19T00:20:46Z"
+last_activity: "2026-05-19 - Planned Phase 3: Dataset Scope, Statistical Confidence, and Limitations with 4 verified plans"
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 10
+  total_plans: 14
   completed_plans: 10
-  percent: 100
+  percent: 71
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 3
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-18 - Completed quick task 260519-al4: Align Phase 2 adaptive comparison cutoff semantics with the paper-facing 40% threshold and Phase 3 sensitivity framing
+Plan: 4 plans ready
+Status: Ready to execute
+Last activity: 2026-05-19 - Planned Phase 3: Dataset Scope, Statistical Confidence, and Limitations with 4 verified plans
 
-Progress: [███-------] 33%
+Progress: [███████---] 71%
 
 ## Performance Metrics
 
@@ -97,7 +97,7 @@ None yet.
 
 - [Resolved in Phase 1]: Secret-safe import, redaction, preflight, manifest, attempt-log, and validator contracts are now in place before new paid provider runs.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
-- [Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, and infrastructure-vs-scientific failure artifacts are next.
+- [Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, and infrastructure-vs-scientific failure artifacts are planned and ready to execute.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -122,7 +122,9 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: --stopped-at
-Stopped at: Phase 3 context gathered
+Stopped at: Phase 3 planned
 Resume file: --resume-file
 
-**Next Phase:** 03 (Dataset Scope, Statistical Confidence, and Limitations) — ready to plan
+**Next Phase:** 03 (Dataset Scope, Statistical Confidence, and Limitations) — ready to execute
+
+**Planned Phase:** 3 (Dataset Scope, Statistical Confidence, and Limitations) — 4 plans — 2026-05-19T00:20:25.541Z
