@@ -244,6 +244,52 @@ def test_validation_slice_comparison_agreement_divergence_and_inconclusive(
     assert all("selective validation slice" in row.comparison_caveat for row in rows)
 
 
+def test_validation_slice_comparison_treats_near_broken_as_borderline(
+    tmp_path,
+) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    outcomes_path = tmp_path / "validation_outcomes.csv"
+    conclusions_path = tmp_path / "original_conclusions.csv"
+    _write_json(manifest_path, {"rows": _manifest_rows()})
+    _write_csv(
+        outcomes_path,
+        [
+            {
+                "source_id": "supplement-dice",
+                "task_type": "Dice_Count",
+                "task_family": "Counting",
+                "slice_type": "supplement_existing",
+                "n_attempts": 10,
+                "n_success": 4,
+                "outcome_source_path": "validation/dice.csv",
+            }
+        ],
+    )
+    _write_csv(
+        conclusions_path,
+        [
+            {
+                "task_type": "Dice_Count",
+                "task_family": "Counting",
+                "original_conclusion_label": "borderline/near-broken",
+                "original_rate": 0.39,
+            }
+        ],
+    )
+
+    rows = build_extended_validation_comparison_rows(
+        manifest_rows=load_extended_dataset_manifest(manifest_path, run_id="manifest-test"),
+        validation_outcomes=load_validation_slice_outcomes(outcomes_path),
+        original_conclusions=load_original_conclusions(conclusions_path),
+        run_id="manifest-test",
+    )
+
+    assert len(rows) == 1
+    assert rows[0].original_conclusion_label == "borderline/near-broken"
+    assert rows[0].validation_slice_rate == 0.4
+    assert rows[0].agreement_status == "supports_original"
+
+
 def test_cli_help_exits_cleanly(capsys) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--help"])

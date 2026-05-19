@@ -215,12 +215,12 @@ def _original_label(record: dict[str, object] | None) -> str | None:
 def _direction(label: str | None, rate: float | None, cutoff: float = 0.40) -> str | None:
     if label:
         lowered = label.lower()
+        if "borderline" in lowered or "near" in lowered:
+            return "borderline"
         if "hard" in lowered:
             return "hard"
         if "broken" in lowered:
             return "broken"
-        if "borderline" in lowered or "near" in lowered:
-            return "borderline"
     if rate is None:
         return None
     if rate < cutoff:
