@@ -95,7 +95,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md - Define strict Phase 4 baseline/import/comparison/paper-table schemas and writers.
 - [x] 04-02-PLAN.md - Add offline coverage and Halligan-first import-validation CLI paths.
-- [ ] 04-03-PLAN.md - Build comprehensive paper-ready baseline tables and concise notes.
+- [x] 04-03-PLAN.md - Build comprehensive paper-ready baseline tables and concise notes.
 
 ### Phase 5: Defense Methodology and HCI Scope
 **Goal**: Researchers can generate an actionable defense methodology grounded in measured structural hardness evidence while clearly scoping human-clarity and formal HCI claims.
