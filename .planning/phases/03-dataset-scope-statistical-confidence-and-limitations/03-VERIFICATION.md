@@ -5,7 +5,7 @@ status: passed
 score: "10/10 must-haves verified"
 overrides_applied: 0
 re_verification:
-  previous_status: gaps_found
+  previous_status: initial_gap_report
   previous_score: "9/10"
   gaps_closed:
     - "Selective validation-slice outcomes can be ingested from offline artifacts and compared against original-dataset conclusions with agreement, divergence, and caveats."
@@ -31,7 +31,7 @@ residual_risks:
 **Phase Goal:** Researchers can quantify uncertainty, dataset support, removed/incompatible task types, threshold sensitivity, retry-model validity, infrastructure-vs-scientific failures, and benchmark generalizability limits.
 **Verified:** 2026-05-19T01:53:51Z
 **Status:** passed
-**Re-verification:** Yes - after gap closure commit `186f138 fix(03): classify near-broken validation labels as borderline`
+**Re-verification:** Yes - after closing the initial verification gap with commit `186f138 fix(03): classify near-broken validation labels as borderline`
 
 ## Goal Achievement
 
