@@ -38,8 +38,8 @@ Requirements for the current shepherded revision milestone. Each requirement map
 **: Pass-rate summaries include confidence intervals by task and task family.
 - [x] **STAT-05
 **: Threshold-based hard/borderline/broken labels report their margin relative to the paper's operational cutoff and flag threshold-sensitive families without treating the cutoff as a universal security boundary.
-- [ ] **STAT-06**: Existing Exp2-to-Exp3 retry predictions are compared against observed retry or adaptive-compatible outcomes, including prediction error by task family.
-- [ ] **STAT-07**: Revision artifacts and prose distinguish scientific model failures from provider exceptions, timeouts, malformed responses, and other infrastructure errors, and state that CaptchaWorld supports structural-pattern claims rather than population-level deployment estimates.
+- [x] **STAT-06**: Existing Exp2-to-Exp3 retry predictions are compared against observed retry or adaptive-compatible outcomes, including prediction error by task family.
+- [x] **STAT-07**: Revision artifacts and prose distinguish scientific model failures from provider exceptions, timeouts, malformed responses, and other infrastructure errors, and state that CaptchaWorld supports structural-pattern claims rather than population-level deployment estimates.
 
 ### SOTA Solver and Larger Benchmark Strengthening
 

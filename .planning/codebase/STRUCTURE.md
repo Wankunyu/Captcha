@@ -14,6 +14,8 @@ captcha/
 |-- phase3_artifacts.py            # Phase 3 strict artifact schemas and CSV/JSON writers
 |-- dataset_scope_audit.py         # Phase 3 offline dataset scope audit CLI
 |-- extended_dataset_manifest.py   # Phase 3 extended-data manifest and validation-slice CLI
+|-- retry_calibration.py           # Phase 3 Bernoulli retry calibration CLI
+|-- failure_taxonomy.py            # Phase 3 scientific/protocol/infrastructure failure taxonomy CLI
 |-- prepare_few_shot_examples.py   # Few-shot YAML generation from dataset metadata
 |-- compress_few_shot_assets.py    # Few-shot image compression utility
 |-- few_shot_answers.py            # Hard-coded few-shot answer lookup table
@@ -43,7 +45,7 @@ captcha/
 
 **Root Python Modules:**
 - Purpose: Hold all executable and importable Python code in a flat root-level script layout.
-- Contains: `run_eval.py`, `run_single_experiment.py`, `experiments_helper.py`, `visualize_results.py`, `exp2_to_exp3_predict.py`, `phase3_artifacts.py`, `dataset_scope_audit.py`, `extended_dataset_manifest.py`, `prepare_few_shot_examples.py`, `compress_few_shot_assets.py`, and `few_shot_answers.py`.
+- Contains: `run_eval.py`, `run_single_experiment.py`, `experiments_helper.py`, `visualize_results.py`, `exp2_to_exp3_predict.py`, `phase3_artifacts.py`, `dataset_scope_audit.py`, `extended_dataset_manifest.py`, `retry_calibration.py`, `failure_taxonomy.py`, `prepare_few_shot_examples.py`, `compress_few_shot_assets.py`, and `few_shot_answers.py`.
 - Key files: `run_eval.py` for core behavior, `run_single_experiment.py` for the primary CLI, and `visualize_results.py` for chart generation.
 
 **`captcha_data/`:**
@@ -92,6 +94,8 @@ captcha/
 - `exp2_to_exp3_predict.py`: Use this to generate Exp2-to-Exp3 prediction CSVs.
 - `dataset_scope_audit.py`: Use this to generate Phase 3 dataset scope CSV/JSON rows under `results/revision/<run_id>/`.
 - `extended_dataset_manifest.py`: Use this to validate extended-data manifests, write validation-slice task CSVs, optional comparison CSV/JSON files, and dataset contribution notes.
+- `retry_calibration.py`: Use this to compare Exp2 Bernoulli Success@k predictions with fixed-retry and adaptive-compatible outcomes by task type and family.
+- `failure_taxonomy.py`: Use this to separate scientific model failures from protocol, infrastructure, and aggregate-only evidence for paper-safe claims.
 - `phase3_artifacts.py`: Use this for strict Phase 3 row schemas and shared CSV/JSON writers.
 
 **Configuration:**

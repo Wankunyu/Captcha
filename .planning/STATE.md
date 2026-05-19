@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-05-19T01:08:51.744Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-05-19T01:23:28.078Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 3 (Dataset Scope, Statistical Confidence, and Limitations) - EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-19
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████████░] 86%
 | Phase 02 P05 | 4min | 3 tasks | 2 files |
 | Phase 03 P01 | 11min | 3 tasks | 6 files |
 | Phase 03 P02 | 7 min | 2 tasks | 2 files |
+| Phase 03 P03 | 11 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Recent decisions affecting current work:
 - Pass-rate loading explicitly scans results/exp1 through results/exp4 and excludes error_analysis outputs.
 - Wilson confidence intervals use stdlib statistics.NormalDist and math.sqrt to avoid adding SciPy or statsmodels.
 - Adaptive and extended-validation rates are threshold trend sources only, not merged old-plus-new evidence.
+- Retry calibration keeps task type as the primary comparison unit and emits family rows only as interpretive summaries under the same attempt budget.
+- Failure taxonomy treats adaptive failure-class counts as claim-eligible evidence and marks retry-only legacy rows as aggregate_only_caveated.
+- Scientific-claim-eligible failure taxonomy rows carry hardness_caveat=None instead of an empty string.
 
 ### Pending Todos
 
@@ -129,8 +133,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: Completed 03-02-PLAN.md
-Stopped at: Completed 03-02-PLAN.md
+Last session: Completed 03-03-PLAN.md
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
 
 **Next Phase:** 03 (Dataset Scope, Statistical Confidence, and Limitations) — ready to execute

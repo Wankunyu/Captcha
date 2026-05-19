@@ -76,7 +76,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md - Create Phase 3 schemas, dataset scope audit, removed-task documentation, and extended-dataset manifest contracts.
 - [x] 03-02-PLAN.md - Generate pass-rate confidence intervals and threshold-sensitivity labels around the 40% operational cutoff.
-- [ ] 03-03-PLAN.md - Build retry-calibration and failure-taxonomy artifacts with raw/scientific rate separation.
+- [x] 03-03-PLAN.md - Build retry-calibration and failure-taxonomy artifacts with raw/scientific rate separation.
 - [ ] 03-04-PLAN.md - Generate paper-safe limitations prose, artifact index, README commands, and integrated validation.
 
 ### Phase 4: SOTA Solver and Larger Benchmark Strengthening
@@ -132,7 +132,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Reproducibility and Safety Foundation | 5/5 | Complete | 2026-05-16 |
 | 2. Adaptive Attacker Main-Body Evidence | 5/5 | Complete | 2026-05-18 |
-| 3. Dataset Scope, Statistical Confidence, and Limitations | 2/4 | In Progress | - |
+| 3. Dataset Scope, Statistical Confidence, and Limitations | 3/4 | In Progress | - |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 0/TBD | Not started | - |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |
 | 6. Ethics, Artifact Availability, and Paper Claim Alignment | 0/TBD | Not started | - |
