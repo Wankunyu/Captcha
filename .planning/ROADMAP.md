@@ -93,7 +93,7 @@ Plans:
   6. Paper-ready baseline tables separate off-the-shelf MLLM API results from specialized solver results and document dataset or threat-model differences.
 **Plans**: 3 plans
 Plans:
-- [ ] 04-01-PLAN.md - Define strict Phase 4 baseline/import/comparison/paper-table schemas and writers.
+- [x] 04-01-PLAN.md - Define strict Phase 4 baseline/import/comparison/paper-table schemas and writers.
 - [ ] 04-02-PLAN.md - Add offline coverage and Halligan-first import-validation CLI paths.
 - [ ] 04-03-PLAN.md - Build comprehensive paper-ready baseline tables and concise notes.
 
