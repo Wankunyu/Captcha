@@ -569,6 +569,27 @@ def _run_eval_with_supported_kwargs(kwargs: dict[str, object]) -> dict[str, Any]
     return run_eval.run_eval(**supported)
 
 
+def _runtime_model_kwargs(provider: str, model_label: str) -> dict[str, object]:
+    if provider == "openai" and model_label.startswith("gpt-5.1_"):
+        effort = model_label.rsplit("_", 1)[1]
+        if effort == "none":
+            return {
+                "model": "gpt-5.1",
+                "thinking": False,
+                "thinking_options": None,
+            }
+        return {
+            "model": "gpt-5.1",
+            "thinking": True,
+            "thinking_options": {"effort": effort},
+        }
+    return {
+        "model": model_label,
+        "thinking": False,
+        "thinking_options": None,
+    }
+
+
 def _load_attempts(path: Path) -> list[AttemptRecord]:
     if not path.is_file():
         raise FileNotFoundError(f"attempt log does not exist: {path}")
@@ -683,11 +704,12 @@ def collect_static_supplemental_runs(
     run_results: list[dict[str, Any]] = []
     for matrix_row in matrix_rows:
         prompts_file = matrix_row.prompt_config.get("prompts_file") or "prompts_optimized.yaml"
+        runtime_model = _runtime_model_kwargs(matrix_row.provider, matrix_row.model)
         run_kwargs: dict[str, object] = {
             "dataset_root": matrix_row.materialized_dataset_root,
             "types": list(matrix_row.task_types),
             "provider": matrix_row.provider,
-            "model": matrix_row.model,
+            "model": runtime_model["model"],
             "max_per_type": None,
             "out_csv": str(Path(matrix_row.output_dir) / "results.csv"),
             "secrets_file": str(secrets_file),
@@ -702,6 +724,8 @@ def collect_static_supplemental_runs(
             "overwrite_revision_output": overwrite,
             "resume_revision_output": resume,
             "max_attempts": 1,
+            "thinking": runtime_model["thinking"],
+            "thinking_options": runtime_model["thinking_options"],
         }
         run_results.append(_run_eval_with_supported_kwargs(run_kwargs))
 
