@@ -1,1 +1,2 @@
 captcha_data/** filter=lfs diff=lfs merge=lfs -text
+expanded_captcha_data/** filter=lfs diff=lfs merge=lfs -text

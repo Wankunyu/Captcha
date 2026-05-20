@@ -126,9 +126,9 @@ def test_manifest_requires_exact_phase041_new_categories(tmp_path) -> None:
         _manifest_row(
             "Symbol_Count",
             source_id="phase04_1-extra-symbol",
-            task_type="Extra_Static_Category",
         ),
     ]
+    too_many_new_categories[-1]["task_type"] = "Extra_Static_Category"
     _write_task_source(sidecar_root, "Extra_Static_Category", "extra.png")
     too_many_new_categories[-1]["source_path"] = str(
         PHASE041_SIDECAR_ROOT / "sources" / "Extra_Static_Category"
@@ -137,7 +137,8 @@ def test_manifest_requires_exact_phase041_new_categories(tmp_path) -> None:
         PHASE041_EVALUATOR_SLICE / "Extra_Static_Category"
     )
     _write_json(manifest_path, {"rows": too_many_new_categories})
-    with pytest.raises(ValueError, match="Symbol_Count.*Relation_Match|Relation_Match.*Symbol_Count"):
+    expected_new_categories = "Symbol_Count.*Relation_Match|Relation_Match.*Symbol_Count"
+    with pytest.raises(ValueError, match=expected_new_categories):
         validate_phase041_manifest(
             load_phase041_manifest(manifest_path, run_id="phase041-test")
         )
