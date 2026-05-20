@@ -395,6 +395,7 @@ def test_collect_adaptive_invokes_runner_and_writes_expanded_summary(
     assert payload["schema_version"] == EXPANDED_ADAPTIVE_SUMMARY_SCHEMA_VERSION
     assert payload["rows"][0]["feedback_mode"] == SEMANTICS["feedback_mode"]
     assert payload["rows"][0]["memory_mode"] == SEMANTICS["memory_mode"]
+    assert payload["rows"][0]["stopping_rule"] == SEMANTICS["stopping_rule"]
     assert sentinel not in adaptive_summary_path.read_text(encoding="utf-8")
 
 

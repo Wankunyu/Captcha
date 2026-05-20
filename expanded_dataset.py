@@ -957,7 +957,7 @@ def _build_expanded_adaptive_summary_rows(
                     adaptive_success_rate=float(row.get("success_rate") or 0.0),
                     feedback_mode=str(row.get("feedback_mode") or FEEDBACK_MODE),
                     memory_mode=str(row.get("memory_mode") or MEMORY_MODE),
-                    stopping_rule=str(row.get("stopping_reason") or STOPPING_RULE),
+                    stopping_rule=STOPPING_RULE,
                     run_manifest_path=str(run_dir / "run_manifest.json"),
                     adaptive_attempt_log_path=str(run_dir / "adaptive_attempts.jsonl"),
                     adaptive_summary_source_path=str(source_summary_path),
