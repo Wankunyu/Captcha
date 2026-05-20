@@ -238,6 +238,7 @@ def test_collect_static_invokes_revision_run_contract_and_writes_summary(
         run_dir = Path(kwargs["revision_output_root"]) / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         _write_json(run_dir / "run_manifest.json", {"run_id": run_id})
+        is_infrastructure_failure = kwargs["provider"] == "fireworks"
         attempt = {
             "schema_version": "cognition.revision.attempt.v1",
             "run_id": run_id,
@@ -248,13 +249,15 @@ def test_collect_static_invokes_revision_run_contract_and_writes_summary(
             "prompt_mode": "opt",
             "provider": kwargs["provider"],
             "model": kwargs["model"],
-            "parsed_answer": {"answer_type": "number", "value": 2},
+            "parsed_answer": None
+            if is_infrastructure_failure
+            else {"answer_type": "number", "value": 2},
             "correct": False,
-            "error_category": None,
+            "error_category": "parse_error" if is_infrastructure_failure else None,
             "latency_ms": 1.0,
             "tokens_in": 0,
             "tokens_out": 0,
-            "cost_usd": 0.0,
+            "cost_usd": None if is_infrastructure_failure else 0.0,
             "timestamp": "2026-05-20T00:00:00Z",
         }
         (run_dir / "attempts.jsonl").write_text(json.dumps(attempt) + "\n", encoding="utf-8")
@@ -302,6 +305,12 @@ def test_collect_static_invokes_revision_run_contract_and_writes_summary(
     assert payload["rows"][0]["scientific_wrong_count"] == 1
     assert payload["rows"][0]["protocol_failure_count"] == 0
     assert payload["rows"][0]["infrastructure_failure_count"] == 0
+    fireworks_row = next(
+        row for row in payload["rows"] if row["provider_model"].startswith("fireworks/")
+    )
+    assert fireworks_row["scientific_wrong_count"] == 0
+    assert fireworks_row["protocol_failure_count"] == 0
+    assert fireworks_row["infrastructure_failure_count"] == 1
     assert sentinel_credential not in static_summary_path.read_text(encoding="utf-8")
 
 

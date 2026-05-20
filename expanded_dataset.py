@@ -608,6 +608,14 @@ def _failure_bucket(attempt: AttemptRecord) -> str | None:
     category = (attempt.error_category or "").lower()
     if not category:
         return "scientific_wrong_count"
+    if (
+        category == "parse_error"
+        and not attempt.parsed_answer
+        and not attempt.tokens_in
+        and not attempt.tokens_out
+        and not attempt.cost_usd
+    ):
+        return "infrastructure_failure_count"
     if any(token in category for token in ("infra", "provider", "network", "timeout", "rate")):
         return "infrastructure_failure_count"
     return "protocol_failure_count"
