@@ -50,6 +50,27 @@ ALLOWED_CLAIM_USES = {
     "appendix_context",
     "excluded_from_claim",
 }
+ALLOWED_SOURCE_KINDS = {
+    "peer_reviewed_paper_dataset",
+    "open_source_dataset",
+    "gpt_image_open_captchaworld_style",
+    "synthetic_fixture",
+}
+REAL_WORLD_SOURCE_KINDS = {
+    "peer_reviewed_paper_dataset",
+    "open_source_dataset",
+}
+PAPER_ELIGIBLE_SOURCE_KINDS = REAL_WORLD_SOURCE_KINDS | {
+    "gpt_image_open_captchaworld_style"
+}
+GENERATED_SOURCE_MARKERS = (
+    "deterministic offline generated",
+    "offline generated",
+    "synthetic",
+    "manual fixture",
+    "toy fixture",
+    "pil generated",
+)
 
 RowModel = TypeVar("RowModel", bound=BaseModel)
 
@@ -102,6 +123,10 @@ class ExpandedDatasetManifestRow(BaseModel):
     run_id: str
     source_id: str
     source_path: str
+    source_kind: str
+    source_citation: str
+    source_license: str
+    source_provenance_notes: str
     evidence_origin: str
     slice_type: str
     task_type: str
@@ -130,6 +155,11 @@ class ExpandedDatasetManifestRow(BaseModel):
     def validate_evidence_origin(cls, value: str) -> str:
         return _validate_allowed(value, ALLOWED_EVIDENCE_ORIGINS, "evidence_origin")
 
+    @field_validator("source_kind")
+    @classmethod
+    def validate_source_kind(cls, value: str) -> str:
+        return _validate_allowed(value, ALLOWED_SOURCE_KINDS, "source_kind")
+
     @field_validator("slice_type")
     @classmethod
     def validate_slice_type(cls, value: str) -> str:
@@ -151,6 +181,54 @@ class ExpandedDatasetManifestRow(BaseModel):
 
     @model_validator(mode="after")
     def validate_manifest_caveats(self) -> "ExpandedDatasetManifestRow":
+        selected_or_evaluated = self.evaluation_status != "excluded_with_reason"
+        if selected_or_evaluated:
+            if self.source_kind not in PAPER_ELIGIBLE_SOURCE_KINDS:
+                raise ValueError(
+                    "selected expanded sidecar rows must come from real-world "
+                    "paper datasets, open-source CAPTCHA datasets, or GPT Image "
+                    "Open CaptchaWorld-style generated samples"
+                )
+            _require_text(
+                self.source_citation,
+                "source_citation",
+                "row is selected for expanded sidecar evaluation",
+            )
+            _require_text(
+                self.source_license,
+                "source_license",
+                "row is selected for expanded sidecar evaluation",
+            )
+            _require_text(
+                self.source_provenance_notes,
+                "source_provenance_notes",
+                "row is selected for expanded sidecar evaluation",
+            )
+            provenance_text = " ".join(
+                [
+                    self.metadata_alignment_notes,
+                    self.limitation_notes,
+                    self.static_compatibility_notes,
+                    self.source_provenance_notes,
+                ]
+            ).lower()
+            if self.source_kind in REAL_WORLD_SOURCE_KINDS:
+                generated_matches = [
+                    marker
+                    for marker in GENERATED_SOURCE_MARKERS
+                    if marker in provenance_text
+                ]
+                if generated_matches:
+                    raise ValueError(
+                        "real-world expanded sidecar rows must not describe generated "
+                        f"samples; generated source markers found: {sorted(generated_matches)}"
+                    )
+            if self.source_kind == "gpt_image_open_captchaworld_style":
+                if "gpt image" not in provenance_text or "open captchaworld" not in provenance_text:
+                    raise ValueError(
+                        "GPT Image expanded sidecar rows must state GPT Image and "
+                        "Open CaptchaWorld-style provenance"
+                    )
         if self.evidence_origin == "new_category":
             _require_text(
                 self.static_compatibility_notes,

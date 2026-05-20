@@ -1,4 +1,10 @@
-"""Generate Phase 04.1 offline top-up samples for new task categories."""
+"""Generate prototype Phase 04.1 offline top-up samples for new task categories.
+
+These local scripted samples are not paper-eligible expanded sidecar evidence under
+the corrected provenance definition. Use real paper/open-source CAPTCHA samples or
+GPT Image Open CaptchaWorld-style generated samples with recorded provenance for
+paper-facing Phase 04.1 reruns.
+"""
 
 from __future__ import annotations
 

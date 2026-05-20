@@ -29,6 +29,12 @@ def _manifest_row(task_type: str) -> dict[str, object]:
     return {
         "source_id": f"phase04_1-{task_type}",
         "source_path": str(PHASE041_SIDECAR_ROOT / "sources" / task_type),
+        "source_kind": "open_source_dataset",
+        "source_citation": "Open CaptchaWorld-compatible test fixture",
+        "source_license": "test fixture license",
+        "source_provenance_notes": (
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+        ),
         "materialized_path": str(PHASE041_EVALUATOR_SLICE / task_type),
         "evidence_origin": "new_category" if is_new else "supplemented_category",
         "slice_type": "new_category" if is_new else "supplement_existing",

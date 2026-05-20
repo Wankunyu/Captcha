@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_for_planning
-stopped_at: Completed 04.1-06-PLAN.md
-last_updated: "2026-05-20T12:22:00Z"
-last_activity: 2026-05-20 - Completed Phase 04.1 paper-facing expanded-dataset outputs
+status: needs_dataset_provenance_fix
+stopped_at: Reopened Phase 04.1 after sidecar provenance definition correction
+last_updated: "2026-05-20T12:40:00Z"
+last_activity: 2026-05-20 - Corrected expanded sidecar dataset definition and reopened provenance gap
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 4
   total_plans: 23
   completed_plans: 23
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 5 - Defense Methodology and HCI Scope
+**Current focus:** Phase 04.1 - Expanded Dataset provenance correction
 
 ## Current Position
 
-Phase: 5
-Plan: Not planned yet
-Status: Ready to plan next phase
-Last activity: 2026-05-20 - Completed Phase 04.1 paper-facing expanded-dataset outputs
+Phase: 04.1
+Plan: Dataset provenance correction before Phase 5
+Status: Reopened after corrected sidecar definition
+Last activity: 2026-05-20 - Corrected expanded sidecar dataset definition and reopened provenance gap
 
-Progress: [██████████] 100%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
@@ -127,6 +127,8 @@ Recent decisions affecting current work:
 - Adaptive supplemental runs use Exp3-style settings over the expanded sidecar slice: prompt mode `opt`, attempt budget 6, without-replacement sampling, binary pass/fail feedback, explicit policy-memory notes, and first-success-or-budget stopping.
 - Gemini response schemas strip unsupported `additionalProperties` before API submission so reflection memory remains active for Gemini adaptive runs.
 - Phase 04.1 paper outputs preserve divergence from original Exp2 cutoff direction, separate direct expanded evidence from contextual SOTA rows, and expose scientific/protocol/infrastructure failure counts.
+- Corrected Phase 04.1 sidecar definition: paper-eligible expanded sidecar rows must be real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded provenance.
+- The current locally scripted `Symbol_Count` and `Relation_Match` rows are prototype fixtures, not paper-eligible direct expanded sidecar evidence until replaced or regenerated under the corrected provenance definition.
 
 ### Pending Todos
 
@@ -138,8 +140,8 @@ None yet.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
 - [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
-- [Resolved in Phase 04.1]: Expanded-dataset sidecar data, static/adaptive supplemental runs, paper output rows, divergence notes, and claim-boundary artifacts are complete.
-- [Phase 5]: Defense methodology should use Phase 04.1 direct expanded evidence without erasing CaptchaWorld and population-level deployment limits.
+- [Phase 04.1 reopened]: Replace current scripted `Symbol_Count` and `Relation_Match` prototype rows with real paper/open-source CAPTCHA samples or GPT Image generated Open CaptchaWorld-style samples with recorded provenance, then rerun static/adaptive/paper outputs.
+- [Phase 5]: Defense methodology should wait for the corrected Phase 04.1 paper-eligible expanded evidence and preserve CaptchaWorld and population-level deployment limits.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
 ### Quick Tasks Completed
@@ -162,12 +164,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-20T12:22:00Z
-Stopped at: Completed 04.1-06-PLAN.md
+Last session: 2026-05-20T12:40:00Z
+Stopped at: Reopened Phase 04.1 provenance correction
 Resume file: None
 
-**Next Step:** Plan Phase 5 (Defense Methodology and HCI Scope)
+**Next Step:** Replace or regenerate the two non-paper-eligible synthetic new-category rows, then rerun Phase 04.1 static/adaptive/paper outputs.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
-**Completed Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — 6 plans — 2026-05-20
+**Reopened Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — provenance correction required before Phase 5

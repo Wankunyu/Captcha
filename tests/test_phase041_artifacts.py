@@ -9,6 +9,7 @@ from pydantic import BaseModel, ValidationError
 from phase041_artifacts import (
     ALLOWED_EVIDENCE_ORIGINS,
     ALLOWED_SLICE_TYPES,
+    ALLOWED_SOURCE_KINDS,
     EXPANDED_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     EXPANDED_CLAIM_BOUNDARY_SCHEMA_VERSION,
     EXPANDED_DATASET_MANIFEST_SCHEMA_VERSION,
@@ -49,6 +50,12 @@ def _manifest_row(**overrides: object) -> ExpandedDatasetManifestRow:
         "run_id": "phase041-test",
         "source_id": "supplement-dice-count",
         "source_path": "expanded_captcha_data/phase04_1/sources/dice",
+        "source_kind": "open_source_dataset",
+        "source_citation": "Open CaptchaWorld-compatible test fixture",
+        "source_license": "test fixture license",
+        "source_provenance_notes": (
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+        ),
         "evidence_origin": "supplemented_category",
         "slice_type": "supplement_existing",
         "task_type": "Dice_Count",
@@ -273,6 +280,10 @@ def test_manifest_requires_d08_provenance_fields() -> None:
     required_fields = (
         "source_id",
         "source_path",
+        "source_kind",
+        "source_citation",
+        "source_license",
+        "source_provenance_notes",
         "task_type",
         "task_family",
         "sample_count",
@@ -302,6 +313,11 @@ def test_manifest_vocabularies_and_new_category_caveat() -> None:
     assert {"original", "supplement_existing", "new_category"}.issubset(
         ALLOWED_SLICE_TYPES
     )
+    assert {
+        "peer_reviewed_paper_dataset",
+        "open_source_dataset",
+        "gpt_image_open_captchaworld_style",
+    }.issubset(ALLOWED_SOURCE_KINDS)
 
     for evidence_origin in (
         "original_captchaworld",
@@ -326,6 +342,28 @@ def test_manifest_vocabularies_and_new_category_caveat() -> None:
             evidence_origin="new_category",
             slice_type="new_category",
             static_compatibility_notes="",
+        )
+
+
+def test_manifest_source_provenance_allows_gpt_image_and_rejects_local_synthetic() -> None:
+    gpt_image_row = _manifest_row(
+        source_kind="gpt_image_open_captchaworld_style",
+        source_citation="GPT Image generated Open CaptchaWorld-style sidecar sample set",
+        source_license="Generated sample usage follows project artifact terms",
+        source_provenance_notes=(
+            "GPT Image generated CAPTCHA-style image modeled after Open CaptchaWorld "
+            "task layouts with recorded prompts and local ground truth."
+        ),
+    )
+    assert gpt_image_row.source_kind == "gpt_image_open_captchaworld_style"
+
+    with pytest.raises(ValidationError, match="selected expanded sidecar rows"):
+        _manifest_row(source_kind="synthetic_fixture")
+
+    with pytest.raises(ValidationError, match="real-world expanded sidecar rows"):
+        _manifest_row(
+            source_kind="open_source_dataset",
+            source_provenance_notes="deterministic offline generated local PIL samples",
         )
 
 

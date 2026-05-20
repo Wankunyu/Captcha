@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Adaptive Attacker Main-Body Evidence** - Run, analyze, and package session-memory adaptive attacker evidence for the main paper body. Completed 2026-05-18.
 - [x] **Phase 3: Dataset Scope, Statistical Confidence, and Limitations** - Produce dataset-scope, statistical-confidence, retry-calibration, infrastructure-error, and limitations artifacts. Completed 2026-05-19.
 - [x] **Phase 4: SOTA Solver and Larger Benchmark Strengthening** - Add fair comparison hooks for Halligan, Oedipus, specialized CAPTCHA solvers, and compatible larger external benchmark subsets. Completed 2026-05-19.
-- [x] **Phase 04.1: Expanded Dataset and Supplemental Experiments** (INSERTED) - Expand `captcha_data` or compatible offline dataset subsets, run supplemental experiments, and update paper claims/tables with directly evaluated expanded-dataset evidence. Completed 2026-05-20.
+- [ ] **Phase 04.1: Expanded Dataset and Supplemental Experiments** (INSERTED) - Expand `captcha_data` or compatible offline dataset subsets, run supplemental experiments, and update paper claims/tables with directly evaluated expanded-dataset evidence. Reopened 2026-05-20 for corrected sidecar provenance definition.
 - [ ] **Phase 5: Defense Methodology and HCI Scope** - Convert measured structural hardness evidence into an actionable practitioner methodology with explicit human-clarity and HCI limitations.
 - [ ] **Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment** - Tie reviewer requests, disclosure details, artifact availability, figures/tables, and manuscript claims to regenerated, redacted, shareable artifacts.
 
@@ -113,6 +113,8 @@ Plans:
 - [x] 04.1-04-PLAN.md - Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts.
 - [x] 04.1-05-PLAN.md - Gate and run the Adaptive Attacker Exp3-style supplemental matrix under Phase 2 threat-model controls.
 - [x] 04.1-06-PLAN.md - Generate expanded-dataset analysis, paper table rows, divergence notes, and claim-boundary outputs.
+
+**Correction 2026-05-20:** The expanded sidecar definition is restricted to paper-eligible provenance: real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded generation provenance. The current locally scripted `Symbol_Count` and `Relation_Match` prototype rows are not paper-eligible expanded sidecar evidence until replaced or regenerated under this provenance definition; downstream static/adaptive/paper outputs must be rerun after replacement.
 
 ### Phase 5: Defense Methodology and HCI Scope
 **Goal**: Researchers can generate an actionable defense methodology grounded in measured structural hardness evidence while clearly scoping human-clarity and formal HCI claims.
