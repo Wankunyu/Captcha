@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: planning
 stopped_at: Phase 04.1 context gathered
-last_updated: "2026-05-20T06:51:16.211Z"
+last_updated: "2026-05-20T08:12:57.599Z"
 last_activity: "2026-05-20 - Inserted Phase 04.1: Expanded Dataset and Supplemental Experiments"
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 17
+  total_plans: 23
   completed_plans: 17
-  percent: 100
+  percent: 74
 ---
 
 # Project State
@@ -152,3 +152,5 @@ Resume file: .planning/phases/04.1-expanded-dataset-and-supplemental-experiments
 **Next Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) - ready to plan
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
+
+**Planned Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — 6 plans — 2026-05-20T08:12:57.579Z
