@@ -215,10 +215,14 @@ class ExpandedPreflightMatrixRow(BaseModel):
     model: str
     provider_model: str
     run_scope: str
+    manifest_path: str
     manifest_sha256: str
-    prompt_config: str
+    sidecar_dataset_root: str
+    materialized_dataset_root: str
+    task_types: list[str]
+    prompt_config: dict[str, Any]
     expected_request_count: int = Field(ge=0)
-    cost_preview: str
+    cost_preview: dict[str, Any]
     output_dir: str
     preflight_report_path: str
 
@@ -235,6 +239,12 @@ class ExpandedPreflightMatrixRow(BaseModel):
     @classmethod
     def validate_run_scope(cls, value: str) -> str:
         return _validate_allowed(value, ALLOWED_RUN_SCOPES, "run_scope")
+
+    @field_validator("task_types")
+    @classmethod
+    def validate_task_types(cls, values: list[str]) -> list[str]:
+        _require_items(values, "task_types", "building an expanded preflight matrix row")
+        return values
 
 
 class ExpandedStaticSummaryRow(BaseModel):

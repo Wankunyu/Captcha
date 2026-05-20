@@ -1,4 +1,5 @@
 import argparse
+import inspect
 import json
 import re
 import shutil
@@ -8,16 +9,23 @@ from typing import Any
 
 from pydantic import ValidationError
 
+import revision_preflight
+import run_eval
 from phase041_artifacts import (
     ExpandedDatasetManifestRow,
+    ExpandedPreflightMatrixRow,
     ExpandedRunMatrixRow,
+    ExpandedStaticSummaryRow,
     write_expanded_run_matrix,
+    write_expanded_preflight_matrix,
+    write_expanded_static_summary,
 )
-from revision_artifacts import revision_run_dir
+from revision_artifacts import AttemptRecord, revision_run_dir, sha256_file
 
 
 PHASE041_SIDECAR_ROOT = Path("expanded_captcha_data/phase04_1")
 PHASE041_EVALUATOR_SLICE = PHASE041_SIDECAR_ROOT / "evaluator_slice"
+PHASE041_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_1_static_supplemental"
 PHASE041_SUPPLEMENTED_TASK_TYPES = {"Dice_Count", "Click_Order", "Patch_Select", "Geometry_Click"}
 PHASE041_NEW_TASK_TYPES = {"Symbol_Count", "Relation_Match"}
 
@@ -49,6 +57,14 @@ BANNED_STATIC_COMPATIBILITY_TERMS = (
 def _read_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _write_json(path: Path, payload: object) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    return path
 
 
 def _is_relative_to(path: Path, root: Path) -> bool:
@@ -414,6 +430,331 @@ def _run_matrix(args: argparse.Namespace) -> dict[str, object]:
     }
 
 
+def _validate_materialized_dataset_root(
+    dataset_root: Path,
+    task_types: list[str],
+) -> None:
+    if not dataset_root.is_dir():
+        raise FileNotFoundError(f"materialized dataset root does not exist: {dataset_root}")
+    for task_type in task_types:
+        ground_truth_path = dataset_root / task_type / "ground_truth.json"
+        ground_truth = _read_json(ground_truth_path)
+        if not isinstance(ground_truth, dict) or not ground_truth:
+            raise ValueError(f"{ground_truth_path} must contain a non-empty JSON object")
+
+
+def _preflight_report_payload(report: object) -> dict[str, Any]:
+    if hasattr(report, "model_dump"):
+        return report.model_dump(mode="json")  # type: ignore[no-any-return]
+    if isinstance(report, dict):
+        return dict(report)
+    raise TypeError("preflight report must be a pydantic model or dict")
+
+
+def build_static_preflight_matrix(
+    manifest_path: str | Path = PHASE041_SIDECAR_ROOT / "manifest.json",
+    dataset_root: str | Path = PHASE041_EVALUATOR_SLICE,
+    results_dir: str | Path = "results",
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE041_STATIC_SUPPLEMENTAL_RUN_ID,
+    prompts_file: str | Path = "prompts_optimized.yaml",
+    prompt_mode: str = "opt",
+    max_attempts: int = 1,
+    resume: bool = True,
+    overwrite: bool = False,
+    write_reports: bool = False,
+    pricing_file: str | Path | None = None,
+) -> list[ExpandedPreflightMatrixRow]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+    if max_attempts != 1:
+        raise ValueError("Phase 04.1 static supplemental runs require max_attempts=1")
+
+    manifest_path = Path(manifest_path)
+    dataset_root = Path(dataset_root)
+    output_root = Path(output_root)
+    rows = load_phase041_manifest(manifest_path, run_id=run_id)
+    validate_phase041_manifest(rows)
+    task_types = sorted({row.task_type for row in rows})
+    _validate_materialized_dataset_root(dataset_root, task_types)
+
+    run_matrix_rows = build_paper_facing_run_matrix(
+        results_dir=Path(results_dir),
+        materialized_dataset_root=dataset_root,
+        output_root=output_root,
+        run_id_prefix=run_id,
+    )
+    static_run_dir = revision_run_dir(output_root, run_id)
+    preflight_reports_dir = static_run_dir / "preflight_reports"
+    manifest_hash = sha256_file(manifest_path) or ""
+
+    preflight_rows: list[ExpandedPreflightMatrixRow] = []
+    for matrix_row in run_matrix_rows:
+        effective_overwrite = overwrite or matrix_row.overwrite
+        effective_resume = False if effective_overwrite else (resume or matrix_row.resume)
+        preflight_args = argparse.Namespace(
+            dataset_root=str(dataset_root),
+            types=list(matrix_row.task_types),
+            prompts_file=str(prompts_file),
+            few_shot_config=None,
+            prompt_prefix=None,
+            prompt_suffix=None,
+            pricing_file=str(pricing_file) if pricing_file else None,
+            output_root=str(output_root),
+            run_id=matrix_row.run_id,
+            provider=matrix_row.provider,
+            model=matrix_row.model,
+            prompt_mode=prompt_mode,
+            max_per_type=None,
+            max_attempts=max_attempts,
+            overwrite=effective_overwrite,
+            resume=effective_resume,
+            write_report=False,
+        )
+        report = revision_preflight.build_report(preflight_args)
+        report_payload = _preflight_report_payload(report)
+        report_path = preflight_reports_dir / f"{_slug(matrix_row.provider_model)}.json"
+        if write_reports:
+            _write_json(report_path, report_payload)
+
+        preflight_rows.append(
+            ExpandedPreflightMatrixRow(
+                run_id=matrix_row.run_id,
+                provider=matrix_row.provider,
+                model=matrix_row.model,
+                provider_model=matrix_row.provider_model,
+                run_scope="static",
+                manifest_path=str(manifest_path),
+                manifest_sha256=manifest_hash,
+                sidecar_dataset_root=str(manifest_path.parent),
+                materialized_dataset_root=str(dataset_root),
+                task_types=list(matrix_row.task_types),
+                prompt_config=dict(report_payload.get("prompt_config") or {}),
+                expected_request_count=int(report_payload.get("expected_request_count") or 0),
+                cost_preview=dict(report_payload.get("cost_preview") or {}),
+                output_dir=str(report_payload.get("output_dir") or matrix_row.output_root),
+                preflight_report_path=str(report_path),
+            )
+        )
+
+    write_expanded_preflight_matrix(
+        static_run_dir / "expanded_preflight_matrix.csv",
+        static_run_dir / "expanded_preflight_matrix.json",
+        preflight_rows,
+    )
+    return preflight_rows
+
+
+def _load_preflight_matrix(path: Path) -> list[ExpandedPreflightMatrixRow]:
+    if not path.is_file():
+        raise FileNotFoundError(f"preflight matrix does not exist: {path}")
+    payload = _read_json(path)
+    raw_rows = payload.get("rows") if isinstance(payload, dict) else payload
+    if not isinstance(raw_rows, list):
+        raise ValueError("preflight matrix must contain a rows array")
+    return [ExpandedPreflightMatrixRow.model_validate(row) for row in raw_rows]
+
+
+def _run_eval_with_supported_kwargs(kwargs: dict[str, object]) -> dict[str, Any]:
+    signature = inspect.signature(run_eval.run_eval)
+    supports_arbitrary_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+    if supports_arbitrary_kwargs:
+        return run_eval.run_eval(**kwargs)
+    supported = {key: value for key, value in kwargs.items() if key in signature.parameters}
+    return run_eval.run_eval(**supported)
+
+
+def _load_attempts(path: Path) -> list[AttemptRecord]:
+    if not path.is_file():
+        raise FileNotFoundError(f"attempt log does not exist: {path}")
+    attempts = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                attempts.append(AttemptRecord.model_validate_json(line))
+    return attempts
+
+
+def _failure_bucket(attempt: AttemptRecord) -> str | None:
+    if attempt.correct:
+        return None
+    category = (attempt.error_category or "").lower()
+    if not category:
+        return "scientific_wrong_count"
+    if any(token in category for token in ("infra", "provider", "network", "timeout", "rate")):
+        return "infrastructure_failure_count"
+    return "protocol_failure_count"
+
+
+def _build_static_summary_rows(
+    matrix_rows: list[ExpandedPreflightMatrixRow],
+    manifest_rows: list[ExpandedDatasetManifestRow],
+) -> list[ExpandedStaticSummaryRow]:
+    manifest_by_task = {row.task_type: row for row in manifest_rows}
+    summary_rows: list[ExpandedStaticSummaryRow] = []
+    for matrix_row in matrix_rows:
+        run_dir = Path(matrix_row.output_dir)
+        attempts = _load_attempts(run_dir / "attempts.jsonl")
+        counts_by_task: dict[str, dict[str, int]] = defaultdict(
+            lambda: {
+                "attempt_count": 0,
+                "success_count": 0,
+                "scientific_wrong_count": 0,
+                "protocol_failure_count": 0,
+                "infrastructure_failure_count": 0,
+            }
+        )
+        for attempt in attempts:
+            counts = counts_by_task[attempt.task_type]
+            counts["attempt_count"] += 1
+            counts["success_count"] += int(attempt.correct)
+            bucket = _failure_bucket(attempt)
+            if bucket:
+                counts[bucket] += 1
+
+        for task_type, counts in sorted(counts_by_task.items()):
+            manifest_row = manifest_by_task.get(task_type)
+            summary_rows.append(
+                ExpandedStaticSummaryRow(
+                    run_id=matrix_row.run_id,
+                    provider=matrix_row.provider,
+                    model=matrix_row.model,
+                    provider_model=matrix_row.provider_model,
+                    task_type=task_type,
+                    task_family=manifest_row.task_family if manifest_row else "unknown",
+                    evidence_origin=(
+                        manifest_row.evidence_origin if manifest_row else "supplemented_category"
+                    ),
+                    slice_type=manifest_row.slice_type if manifest_row else "supplement_existing",
+                    sample_count=manifest_row.sample_count if manifest_row else 0,
+                    attempt_count=counts["attempt_count"],
+                    success_count=counts["success_count"],
+                    scientific_wrong_count=counts["scientific_wrong_count"],
+                    protocol_failure_count=counts["protocol_failure_count"],
+                    infrastructure_failure_count=counts["infrastructure_failure_count"],
+                    pass_rate=(
+                        counts["success_count"] / counts["attempt_count"]
+                        if counts["attempt_count"]
+                        else None
+                    ),
+                    run_manifest_path=str(run_dir / "run_manifest.json"),
+                    attempt_log_path=str(run_dir / "attempts.jsonl"),
+                    summary_source_path=str(run_dir / "summary.json"),
+                    claim_use="main_body_direct_evidence",
+                )
+            )
+    return summary_rows
+
+
+def collect_static_supplemental_runs(
+    preflight_matrix_path: str | Path,
+    output_root: str | Path = "results/revision",
+    manifest_path: str | Path | None = None,
+    *,
+    resume: bool = True,
+    overwrite: bool = False,
+    secrets_file: str | Path = "secrets.yaml",
+    stream: bool = True,
+    timeout_sec: float = 600.0,
+    seed: int = 1234,
+) -> dict[str, object]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+
+    preflight_matrix_path = Path(preflight_matrix_path)
+    output_root = Path(output_root)
+    matrix_rows = _load_preflight_matrix(preflight_matrix_path)
+    if not matrix_rows:
+        raise ValueError("preflight matrix must contain at least one row")
+
+    resolved_manifest_path = Path(manifest_path or matrix_rows[0].manifest_path)
+    manifest_rows = load_phase041_manifest(
+        resolved_manifest_path,
+        run_id=PHASE041_STATIC_SUPPLEMENTAL_RUN_ID,
+    )
+    validate_phase041_manifest(manifest_rows)
+
+    run_results: list[dict[str, Any]] = []
+    for matrix_row in matrix_rows:
+        prompts_file = matrix_row.prompt_config.get("prompts_file") or "prompts_optimized.yaml"
+        run_kwargs: dict[str, object] = {
+            "dataset_root": matrix_row.materialized_dataset_root,
+            "types": list(matrix_row.task_types),
+            "provider": matrix_row.provider,
+            "model": matrix_row.model,
+            "max_per_type": None,
+            "out_csv": str(Path(matrix_row.output_dir) / "results.csv"),
+            "secrets_file": str(secrets_file),
+            "stream": stream,
+            "timeout_sec": timeout_sec,
+            "seed": seed,
+            "prompts_file": str(prompts_file),
+            "prompt_mode": "opt",
+            "revision_run_id": matrix_row.run_id,
+            "revision_output_root": str(output_root),
+            "write_attempts": True,
+            "overwrite_revision_output": overwrite,
+            "resume_revision_output": resume,
+            "max_attempts": 1,
+        }
+        run_results.append(_run_eval_with_supported_kwargs(run_kwargs))
+
+    summary_rows = _build_static_summary_rows(matrix_rows, manifest_rows)
+    summary_dir = preflight_matrix_path.parent
+    summary_csv = summary_dir / "expanded_static_summary.csv"
+    summary_json = summary_dir / "expanded_static_summary.json"
+    write_expanded_static_summary(summary_csv, summary_json, summary_rows)
+    return {
+        "run_count": len(matrix_rows),
+        "run_result_count": len(run_results),
+        "static_summary_row_count": len(summary_rows),
+        "static_summary_csv": str(summary_csv),
+        "static_summary_json": str(summary_json),
+    }
+
+
+def _run_preflight_matrix(args: argparse.Namespace) -> dict[str, object]:
+    rows = build_static_preflight_matrix(
+        manifest_path=Path(args.manifest),
+        dataset_root=Path(args.dataset_root),
+        results_dir=Path(args.results_dir),
+        output_root=Path(args.output_root),
+        run_id=args.run_id,
+        prompts_file=Path(args.prompts_file),
+        prompt_mode=args.prompt_mode,
+        max_attempts=args.max_attempts,
+        resume=args.resume,
+        overwrite=args.overwrite,
+        write_reports=args.write_reports,
+        pricing_file=Path(args.pricing_file) if args.pricing_file else None,
+    )
+    run_dir = revision_run_dir(args.output_root, args.run_id)
+    return {
+        "row_count": len(rows),
+        "output_csv": str(run_dir / "expanded_preflight_matrix.csv"),
+        "output_json": str(run_dir / "expanded_preflight_matrix.json"),
+        "preflight_reports_dir": str(run_dir / "preflight_reports"),
+    }
+
+
+def _run_collect_static(args: argparse.Namespace) -> dict[str, object]:
+    return collect_static_supplemental_runs(
+        preflight_matrix_path=Path(args.preflight_matrix),
+        output_root=Path(args.output_root),
+        manifest_path=Path(args.manifest) if args.manifest else None,
+        resume=args.resume,
+        overwrite=args.overwrite,
+        secrets_file=Path(args.secrets_file),
+        stream=not args.no_stream,
+        timeout_sec=args.timeout_sec,
+        seed=args.seed,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Validate and materialize Phase 04.1 expanded sidecar datasets."
@@ -451,6 +792,51 @@ def build_parser() -> argparse.ArgumentParser:
     run_matrix.add_argument("--output-csv", default=None)
     run_matrix.add_argument("--output-json", default=None)
 
+    preflight_matrix = subparsers.add_parser(
+        "preflight-matrix",
+        help="Build static supplemental preflight reports for all paper-facing rows.",
+    )
+    preflight_matrix.add_argument(
+        "--manifest",
+        default=str(PHASE041_SIDECAR_ROOT / "manifest.json"),
+    )
+    preflight_matrix.add_argument("--dataset-root", default=str(PHASE041_EVALUATOR_SLICE))
+    preflight_matrix.add_argument("--results-dir", default="./results")
+    preflight_matrix.add_argument("--output-root", default="./results/revision")
+    preflight_matrix.add_argument("--run-id", default=PHASE041_STATIC_SUPPLEMENTAL_RUN_ID)
+    preflight_matrix.add_argument("--prompts-file", default="./prompts_optimized.yaml")
+    preflight_matrix.add_argument(
+        "--prompt-mode",
+        choices=["auto", "gt", "opt"],
+        default="opt",
+    )
+    preflight_matrix.add_argument("--pricing-file", default=None)
+    preflight_matrix.add_argument("--max-attempts", type=int, default=1)
+    preflight_matrix.add_argument("--overwrite", action="store_true")
+    preflight_matrix.add_argument("--resume", action="store_true")
+    preflight_matrix.add_argument("--write-reports", action="store_true")
+
+    collect_static = subparsers.add_parser(
+        "collect-static",
+        help="Run static supplemental revision evaluations from a preflight matrix.",
+    )
+    collect_static.add_argument(
+        "--preflight-matrix",
+        default=str(
+            Path("results/revision")
+            / PHASE041_STATIC_SUPPLEMENTAL_RUN_ID
+            / "expanded_preflight_matrix.json"
+        ),
+    )
+    collect_static.add_argument("--output-root", default="./results/revision")
+    collect_static.add_argument("--manifest", default=None)
+    collect_static.add_argument("--secrets-file", default="./secrets.yaml")
+    collect_static.add_argument("--resume", action="store_true")
+    collect_static.add_argument("--overwrite", action="store_true")
+    collect_static.add_argument("--no-stream", action="store_true")
+    collect_static.add_argument("--timeout-sec", type=float, default=600.0)
+    collect_static.add_argument("--seed", type=int, default=1234)
+
     return parser
 
 
@@ -464,9 +850,19 @@ def main(argv: list[str] | None = None) -> int:
             summary = _run_materialize(args)
         elif args.command == "run-matrix":
             summary = _run_matrix(args)
+        elif args.command == "preflight-matrix":
+            summary = _run_preflight_matrix(args)
+        elif args.command == "collect-static":
+            summary = _run_collect_static(args)
         else:
             parser.error(f"unknown command: {args.command}")
-    except (OSError, ValueError, ValidationError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        TypeError,
+        ValueError,
+        ValidationError,
+        json.JSONDecodeError,
+    ) as exc:
         parser.error(str(exc))
 
     print(json.dumps(summary, indent=2, ensure_ascii=False))

@@ -20,6 +20,16 @@ from phase041_artifacts import (
 from revision_preflight import PreflightCostPreview, PreflightReport, PreflightTaskSummary
 
 
+PAPER_FACING_PROVIDER_MODELS_LITERAL = [
+    "openai/gpt-5",
+    "openai/gpt-5.1_medium",
+    "openai/gpt-5.1_none",
+    "anthropic/claude-sonnet-4-5",
+    "gemini/gemini-2.5-flash",
+    "gemini/gemini-2.5-pro",
+    "fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct",
+]
+
 TASK_TYPES = [
     "Click_Order",
     "Dice_Count",
@@ -78,7 +88,8 @@ def _write_phase041_sidecar(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 def _write_exp2_rows(tmp_path: Path) -> Path:
     results_dir = tmp_path / "results"
-    for provider_model in PAPER_FACING_PROVIDER_MODELS:
+    assert PAPER_FACING_PROVIDER_MODELS_LITERAL == PAPER_FACING_PROVIDER_MODELS
+    for provider_model in PAPER_FACING_PROVIDER_MODELS_LITERAL:
         provider, model = provider_model.split("/", 1)
         _write_json(results_dir / "exp2" / provider / model / "results.json", [])
     return results_dir
@@ -153,7 +164,8 @@ def test_preflight_matrix_never_constructs_providers(tmp_path, monkeypatch) -> N
 
     assert [row.provider_model for row in rows] == PAPER_FACING_PROVIDER_MODELS
     assert [f"{call.provider}/{call.model}" for call in calls] == PAPER_FACING_PROVIDER_MODELS
-    assert len(list((output_root / "phase04_1_static_supplemental" / "preflight_reports").glob("*.json"))) == 7
+    reports_dir = output_root / "phase04_1_static_supplemental" / "preflight_reports"
+    assert len(list(reports_dir.glob("*.json"))) == 7
     first = rows[0]
     assert first.manifest_sha256
     assert first.sidecar_dataset_root == str(manifest_path.parent)
@@ -166,7 +178,11 @@ def test_preflight_matrix_never_constructs_providers(tmp_path, monkeypatch) -> N
     assert sentinel_credential not in matrix_path.read_text(encoding="utf-8")
 
 
-def _preflight_rows(tmp_path: Path, manifest_path: Path, dataset_root: Path) -> list[ExpandedPreflightMatrixRow]:
+def _preflight_rows(
+    tmp_path: Path,
+    manifest_path: Path,
+    dataset_root: Path,
+) -> list[ExpandedPreflightMatrixRow]:
     output_root = tmp_path / "results" / "revision"
     rows = []
     for provider_model in PAPER_FACING_PROVIDER_MODELS:
@@ -189,14 +205,20 @@ def _preflight_rows(tmp_path: Path, manifest_path: Path, dataset_root: Path) -> 
                 cost_preview={"unavailable_reason": "pricing metadata not provided"},
                 output_dir=str(output_root / run_id),
                 preflight_report_path=str(
-                    output_root / "phase04_1_static_supplemental" / "preflight_reports" / f"{run_id}.json"
+                    output_root
+                    / "phase04_1_static_supplemental"
+                    / "preflight_reports"
+                    / f"{run_id}.json"
                 ),
             )
         )
     return rows
 
 
-def test_collect_static_invokes_revision_run_contract_and_writes_summary(tmp_path, monkeypatch) -> None:
+def test_collect_static_invokes_revision_run_contract_and_writes_summary(
+    tmp_path,
+    monkeypatch,
+) -> None:
     sentinel_credential = "REDACTED_OPENAI_API_KEY"
     _, dataset_root, manifest_path = _write_phase041_sidecar(tmp_path)
     output_root = tmp_path / "results" / "revision"
@@ -256,7 +278,9 @@ def test_collect_static_invokes_revision_run_contract_and_writes_summary(tmp_pat
     assert first_call["prompt_mode"] == "opt"
     assert first_call["max_attempts"] == 1
     assert first_call["resume_revision_output"] is True
-    static_summary_path = output_root / "phase04_1_static_supplemental" / "expanded_static_summary.json"
+    static_summary_path = (
+        output_root / "phase04_1_static_supplemental" / "expanded_static_summary.json"
+    )
     payload = json.loads(static_summary_path.read_text(encoding="utf-8"))
     assert payload["schema_version"] == EXPANDED_STATIC_SUMMARY_SCHEMA_VERSION
     assert payload["rows"][0]["scientific_wrong_count"] == 1
