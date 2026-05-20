@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.1-03-PLAN.md
-last_updated: "2026-05-20T09:03:45.738Z"
-last_activity: 2026-05-20 - Completed 04.1-03 evaluator contract plan
+stopped_at: 04.1-02 source-data checkpoint
+last_updated: "2026-05-20T09:06:39Z"
+last_activity: 2026-05-20 - Wave 2 code complete; waiting for Phase 04.1 sidecar data checkpoint
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 23
-  completed_plans: 20
-  percent: 87
+  completed_plans: 19
+  percent: 83
 ---
 
 # Project State
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 
 Phase: 04.1
 Plan: 4 of 6
-Status: Ready for next plan
-Last activity: 2026-05-20 - Completed 04.1-03 evaluator contract plan
+Status: Waiting for sidecar data checkpoint
+Last activity: 2026-05-20 - Wave 2 code complete; waiting for Phase 04.1 sidecar data checkpoint
 
-Progress: [█████████░] 87%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 19
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Progress: [█████████░] 87%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
-| 04.1 | 3 | 7min recorded | - |
+| 04.1 | 2 | 7min recorded | - |
 
 **Recent Trend:**
 
@@ -154,10 +154,12 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-05-20T09:03:45.733Z
-Stopped at: Completed 04.1-03-PLAN.md
+Stopped at: 04.1-02 source-data checkpoint
 Resume file: None
 
-**Next Plan:** 04.1-04 (Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts)
+**Current Checkpoint:** 04.1-02 Task 3 requires authorized offline source files at `expanded_captcha_data/phase04_1/sources/` and a manifest at `expanded_captcha_data/phase04_1/manifest.json` before materialization and downstream runs can proceed.
+
+**Next Plan:** Resume 04.1-02 Task 3 after sidecar data is present; then continue to 04.1-04.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
