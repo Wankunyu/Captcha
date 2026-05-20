@@ -1066,6 +1066,18 @@ class GeminiProvider(ModelProvider):
         self.client = genai.Client(**client_kwargs)
         self.genai_types = genai_types
 
+    @staticmethod
+    def sanitize_response_schema(schema: Any) -> Any:
+        if isinstance(schema, dict):
+            return {
+                key: GeminiProvider.sanitize_response_schema(value)
+                for key, value in schema.items()
+                if key not in {"additionalProperties", "additional_properties"}
+            }
+        if isinstance(schema, list):
+            return [GeminiProvider.sanitize_response_schema(value) for value in schema]
+        return schema
+
     def infer(self, prompt:str, images:List[str], json_schema:Dict[str, Any],
               stream:bool=True, few_shot_examples:Optional[List]=None) -> Tuple[str, Optional[Dict[str,Any]], Dict[str,Any]]:
         """
@@ -1124,7 +1136,9 @@ class GeminiProvider(ModelProvider):
 
         schema_obj: Any = json_schema
         try:
-            schema_obj = self.genai_types.Schema(**json_schema)
+            schema_obj = self.genai_types.Schema(
+                **GeminiProvider.sanitize_response_schema(json_schema)
+            )
         except Exception:
             pass
 

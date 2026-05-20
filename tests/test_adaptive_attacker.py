@@ -101,6 +101,17 @@ def test_reflection_schema_only_requires_strategy_and_next_rule() -> None:
     assert schema["properties"]["next_prompt_rule"]["maxLength"] == 500
 
 
+def test_gemini_schema_sanitizer_removes_unsupported_additional_properties() -> None:
+    schema = adaptive_attacker.reflection_json_schema()
+
+    sanitized = run_eval.GeminiProvider.sanitize_response_schema(schema)
+
+    assert "additionalProperties" in schema
+    assert "additionalProperties" not in sanitized
+    assert sanitized["required"] == ["tried_strategy_summary", "next_prompt_rule"]
+    assert sanitized["properties"]["tried_strategy_summary"]["maxLength"] == 300
+
+
 def test_parse_policy_state_updates_memory_and_rejects_leaky_notes() -> None:
     previous = _policy_state()
 
