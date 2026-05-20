@@ -449,6 +449,8 @@ def run_adaptive_experiment(
     stream: bool = False,
     overwrite: bool = False,
     resume: bool = False,
+    thinking: bool = False,
+    thinking_options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if attempt_budget_k < 1:
         raise ValueError("attempt_budget_k must be >= 1")
@@ -545,7 +547,14 @@ def run_adaptive_experiment(
         }
 
     secrets = load_local_config(secrets_file)
-    model_provider = run_eval.make_provider(provider, model, secrets, timeout_sec)
+    model_provider = run_eval.make_provider(
+        provider,
+        model,
+        secrets,
+        timeout_sec,
+        thinking_enabled=thinking,
+        thinking_options=thinking_options,
+    )
 
     attempts_by_type: dict[str, list[AdaptiveAttemptRecord]] = {}
     for attempt in existing_attempts:

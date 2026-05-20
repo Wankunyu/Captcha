@@ -227,6 +227,14 @@ class ExpandedPreflightMatrixRow(BaseModel):
     preflight_report_path: str
     overwrite: bool
     resume: bool
+    attempt_budget_k: int | None = Field(default=None, ge=1)
+    sampling_mode: str | None = None
+    feedback_mode: str | None = None
+    memory_mode: str | None = None
+    stopping_rule: str | None = None
+    solve_request_count: int | None = Field(default=None, ge=0)
+    reflection_request_count_max: int | None = Field(default=None, ge=0)
+    expected_request_count_max: int | None = Field(default=None, ge=0)
 
     @field_validator("schema_version")
     @classmethod

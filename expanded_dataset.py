@@ -11,11 +11,16 @@ from pydantic import ValidationError
 
 import revision_preflight
 import run_eval
+import adaptive_attacker
+import adaptive_preflight
+from adaptive_artifacts import FEEDBACK_MODE, MEMORY_MODE, SAMPLING_MODE, STOPPING_RULE
 from phase041_artifacts import (
     ExpandedDatasetManifestRow,
+    ExpandedAdaptiveSummaryRow,
     ExpandedPreflightMatrixRow,
     ExpandedRunMatrixRow,
     ExpandedStaticSummaryRow,
+    write_expanded_adaptive_summary,
     write_expanded_run_matrix,
     write_expanded_preflight_matrix,
     write_expanded_static_summary,
@@ -26,6 +31,7 @@ from revision_artifacts import AttemptRecord, revision_run_dir, sha256_file
 PHASE041_SIDECAR_ROOT = Path("expanded_captcha_data/phase04_1")
 PHASE041_EVALUATOR_SLICE = PHASE041_SIDECAR_ROOT / "evaluator_slice"
 PHASE041_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_1_static_supplemental"
+PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID = "phase04_1_adaptive_supplemental"
 PHASE041_SUPPLEMENTED_TASK_TYPES = {"Dice_Count", "Click_Order", "Patch_Select", "Geometry_Click"}
 PHASE041_NEW_TASK_TYPES = {"Symbol_Count", "Relation_Match"}
 
@@ -451,6 +457,14 @@ def _preflight_report_payload(report: object) -> dict[str, Any]:
     raise TypeError("preflight report must be a pydantic model or dict")
 
 
+def _adaptive_preflight_report_payload(report: object) -> dict[str, Any]:
+    if hasattr(report, "model_dump"):
+        return report.model_dump(mode="json")  # type: ignore[no-any-return]
+    if isinstance(report, dict):
+        return dict(report)
+    raise TypeError("adaptive preflight report must be a pydantic model or dict")
+
+
 def build_static_preflight_matrix(
     manifest_path: str | Path = PHASE041_SIDECAR_ROOT / "manifest.json",
     dataset_root: str | Path = PHASE041_EVALUATOR_SLICE,
@@ -751,6 +765,271 @@ def collect_static_supplemental_runs(
     }
 
 
+def _adaptive_eligible_task_types(
+    rows: list[ExpandedDatasetManifestRow],
+    requested_task_types: list[str] | None = None,
+) -> list[str]:
+    eligible = {row.task_type for row in rows if row.adaptive_eligible}
+    if requested_task_types:
+        requested = set(requested_task_types)
+        ineligible = requested - eligible
+        if ineligible:
+            raise ValueError(
+                "requested adaptive task types must have adaptive_eligible=true: "
+                f"{sorted(ineligible)}"
+            )
+        return sorted(requested)
+    return sorted(eligible)
+
+
+def build_adaptive_preflight_matrix(
+    manifest_path: str | Path = PHASE041_SIDECAR_ROOT / "manifest.json",
+    dataset_root: str | Path = PHASE041_EVALUATOR_SLICE,
+    results_dir: str | Path = "results",
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID,
+    prompts_file: str | Path = "prompts_optimized.yaml",
+    prompt_mode: str = "opt",
+    attempt_budget_k: int = 6,
+    seed: int = 1234,
+    resume: bool = True,
+    overwrite: bool = False,
+    write_reports: bool = False,
+    pricing_file: str | Path | None = None,
+    requested_task_types: list[str] | None = None,
+) -> list[ExpandedPreflightMatrixRow]:
+    del seed
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+    if attempt_budget_k != 6:
+        raise ValueError("Phase 04.1 adaptive supplemental runs require attempt_budget_k=6")
+
+    manifest_path = Path(manifest_path)
+    dataset_root = Path(dataset_root)
+    output_root = Path(output_root)
+    rows = load_phase041_manifest(manifest_path, run_id=run_id)
+    validate_phase041_manifest(rows)
+    task_types = _adaptive_eligible_task_types(rows, requested_task_types)
+    _validate_materialized_dataset_root(dataset_root, task_types)
+
+    run_matrix_rows = build_paper_facing_run_matrix(
+        results_dir=Path(results_dir),
+        materialized_dataset_root=dataset_root,
+        output_root=output_root,
+        run_id_prefix=run_id,
+    )
+    adaptive_run_dir = revision_run_dir(output_root, run_id)
+    reports_dir = adaptive_run_dir / "adaptive_preflight_reports"
+    manifest_hash = sha256_file(manifest_path) or ""
+
+    preflight_rows: list[ExpandedPreflightMatrixRow] = []
+    for matrix_row in run_matrix_rows:
+        effective_overwrite = overwrite or matrix_row.overwrite
+        effective_resume = False if effective_overwrite else (resume or matrix_row.resume)
+        preflight_args = argparse.Namespace(
+            dataset_root=str(dataset_root),
+            types=task_types,
+            prompts_file=str(prompts_file),
+            few_shot_config=None,
+            prompt_prefix=None,
+            prompt_suffix=None,
+            pricing_file=str(pricing_file) if pricing_file else None,
+            output_root=str(output_root),
+            run_id=matrix_row.run_id,
+            provider=matrix_row.provider,
+            model=matrix_row.model,
+            prompt_mode=prompt_mode,
+            max_per_type=None,
+            attempt_budget_k=attempt_budget_k,
+            sampling_mode=SAMPLING_MODE,
+            feedback_mode=FEEDBACK_MODE,
+            memory_mode=MEMORY_MODE,
+            stopping_rule=STOPPING_RULE,
+            overwrite=effective_overwrite,
+            resume=effective_resume,
+            write_report=False,
+        )
+        report = adaptive_preflight.build_report(preflight_args)
+        report_payload = _adaptive_preflight_report_payload(report)
+        report_path = reports_dir / f"{_slug(matrix_row.provider_model)}.json"
+        if write_reports:
+            _write_json(report_path, report_payload)
+
+        preflight_rows.append(
+            ExpandedPreflightMatrixRow(
+                run_id=matrix_row.run_id,
+                provider=matrix_row.provider,
+                model=matrix_row.model,
+                provider_model=matrix_row.provider_model,
+                run_scope="adaptive",
+                manifest_path=str(manifest_path),
+                manifest_sha256=manifest_hash,
+                sidecar_dataset_root=str(manifest_path.parent),
+                materialized_dataset_root=str(dataset_root),
+                task_types=task_types,
+                prompt_config=dict(report_payload.get("prompt_config") or {}),
+                expected_request_count=int(
+                    report_payload.get("expected_request_count_max")
+                    or report_payload.get("expected_request_count")
+                    or 0
+                ),
+                cost_preview=dict(report_payload.get("cost_preview") or {}),
+                output_dir=str(report_payload.get("output_dir") or matrix_row.output_root),
+                preflight_report_path=str(report_path),
+                overwrite=effective_overwrite,
+                resume=effective_resume,
+                attempt_budget_k=attempt_budget_k,
+                sampling_mode=str(report_payload.get("sampling_mode") or SAMPLING_MODE),
+                feedback_mode=str(report_payload.get("feedback_mode") or FEEDBACK_MODE),
+                memory_mode=str(report_payload.get("memory_mode") or MEMORY_MODE),
+                stopping_rule=str(report_payload.get("stopping_rule") or STOPPING_RULE),
+                solve_request_count=int(report_payload.get("solve_request_count") or 0),
+                reflection_request_count_max=int(
+                    report_payload.get("reflection_request_count_max") or 0
+                ),
+                expected_request_count_max=int(
+                    report_payload.get("expected_request_count_max") or 0
+                ),
+            )
+        )
+
+    write_expanded_preflight_matrix(
+        adaptive_run_dir / "expanded_adaptive_preflight_matrix.csv",
+        adaptive_run_dir / "expanded_adaptive_preflight_matrix.json",
+        preflight_rows,
+    )
+    return preflight_rows
+
+
+def _load_adaptive_summary_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        raise FileNotFoundError(f"adaptive summary does not exist: {path}")
+    payload = _read_json(path)
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError(f"adaptive summary must contain rows: {path}")
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def _build_expanded_adaptive_summary_rows(
+    matrix_rows: list[ExpandedPreflightMatrixRow],
+    manifest_rows: list[ExpandedDatasetManifestRow],
+) -> list[ExpandedAdaptiveSummaryRow]:
+    manifest_by_task = {row.task_type: row for row in manifest_rows}
+    expanded_rows: list[ExpandedAdaptiveSummaryRow] = []
+    for matrix_row in matrix_rows:
+        run_dir = Path(matrix_row.output_dir)
+        source_summary_path = run_dir / "adaptive_summary.json"
+        for row in _load_adaptive_summary_rows(source_summary_path):
+            task_type = str(row.get("task_type") or "")
+            manifest_row = manifest_by_task.get(task_type)
+            expanded_rows.append(
+                ExpandedAdaptiveSummaryRow(
+                    run_id=matrix_row.run_id,
+                    provider=matrix_row.provider,
+                    model=matrix_row.model,
+                    provider_model=matrix_row.provider_model,
+                    task_type=task_type,
+                    task_family=manifest_row.task_family if manifest_row else "unknown",
+                    evidence_origin=(
+                        manifest_row.evidence_origin if manifest_row else "supplemented_category"
+                    ),
+                    slice_type=manifest_row.slice_type if manifest_row else "supplement_existing",
+                    sample_count=manifest_row.sample_count if manifest_row else 0,
+                    session_count=1,
+                    attempt_budget_k=int(row.get("attempt_budget_k") or 0),
+                    success_count=int(row.get("n_success") or 0),
+                    scientific_wrong_count=int(row.get("scientific_wrong_count") or 0),
+                    protocol_failure_count=int(row.get("protocol_failure_count") or 0),
+                    infrastructure_failure_count=int(
+                        row.get("infrastructure_failure_count") or 0
+                    ),
+                    adaptive_success_rate=float(row.get("success_rate") or 0.0),
+                    feedback_mode=str(row.get("feedback_mode") or FEEDBACK_MODE),
+                    memory_mode=str(row.get("memory_mode") or MEMORY_MODE),
+                    stopping_rule=str(row.get("stopping_reason") or STOPPING_RULE),
+                    run_manifest_path=str(run_dir / "run_manifest.json"),
+                    adaptive_attempt_log_path=str(run_dir / "adaptive_attempts.jsonl"),
+                    adaptive_summary_source_path=str(source_summary_path),
+                    claim_use="main_body_caveated",
+                )
+            )
+    return expanded_rows
+
+
+def collect_adaptive_supplemental_runs(
+    preflight_matrix_path: str | Path,
+    output_root: str | Path = "results/revision",
+    manifest_path: str | Path | None = None,
+    *,
+    resume: bool = True,
+    overwrite: bool = False,
+    secrets_file: str | Path = "secrets.yaml",
+    stream: bool = False,
+    timeout_sec: float = 600.0,
+    seed: int = 1234,
+) -> dict[str, object]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+
+    preflight_matrix_path = Path(preflight_matrix_path)
+    output_root = Path(output_root)
+    matrix_rows = _load_preflight_matrix(preflight_matrix_path)
+    if not matrix_rows:
+        raise ValueError("preflight matrix must contain at least one row")
+
+    resolved_manifest_path = Path(manifest_path or matrix_rows[0].manifest_path)
+    manifest_rows = load_phase041_manifest(
+        resolved_manifest_path,
+        run_id=PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID,
+    )
+    validate_phase041_manifest(manifest_rows)
+
+    run_results: list[dict[str, Any]] = []
+    for matrix_row in matrix_rows:
+        if matrix_row.run_scope != "adaptive":
+            raise ValueError(f"preflight row is not adaptive: {matrix_row.run_id}")
+        if matrix_row.attempt_budget_k != 6:
+            raise ValueError(f"adaptive row must have attempt_budget_k=6: {matrix_row.run_id}")
+        runtime_model = _runtime_model_kwargs(matrix_row.provider, matrix_row.model)
+        prompts_file = matrix_row.prompt_config.get("prompts_file") or "prompts_optimized.yaml"
+        run_results.append(
+            adaptive_attacker.run_adaptive_experiment(
+                dataset_root=matrix_row.materialized_dataset_root,
+                types=list(matrix_row.task_types),
+                provider=matrix_row.provider,
+                model=str(runtime_model["model"]),
+                run_id=matrix_row.run_id,
+                output_root=str(output_root),
+                attempt_budget_k=6,
+                max_per_type=None,
+                prompts_file=str(prompts_file),
+                prompt_mode="opt",
+                secrets_file=str(secrets_file),
+                timeout_sec=timeout_sec,
+                seed=seed,
+                stream=stream,
+                overwrite=overwrite,
+                resume=resume,
+                thinking=bool(runtime_model["thinking"]),
+                thinking_options=runtime_model["thinking_options"],
+            )
+        )
+
+    summary_rows = _build_expanded_adaptive_summary_rows(matrix_rows, manifest_rows)
+    summary_dir = preflight_matrix_path.parent
+    summary_csv = summary_dir / "expanded_adaptive_summary.csv"
+    summary_json = summary_dir / "expanded_adaptive_summary.json"
+    write_expanded_adaptive_summary(summary_csv, summary_json, summary_rows)
+    return {
+        "run_count": len(matrix_rows),
+        "run_result_count": len(run_results),
+        "adaptive_summary_row_count": len(summary_rows),
+        "adaptive_summary_csv": str(summary_csv),
+        "adaptive_summary_json": str(summary_json),
+    }
+
+
 def _run_preflight_matrix(args: argparse.Namespace) -> dict[str, object]:
     rows = build_static_preflight_matrix(
         manifest_path=Path(args.manifest),
@@ -777,6 +1056,47 @@ def _run_preflight_matrix(args: argparse.Namespace) -> dict[str, object]:
 
 def _run_collect_static(args: argparse.Namespace) -> dict[str, object]:
     return collect_static_supplemental_runs(
+        preflight_matrix_path=Path(args.preflight_matrix),
+        output_root=Path(args.output_root),
+        manifest_path=Path(args.manifest) if args.manifest else None,
+        resume=args.resume,
+        overwrite=args.overwrite,
+        secrets_file=Path(args.secrets_file),
+        stream=not args.no_stream,
+        timeout_sec=args.timeout_sec,
+        seed=args.seed,
+    )
+
+
+def _run_adaptive_preflight_matrix(args: argparse.Namespace) -> dict[str, object]:
+    requested_task_types = args.types if args.types else None
+    rows = build_adaptive_preflight_matrix(
+        manifest_path=Path(args.manifest),
+        dataset_root=Path(args.dataset_root),
+        results_dir=Path(args.results_dir),
+        output_root=Path(args.output_root),
+        run_id=args.run_id,
+        prompts_file=Path(args.prompts_file),
+        prompt_mode=args.prompt_mode,
+        attempt_budget_k=args.attempt_budget_k,
+        seed=args.seed,
+        resume=args.resume,
+        overwrite=args.overwrite,
+        write_reports=args.write_reports,
+        pricing_file=Path(args.pricing_file) if args.pricing_file else None,
+        requested_task_types=requested_task_types,
+    )
+    run_dir = revision_run_dir(args.output_root, args.run_id)
+    return {
+        "row_count": len(rows),
+        "output_csv": str(run_dir / "expanded_adaptive_preflight_matrix.csv"),
+        "output_json": str(run_dir / "expanded_adaptive_preflight_matrix.json"),
+        "adaptive_preflight_reports_dir": str(run_dir / "adaptive_preflight_reports"),
+    }
+
+
+def _run_collect_adaptive(args: argparse.Namespace) -> dict[str, object]:
+    return collect_adaptive_supplemental_runs(
         preflight_matrix_path=Path(args.preflight_matrix),
         output_root=Path(args.output_root),
         manifest_path=Path(args.manifest) if args.manifest else None,
@@ -871,6 +1191,56 @@ def build_parser() -> argparse.ArgumentParser:
     collect_static.add_argument("--timeout-sec", type=float, default=600.0)
     collect_static.add_argument("--seed", type=int, default=1234)
 
+    adaptive_preflight_matrix = subparsers.add_parser(
+        "adaptive-preflight-matrix",
+        help="Build adaptive supplemental preflight reports for all paper-facing rows.",
+    )
+    adaptive_preflight_matrix.add_argument(
+        "--manifest",
+        default=str(PHASE041_SIDECAR_ROOT / "manifest.json"),
+    )
+    adaptive_preflight_matrix.add_argument("--dataset-root", default=str(PHASE041_EVALUATOR_SLICE))
+    adaptive_preflight_matrix.add_argument("--results-dir", default="./results")
+    adaptive_preflight_matrix.add_argument("--output-root", default="./results/revision")
+    adaptive_preflight_matrix.add_argument(
+        "--run-id",
+        default=PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID,
+    )
+    adaptive_preflight_matrix.add_argument("--prompts-file", default="./prompts_optimized.yaml")
+    adaptive_preflight_matrix.add_argument(
+        "--prompt-mode",
+        choices=["auto", "gt", "opt"],
+        default="opt",
+    )
+    adaptive_preflight_matrix.add_argument("--pricing-file", default=None)
+    adaptive_preflight_matrix.add_argument("--attempt-budget-k", type=int, default=6)
+    adaptive_preflight_matrix.add_argument("--seed", type=int, default=1234)
+    adaptive_preflight_matrix.add_argument("--overwrite", action="store_true")
+    adaptive_preflight_matrix.add_argument("--resume", action="store_true")
+    adaptive_preflight_matrix.add_argument("--write-reports", action="store_true")
+    adaptive_preflight_matrix.add_argument("--types", nargs="*", default=None)
+
+    collect_adaptive = subparsers.add_parser(
+        "collect-adaptive",
+        help="Run adaptive supplemental revision evaluations from a preflight matrix.",
+    )
+    collect_adaptive.add_argument(
+        "--preflight-matrix",
+        default=str(
+            Path("results/revision")
+            / PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID
+            / "expanded_adaptive_preflight_matrix.json"
+        ),
+    )
+    collect_adaptive.add_argument("--output-root", default="./results/revision")
+    collect_adaptive.add_argument("--manifest", default=None)
+    collect_adaptive.add_argument("--secrets-file", default="./secrets.yaml")
+    collect_adaptive.add_argument("--resume", action="store_true")
+    collect_adaptive.add_argument("--overwrite", action="store_true")
+    collect_adaptive.add_argument("--no-stream", action="store_true")
+    collect_adaptive.add_argument("--timeout-sec", type=float, default=600.0)
+    collect_adaptive.add_argument("--seed", type=int, default=1234)
+
     return parser
 
 
@@ -888,6 +1258,10 @@ def main(argv: list[str] | None = None) -> int:
             summary = _run_preflight_matrix(args)
         elif args.command == "collect-static":
             summary = _run_collect_static(args)
+        elif args.command == "adaptive-preflight-matrix":
+            summary = _run_adaptive_preflight_matrix(args)
+        elif args.command == "collect-adaptive":
+            summary = _run_collect_adaptive(args)
         else:
             parser.error(f"unknown command: {args.command}")
     except (
