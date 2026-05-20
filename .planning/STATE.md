@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.1-01-PLAN.md
-last_updated: "2026-05-20T08:29:08.369Z"
-last_activity: 2026-05-20 - Completed 04.1-01 artifact contract plan
+stopped_at: Completed 04.1-03-PLAN.md
+last_updated: "2026-05-20T09:03:45.738Z"
+last_activity: 2026-05-20 - Completed 04.1-03 evaluator contract plan
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 23
-  completed_plans: 18
-  percent: 78
+  completed_plans: 20
+  percent: 87
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.1
-Plan: 2 of 6
+Plan: 4 of 6
 Status: Ready for next plan
-Last activity: 2026-05-20 - Completed 04.1-01 artifact contract plan
+Last activity: 2026-05-20 - Completed 04.1-03 evaluator contract plan
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 18
+- Total plans completed: 20
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Progress: [████████░░] 78%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
-| 04.1 | 1 | 4min | 4min |
+| 04.1 | 3 | 7min recorded | - |
 
 **Recent Trend:**
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 78%
 | Phase 03 P03 | 11 min | 2 tasks | 5 files |
 | Phase 03 P04 | 9 min | 3 tasks | 3 files |
 | Phase 04.1 P01 | 4min | 2 tasks | 2 files |
+| Phase 04.1 P03 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,9 @@ Recent decisions affecting current work:
 - Phase 04.1 artifact contracts live in a dedicated module instead of mutating Phase 3 or Phase 4 schemas.
 - Paper evidence rows explicitly separate direct expanded-dataset evidence from contextual SOTA-only evidence.
 - Expanded-dataset manifest rows enforce D-08 provenance fields and evidence-origin vocabulary before downstream provider runs.
+- Symbol_Count uses the existing number answer shape with normalized ground truth stored as count.
+- Relation_Match uses the existing classify answer shape and mirrors reference-plus-options loading.
+- The two new Phase 04.1 categories are treated as sidecar-only dataset types rather than requiring directories under captcha_data/.
 
 ### Pending Todos
 
@@ -149,11 +153,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-20T08:29:05.873Z
-Stopped at: Completed 04.1-01-PLAN.md
+Last session: 2026-05-20T09:03:45.733Z
+Stopped at: Completed 04.1-03-PLAN.md
 Resume file: None
 
-**Next Plan:** 04.1-02 (Validate sidecar expanded-dataset manifests and materialize evaluator-compatible sidecar roots)
+**Next Plan:** 04.1-04 (Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts)
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
