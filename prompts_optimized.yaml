@@ -12,6 +12,17 @@ types:
 
     Respond with JSON only, strictly following the provided schema. No extra fields or text.
 
+  Symbol_Count: |-
+    Task: Count the target symbols in the static image.
+
+    Rules:
+    - Use the task prompt to identify which symbol or mark should be counted.
+    - Count only clearly visible target symbols in the image.
+    - Do not count background decoration, partial marks, or unrelated icons.
+    - Return one integer count.
+
+    Respond with JSON only, strictly following the provided schema. No extra fields or text.
+
   Geometry_Click:
     mode: merge
     rules: |-
@@ -44,6 +55,21 @@ types:
     - Allow normal variation in pose, cropping, style, or minor lighting differences.
     - If several options show the same correct animal/object, choose the one most similar in overall appearance to the reference.
     - If multiple options still appear valid, choose the smallest index.
+
+    Indexing Rules:
+    - Indices are 0-based (starting from 0, not 1).
+    - Index 0 represents the first option.
+    - If there are N options, valid indices are 0 to N-1.
+
+    Respond with JSON only, strictly following the provided schema. No extra fields or text.
+
+  Relation_Match: |-
+    Task: Choose the SINGLE option whose relationship matches the reference image.
+
+    Matching Rules:
+    - Compare the structural or semantic relationship shown in the reference.
+    - Ignore minor style, crop, lighting, or background differences that do not change the relation.
+    - If multiple options appear valid, choose the smallest index.
 
     Indexing Rules:
     - Indices are 0-based (starting from 0, not 1).

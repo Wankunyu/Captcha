@@ -1377,8 +1377,10 @@ class TaskItem:
 SUPPORTED_TYPES = {
             
     "Dice_Count",
+    "Symbol_Count",
     "Geometry_Click",
     "Image_Matching",
+    "Relation_Match",
     "Patch_Select",
     "Place_Dot",
               
@@ -1405,7 +1407,8 @@ TYPE_REQUIRE_PER_ITEM = {"Geometry_Click", "Image_Recognition", "Misleading_Clic
                          "Select_Animal","Select_Animal_Optimized","Patch_Select","Bingo", 
                          "Click_Order", "Connect_Icon", "Coordinates", "Dice_Count",
                         "Dart_Count", "Image_Matching", "Object_Match", "Pick_Area",
-                        "Place_Dot", "Rotation_Match", "Unusual_Detection", "Path_Finder"}
+                        "Place_Dot", "Relation_Match", "Rotation_Match", "Symbol_Count",
+                        "Unusual_Detection", "Path_Finder"}
 
                                                     
 TYPE_IGNORE_PER_ITEM = {}
@@ -1849,8 +1852,35 @@ def build_tasks(
                     continue
                 tasks.append(TaskItem(t, pid, prompt, [img], {"sum": entry.get("sum")}))
 
+            elif t == "Symbol_Count":
+                default_prompt = (
+                    "Count the target symbols in the static image. "
+                    "Return JSON {\"answer_type\":\"number\",\"value\":N}."
+                )
+                prompt = _choose_prompt(
+                    entry,
+                    t,
+                    pid,
+                    default_prompt,
+                    prompts_cfg or {},
+                    prompt_prefix,
+                    prompt_suffix,
+                    mode=prompt_mode,
+                )
+                image_name = entry.get("image") or pid
+                img = os.path.join(type_dir, image_name)
+                if not os.path.isfile(img):
+                    img = _stem_glob(type_dir, pid) or img
+                if not os.path.isfile(img):
+                    print(f"[SKIP] File does not exist: {img}")
+                    continue
+                count = entry.get("count", entry.get("sum"))
+                if count is None:
+                    print(f"[SKIP] {t}/{pid} missing count")
+                    continue
+                tasks.append(TaskItem(t, pid, prompt, [img], {"count": int(count)}))
+
             elif t == "Geometry_Click":
-                                                                                               
                 targets_type = str((entry.get("answer") or {}).get("type") or "").strip()
                 if targets_type.lower().startswith("letter "):
                     obj = targets_type.split(" ", 1)[1].strip() or "targets letter"
@@ -1943,6 +1973,51 @@ def build_tasks(
                 tasks.append(TaskItem(t, pid, prompt, [img_ref] + imgs_opt,
                                       {"correct_index": entry.get("correct_option_index", entry.get("correct_index", 0)),
                                        "num_options": len(options)}))
+
+            elif t == "Relation_Match":
+                ref = entry.get("reference_image")
+                options = entry.get("option_images") or entry.get("options", [])
+                if not ref or not options:
+                    print(f"[SKIP] {t}/{pid} Missing reference/option_images")
+                    continue
+                default_prompt = (
+                    "The FIRST image is the REFERENCE, followed by OPTION images indexed 0..N-1 in order. "
+                    "Choose the option matching the reference relation. "
+                    "Return JSON {\"answer_type\":\"classify\",\"index\":k} with 0-based index only."
+                )
+                prompt = _choose_prompt(
+                    entry,
+                    t,
+                    pid,
+                    default_prompt,
+                    prompts_cfg or {},
+                    prompt_prefix,
+                    prompt_suffix,
+                    mode=prompt_mode,
+                )
+
+                img_ref = os.path.join(type_dir, ref)
+                imgs_opt = [os.path.join(type_dir, p) for p in options]
+                ok = True
+                for p in [img_ref] + imgs_opt:
+                    if not os.path.isfile(p):
+                        print(f"[SKIP] File does not exist: {p}")
+                        ok = False
+                        break
+                if not ok:
+                    continue
+                tasks.append(
+                    TaskItem(
+                        t,
+                        pid,
+                        prompt,
+                        [img_ref] + imgs_opt,
+                        {
+                            "correct_index": int(entry.get("correct_index", 0)),
+                            "num_options": len(options),
+                        },
+                    )
+                )
 
             elif t == "Patch_Select":
                                
@@ -2351,6 +2426,9 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
                         
         if t == "Dice_Count":
             return parsed.get("answer_type")=="number" and int(parsed.get("value")) == int(gt["sum"])
+
+        if t == "Symbol_Count":
+            return parsed.get("answer_type")=="number" and int(parsed.get("value")) == int(gt["count"])
         
         if task.type == "Geometry_Click":
             try:
@@ -2364,6 +2442,9 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
             return (x0 <= x <= x1) and (y0 <= y <= y1)
 
         if t == "Image_Matching":
+            return parsed.get("answer_type")=="classify" and int(parsed.get("index")) == int(gt["correct_index"])
+
+        if t == "Relation_Match":
             return parsed.get("answer_type")=="classify" and int(parsed.get("index")) == int(gt["correct_index"])
         
         if t == "Patch_Select":
@@ -2499,6 +2580,10 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["number"]},
                                               "value":{"type":"integer"}},
                 "required":["answer_type","value"]}, include_reasoning=include_reasoning)
+    if task_type == "Symbol_Count":
+        return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["number"]},
+                                              "value":{"type":"integer"}},
+                "required":["answer_type","value"]}, include_reasoning=include_reasoning)
     if task_type in ("Geometry_Click","Place_Dot"):
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["single_point"]},
                                               "point":{"type":"object",
@@ -2506,6 +2591,10 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                                                        "required":["x","y"]}},
                 "required":["answer_type","point"]}, include_reasoning=include_reasoning)
     if task_type == "Image_Matching":
+        return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["classify"]},
+                                              "index":{"type":"integer"}},
+                "required":["answer_type","index"]}, include_reasoning=include_reasoning)
+    if task_type == "Relation_Match":
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["classify"]},
                                               "index":{"type":"integer"}},
                 "required":["answer_type","index"]}, include_reasoning=include_reasoning)

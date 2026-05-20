@@ -45,6 +45,7 @@ class CAPTCHAVisualizer:
 
     TASK_FAMILY = {
         'Dice_Count': 'Click/Coordinate',
+        'Symbol_Count': 'Counting/Generalization',
         'Click_Order': 'Click/Coordinate',
         'Place_Dot': 'Click/Coordinate',
         'Geometry_Click': 'Click/Coordinate',
@@ -57,6 +58,7 @@ class CAPTCHAVisualizer:
         'Unusual_Detection': 'Grid Selection',
 
         'Image_Matching': 'Image Matching',
+        'Relation_Match': 'Semantic Matching',
         'Object_Match': 'Image Matching',
         'Path_Finder': 'Image Matching',
         'Rotation_Match': 'Image Matching',
