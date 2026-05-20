@@ -210,6 +210,8 @@ def _preflight_rows(
                     / "preflight_reports"
                     / f"{run_id}.json"
                 ),
+                overwrite=False,
+                resume=True,
             )
         )
     return rows

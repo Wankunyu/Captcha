@@ -225,6 +225,8 @@ class ExpandedPreflightMatrixRow(BaseModel):
     cost_preview: dict[str, Any]
     output_dir: str
     preflight_report_path: str
+    overwrite: bool
+    resume: bool
 
     @field_validator("schema_version")
     @classmethod

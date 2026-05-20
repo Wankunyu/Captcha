@@ -534,6 +534,8 @@ def build_static_preflight_matrix(
                 cost_preview=dict(report_payload.get("cost_preview") or {}),
                 output_dir=str(report_payload.get("output_dir") or matrix_row.output_root),
                 preflight_report_path=str(report_path),
+                overwrite=effective_overwrite,
+                resume=effective_resume,
             )
         )
 

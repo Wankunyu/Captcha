@@ -105,6 +105,8 @@ def _preflight_row(**overrides: object) -> ExpandedPreflightMatrixRow:
         "preflight_report_path": (
             "results/revision/phase041-static-openai-gpt5/preflight.json"
         ),
+        "overwrite": False,
+        "resume": True,
     }
     values.update(overrides)
     return ExpandedPreflightMatrixRow(**values)
@@ -379,6 +381,8 @@ def test_preflight_matrix_requires_hash_cost_and_output_fields() -> None:
         "cost_preview",
         "output_dir",
         "preflight_report_path",
+        "overwrite",
+        "resume",
     )
     row = _preflight_row().model_dump()
 
