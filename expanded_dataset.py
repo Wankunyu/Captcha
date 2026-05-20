@@ -34,6 +34,7 @@ PHASE041_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_1_static_supplemental"
 PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID = "phase04_1_adaptive_supplemental"
 PHASE041_SUPPLEMENTED_TASK_TYPES = {"Dice_Count", "Click_Order", "Patch_Select", "Geometry_Click"}
 PHASE041_NEW_TASK_TYPES = {"Symbol_Count", "Relation_Match"}
+PHASE041_NEW_TASK_MIN_SAMPLE_COUNT = 10
 
 PAPER_FACING_PROVIDER_MODELS = [
     "openai/gpt-5",
@@ -197,6 +198,15 @@ def validate_phase041_manifest(rows: list[ExpandedDatasetManifestRow]) -> None:
     for row in rows:
         if row.sample_count <= 0:
             raise ValueError(f"{row.source_id} sample_count must be greater than zero")
+        below_new_task_minimum = (
+            row.task_type in PHASE041_NEW_TASK_TYPES
+            and row.sample_count < PHASE041_NEW_TASK_MIN_SAMPLE_COUNT
+        )
+        if below_new_task_minimum:
+            raise ValueError(
+                f"{row.source_id} new_category sample_count must be at least "
+                f"{PHASE041_NEW_TASK_MIN_SAMPLE_COUNT}"
+            )
         if row.compatibility_status != "ready_for_static_pipeline":
             raise ValueError(
                 f"{row.source_id} compatibility_status must be ready_for_static_pipeline"

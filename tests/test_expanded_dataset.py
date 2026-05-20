@@ -6,6 +6,7 @@ import pytest
 from expanded_dataset import (
     PHASE041_EVALUATOR_SLICE,
     PHASE041_NEW_TASK_TYPES,
+    PHASE041_NEW_TASK_MIN_SAMPLE_COUNT,
     PHASE041_SIDECAR_ROOT,
     PHASE041_SUPPLEMENTED_TASK_TYPES,
     build_paper_facing_run_matrix,
@@ -57,7 +58,7 @@ def _manifest_row(task_type: str, **overrides: object) -> dict[str, object]:
         "slice_type": "new_category" if is_new else "supplement_existing",
         "task_type": task_type,
         "task_family": TASK_FAMILIES[task_type],
-        "sample_count": 1,
+        "sample_count": PHASE041_NEW_TASK_MIN_SAMPLE_COUNT if is_new else 1,
         "label_format": "static ground_truth.json answer fields",
         "metadata_alignment_notes": "local source ids map to sidecar paths",
         "answer_format_normalization": "answers normalized before evaluator use",
@@ -155,6 +156,20 @@ def test_manifest_requires_exact_phase041_new_categories(tmp_path) -> None:
     ]
     _write_json(manifest_path, {"rows": unsupported_new_category})
     with pytest.raises(ValueError, match="only accepted new-category task types"):
+        validate_phase041_manifest(
+        load_phase041_manifest(manifest_path, run_id="phase041-test")
+        )
+
+
+def test_manifest_requires_minimum_new_category_samples(tmp_path) -> None:
+    _, manifest_path = _write_manifest_fixture(tmp_path)
+    rows = _manifest_rows()
+    for row in rows:
+        if row["task_type"] == "Relation_Match":
+            row["sample_count"] = PHASE041_NEW_TASK_MIN_SAMPLE_COUNT - 1
+    _write_json(manifest_path, {"rows": rows})
+
+    with pytest.raises(ValueError, match="new_category sample_count"):
         validate_phase041_manifest(
             load_phase041_manifest(manifest_path, run_id="phase041-test")
         )

@@ -8,6 +8,7 @@ import run_eval
 from expanded_dataset import (
     PAPER_FACING_PROVIDER_MODELS,
     PHASE041_EVALUATOR_SLICE,
+    PHASE041_NEW_TASK_MIN_SAMPLE_COUNT,
     PHASE041_SIDECAR_ROOT,
     build_static_preflight_matrix,
     collect_static_supplemental_runs,
@@ -55,7 +56,7 @@ def _manifest_row(task_type: str) -> dict[str, object]:
         "slice_type": "new_category" if is_new else "supplement_existing",
         "task_type": task_type,
         "task_family": "Image Matching" if task_type == "Relation_Match" else "Counting",
-        "sample_count": 1,
+        "sample_count": PHASE041_NEW_TASK_MIN_SAMPLE_COUNT if is_new else 1,
         "label_format": "static ground_truth.json answer fields",
         "metadata_alignment_notes": "local source ids map to sidecar paths",
         "answer_format_normalization": "answers normalized before evaluator use",
