@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Ready to plan Phase 5
-last_updated: "2026-05-19T15:21:18Z"
-last_activity: 2026-05-19 - Completed Phase 4: SOTA Solver and Larger Benchmark Strengthening
+status: planning
+stopped_at: Phase 04.1 context gathered
+last_updated: "2026-05-20T06:51:16.211Z"
+last_activity: "2026-05-20 - Inserted Phase 04.1: Expanded Dataset and Supplemental Experiments"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 4
   total_plans: 17
   completed_plans: 17
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 5 - Defense Methodology and HCI Scope
+**Current focus:** Phase 04.1 - Expanded Dataset and Supplemental Experiments
 
 ## Current Position
 
-Phase: 5
+Phase: 04.1
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-19 - Completed Phase 4: SOTA Solver and Larger Benchmark Strengthening
+Last activity: 2026-05-20 - Inserted Phase 04.1: Expanded Dataset and Supplemental Experiments
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
+| 04.1 | 0 | - | - |
 
 **Recent Trend:**
 
@@ -66,6 +67,10 @@ Progress: [██████████] 100%
 | Phase 03 P04 | 9 min | 3 tasks | 3 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 04.1 inserted after Phase 4: Expanded Dataset and Supplemental Experiments (URGENT)
 
 ### Decisions
 
@@ -117,6 +122,7 @@ None yet.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
 - [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
+- [Phase 04.1]: Expanded-dataset work must stay offline and dataset-based, with validated task filters, manifests, attempt logs, and paper claim updates before downstream defense methodology.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
 ### Quick Tasks Completed
@@ -139,10 +145,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: Phase 4 execution complete
-Stopped at: Completed Phase 4 and ready to plan Phase 5
-Resume file: None
+Last session: Phase 04.1 context gathered
+Stopped at: Phase 04.1 context gathered
+Resume file: .planning/phases/04.1-expanded-dataset-and-supplemental-experiments/04.1-CONTEXT.md
 
-**Next Phase:** 05 (Defense Methodology and HCI Scope) - ready to plan
+**Next Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) - ready to plan
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
