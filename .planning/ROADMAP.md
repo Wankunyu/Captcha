@@ -107,7 +107,7 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 04.1-01-PLAN.md - Define Phase 04.1 artifact schemas, writer contracts, and traceable manifest/run/paper row models.
+- [x] 04.1-01-PLAN.md - Define Phase 04.1 artifact schemas, writer contracts, and traceable manifest/run/paper row models.
 - [ ] 04.1-02-PLAN.md - Validate sidecar expanded-dataset manifests and materialize evaluator-compatible sidecar roots.
 - [ ] 04.1-03-PLAN.md - Add evaluator, prompt, scoring, visualization, and test contracts for the two new static-compatible task categories.
 - [ ] 04.1-04-PLAN.md - Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts.
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6
 | 2. Adaptive Attacker Main-Body Evidence | 5/5 | Complete | 2026-05-18 |
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 4/4 | Complete | 2026-05-19 |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 3/3 | Complete | 2026-05-19 |
-| 04.1. Expanded Dataset and Supplemental Experiments | 0/6 | Not started | - |
+| 04.1. Expanded Dataset and Supplemental Experiments | 1/6 | In Progress | - |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |
 | 6. Ethics, Artifact Availability, and Paper Claim Alignment | 0/TBD | Not started | - |
 

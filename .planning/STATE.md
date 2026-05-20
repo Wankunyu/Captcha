@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 04.1 context gathered
-last_updated: "2026-05-20T08:12:57.599Z"
-last_activity: "2026-05-20 - Inserted Phase 04.1: Expanded Dataset and Supplemental Experiments"
+status: executing
+stopped_at: Completed 04.1-01-PLAN.md
+last_updated: "2026-05-20T08:29:08.369Z"
+last_activity: 2026-05-20 - Completed 04.1-01 artifact contract plan
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 23
-  completed_plans: 17
-  percent: 74
+  completed_plans: 18
+  percent: 78
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.1
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-20 - Inserted Phase 04.1: Expanded Dataset and Supplemental Experiments
+Plan: 2 of 6
+Status: Ready for next plan
+Last activity: 2026-05-20 - Completed 04.1-01 artifact contract plan
 
-Progress: [██████░░░░] 57%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 21
+- Total plans completed: 18
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Progress: [██████░░░░] 57%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
-| 04.1 | 0 | - | - |
+| 04.1 | 1 | 4min | 4min |
 
 **Recent Trend:**
 
@@ -65,6 +65,7 @@ Progress: [██████░░░░] 57%
 | Phase 03 P02 | 7 min | 2 tasks | 2 files |
 | Phase 03 P03 | 11 min | 2 tasks | 5 files |
 | Phase 03 P04 | 9 min | 3 tasks | 3 files |
+| Phase 04.1 P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,9 @@ Recent decisions affecting current work:
 - Limitations prose is generated from Phase 3 machine-readable artifacts rather than notebook state.
 - Artifact indexing records input paths, output paths, schema version, run_id, and claim-boundary keys for traceability.
 - README keeps Phase 3 artifact generation offline and separates existing/provider-generated evidence from default reproduction commands.
+- Phase 04.1 artifact contracts live in a dedicated module instead of mutating Phase 3 or Phase 4 schemas.
+- Paper evidence rows explicitly separate direct expanded-dataset evidence from contextual SOTA-only evidence.
+- Expanded-dataset manifest rows enforce D-08 provenance fields and evidence-origin vocabulary before downstream provider runs.
 
 ### Pending Todos
 
@@ -145,11 +149,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: Phase 04.1 context gathered
-Stopped at: Phase 04.1 context gathered
-Resume file: .planning/phases/04.1-expanded-dataset-and-supplemental-experiments/04.1-CONTEXT.md
+Last session: 2026-05-20T08:29:05.873Z
+Stopped at: Completed 04.1-01-PLAN.md
+Resume file: None
 
-**Next Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) - ready to plan
+**Next Plan:** 04.1-02 (Validate sidecar expanded-dataset manifests and materialize evaluator-compatible sidecar roots)
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
