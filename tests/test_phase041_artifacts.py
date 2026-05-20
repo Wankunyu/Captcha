@@ -93,10 +93,14 @@ def _preflight_row(**overrides: object) -> ExpandedPreflightMatrixRow:
         "model": "gpt-5",
         "provider_model": "openai/gpt-5",
         "run_scope": "static",
+        "manifest_path": "expanded_captcha_data/phase04_1/manifest.json",
         "manifest_sha256": "a" * 64,
-        "prompt_config": "prompts_optimized.yaml#phase041-static",
+        "sidecar_dataset_root": "expanded_captcha_data/phase04_1",
+        "materialized_dataset_root": "expanded_captcha_data/phase04_1/evaluator_slice",
+        "task_types": ["Dice_Count", "Click_Order"],
+        "prompt_config": {"prompts_file": "prompts_optimized.yaml"},
         "expected_request_count": 24,
-        "cost_preview": "estimated from non-secret pricing metadata",
+        "cost_preview": {"unavailable_reason": "pricing metadata not provided"},
         "output_dir": "results/revision/phase041-static-openai-gpt5",
         "preflight_report_path": (
             "results/revision/phase041-static-openai-gpt5/preflight.json"
@@ -365,7 +369,11 @@ def test_run_matrix_requires_paper_facing_model_rows_and_runtime_fields() -> Non
 
 def test_preflight_matrix_requires_hash_cost_and_output_fields() -> None:
     required_fields = (
+        "manifest_path",
         "manifest_sha256",
+        "sidecar_dataset_root",
+        "materialized_dataset_root",
+        "task_types",
         "prompt_config",
         "expected_request_count",
         "cost_preview",
