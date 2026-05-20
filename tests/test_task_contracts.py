@@ -1,12 +1,15 @@
+import json
 from pathlib import Path
 
 import yaml
 
 from revision_preflight import DATASET_DIR_ALIASES, TASK_ALIASES
-from run_eval import SUPPORTED_TYPES, build_tasks
+from run_eval import SUPPORTED_TYPES, build_json_schema, build_tasks
+from visualize_results import CAPTCHAVisualizer
 
 
 IGNORED_NOT_USED_KEYS = {"Hold_Button(Not Used)", "Slide_Puzzle(Not Used)"}
+PHASE041_SIDECAR_ONLY_TYPES = {"Symbol_Count", "Relation_Match"}
 
 
 def _canonical_task_type(task_type: str) -> str:
@@ -16,6 +19,8 @@ def _canonical_task_type(task_type: str) -> str:
 def test_supported_types_have_dataset_directories() -> None:
     missing = []
     for task_type in sorted(SUPPORTED_TYPES):
+        if task_type in PHASE041_SIDECAR_ONLY_TYPES:
+            continue
         dataset_dir = Path("captcha_data") / DATASET_DIR_ALIASES.get(task_type, task_type)
         if not dataset_dir.is_dir():
             missing.append((task_type, str(dataset_dir)))
@@ -65,3 +70,89 @@ def test_few_shot_keys_are_known() -> None:
             unknown.append(task_type)
 
     assert not unknown
+
+
+def test_phase041_new_task_types_are_registered() -> None:
+    assert {"Symbol_Count", "Relation_Match"} <= SUPPORTED_TYPES
+
+
+def test_phase041_prompt_keys_are_present() -> None:
+    with open("prompts_optimized.yaml", "r", encoding="utf-8") as handle:
+        prompts = yaml.safe_load(handle) or {}
+
+    prompt_types = prompts.get("types") or {}
+    assert "Symbol_Count" in prompt_types
+    assert "Relation_Match" in prompt_types
+
+
+def test_phase041_visualizer_task_families_are_mapped() -> None:
+    assert CAPTCHAVisualizer.TASK_FAMILY["Symbol_Count"] == "Counting/Generalization"
+    assert CAPTCHAVisualizer.TASK_FAMILY["Relation_Match"] == "Semantic Matching"
+
+
+def test_phase041_json_schema_answer_shapes() -> None:
+    symbol_schema = build_json_schema("Symbol_Count")
+    assert symbol_schema["properties"]["answer_type"]["enum"] == ["number"]
+    assert symbol_schema["properties"]["value"]["type"] == "integer"
+    assert symbol_schema["required"] == ["answer_type", "value"]
+
+    relation_schema = build_json_schema("Relation_Match")
+    assert relation_schema["properties"]["answer_type"]["enum"] == ["classify"]
+    assert relation_schema["properties"]["index"]["type"] == "integer"
+    assert relation_schema["required"] == ["answer_type", "index"]
+
+
+def test_phase041_build_tasks_loads_sidecar_static_categories(tmp_path: Path) -> None:
+    symbol_dir = tmp_path / "Symbol_Count"
+    symbol_dir.mkdir()
+    (symbol_dir / "sample1.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (symbol_dir / "ground_truth.json").write_text(
+        json.dumps(
+            {
+                "sample1.png": {
+                    "count": 7,
+                    "prompt": "Count the target symbols.",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    relation_dir = tmp_path / "Relation_Match"
+    relation_dir.mkdir()
+    for image_name in ("ref.png", "opt0.png", "opt1.png"):
+        (relation_dir / image_name).write_bytes(b"\x89PNG\r\n\x1a\n")
+    (relation_dir / "ground_truth.json").write_text(
+        json.dumps(
+            {
+                "sample2.json": {
+                    "reference_image": "ref.png",
+                    "option_images": ["opt0.png", "opt1.png"],
+                    "correct_index": 1,
+                    "prompt": "Choose the matching relation.",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    tasks = build_tasks(
+        str(tmp_path),
+        ["Symbol_Count", "Relation_Match"],
+        prompts_cfg={
+            "types": {
+                "Symbol_Count": "Return JSON only.",
+                "Relation_Match": "Return JSON only.",
+            }
+        },
+    )
+
+    assert [task.type for task in tasks] == ["Symbol_Count", "Relation_Match"]
+    assert tasks[0].images == [str(symbol_dir / "sample1.png")]
+    assert tasks[0].gt == {"count": 7}
+    assert tasks[1].images == [
+        str(relation_dir / "ref.png"),
+        str(relation_dir / "opt0.png"),
+        str(relation_dir / "opt1.png"),
+    ]
+    assert tasks[1].gt == {"correct_index": 1, "num_options": 2}

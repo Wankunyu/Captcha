@@ -39,6 +39,34 @@ def test_path_finder_classification_scoring() -> None:
     assert not run_eval.evaluate_pass1(task, {"answer_type": "multi_select", "indices": [2]})
 
 
+def test_symbol_count_scoring() -> None:
+    task = run_eval.TaskItem(
+        type="Symbol_Count",
+        puzzle_id="sample1.png",
+        prompt="count symbols",
+        images=[],
+        gt={"count": 7},
+    )
+
+    assert run_eval.evaluate_pass1(task, {"answer_type": "number", "value": 7})
+    assert not run_eval.evaluate_pass1(task, {"answer_type": "number", "value": 6})
+    assert not run_eval.evaluate_pass1(task, {"answer_type": "classify", "index": 7})
+
+
+def test_relation_match_classification_scoring() -> None:
+    task = run_eval.TaskItem(
+        type="Relation_Match",
+        puzzle_id="sample2.json",
+        prompt="choose relation",
+        images=[],
+        gt={"correct_index": 1},
+    )
+
+    assert run_eval.evaluate_pass1(task, {"answer_type": "classify", "index": 1})
+    assert not run_eval.evaluate_pass1(task, {"answer_type": "classify", "index": 0})
+    assert not run_eval.evaluate_pass1(task, {"answer_type": "number", "value": 1})
+
+
 def test_describe_failure_multiselect_no_name_error() -> None:
     task = run_eval.TaskItem(
         type="Image_Recognition",
