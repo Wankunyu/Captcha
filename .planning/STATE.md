@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.1-04-PLAN.md
-last_updated: "2026-05-20T10:46:00Z"
-last_activity: 2026-05-20 - Completed 04.1-04 static supplemental matrix
+stopped_at: Completed 04.1-05-PLAN.md
+last_updated: "2026-05-20T11:55:25Z"
+last_activity: 2026-05-20 - Completed 04.1-05 adaptive supplemental matrix
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 23
-  completed_plans: 21
-  percent: 91
+  completed_plans: 22
+  percent: 95
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.1
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready for next plan
-Last activity: 2026-05-20 - Completed 04.1-04 static supplemental matrix
+Last activity: 2026-05-20 - Completed 04.1-05 adaptive supplemental matrix
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Progress: [█████████░] 91%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
-| 04.1 | 4 | 103min recorded | - |
+| 04.1 | 5 | 163min recorded | - |
 
 **Recent Trend:**
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 91%
 | Phase 04.1 P02 | 8min | 3 tasks | 220 files |
 | Phase 04.1 P03 | 3min | 2 tasks | 5 files |
 | Phase 04.1 P04 | 88min | 3 tasks | 4 source/test files + ignored revision artifacts |
+| Phase 04.1 P05 | 60min | 3 tasks + data top-up | 5 source/test/planning files + sidecar data + ignored revision artifacts |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - Symbol_Count uses the existing number answer shape with normalized ground truth stored as count.
 - Relation_Match uses the existing classify answer shape and mirrors reference-plus-options loading.
 - The two new Phase 04.1 categories are treated as sidecar-only dataset types rather than requiring directories under captcha_data/.
+- Phase 04.1 new-category rows now require at least 10 samples per category before provider evidence generation.
+- Adaptive supplemental runs use Exp3-style settings over the expanded sidecar slice: prompt mode `opt`, attempt budget 6, without-replacement sampling, binary pass/fail feedback, explicit policy-memory notes, and first-success-or-budget stopping.
+- Gemini response schemas strip unsupported `additionalProperties` before API submission so reflection memory remains active for Gemini adaptive runs.
 
 ### Pending Todos
 
@@ -156,10 +160,10 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-05-20T09:03:45.733Z
-Stopped at: Completed 04.1-04-PLAN.md
+Stopped at: Completed 04.1-05-PLAN.md
 Resume file: None
 
-**Next Plan:** 04.1-05 (Gate and run the Adaptive Attacker Exp3-style supplemental matrix under Phase 2 threat-model controls)
+**Next Plan:** 04.1-06 (Generate expanded-dataset analysis, paper table rows, divergence notes, and claim-boundary outputs)
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
