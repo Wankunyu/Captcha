@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.1-02-PLAN.md
-last_updated: "2026-05-20T09:18:00Z"
-last_activity: 2026-05-20 - Completed 04.1-02 sidecar dataset plan
+stopped_at: Completed 04.1-04-PLAN.md
+last_updated: "2026-05-20T10:46:00Z"
+last_activity: 2026-05-20 - Completed 04.1-04 static supplemental matrix
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 23
-  completed_plans: 20
-  percent: 87
+  completed_plans: 21
+  percent: 91
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.1
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready for next plan
-Last activity: 2026-05-20 - Completed 04.1-02 sidecar dataset plan
+Last activity: 2026-05-20 - Completed 04.1-04 static supplemental matrix
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 21
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Progress: [█████████░] 87%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
-| 04.1 | 3 | 15min recorded | - |
+| 04.1 | 4 | 103min recorded | - |
 
 **Recent Trend:**
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 87%
 | Phase 04.1 P01 | 4min | 2 tasks | 2 files |
 | Phase 04.1 P02 | 8min | 3 tasks | 220 files |
 | Phase 04.1 P03 | 3min | 2 tasks | 5 files |
+| Phase 04.1 P04 | 88min | 3 tasks | 4 source/test files + ignored revision artifacts |
 
 ## Accumulated Context
 
@@ -155,10 +156,10 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-05-20T09:03:45.733Z
-Stopped at: Completed 04.1-02-PLAN.md
+Stopped at: Completed 04.1-04-PLAN.md
 Resume file: None
 
-**Next Plan:** 04.1-04 (Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts)
+**Next Plan:** 04.1-05 (Gate and run the Adaptive Attacker Exp3-style supplemental matrix under Phase 2 threat-model controls)
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 

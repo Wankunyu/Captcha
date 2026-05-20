@@ -110,7 +110,7 @@ Plans:
 - [x] 04.1-01-PLAN.md - Define Phase 04.1 artifact schemas, writer contracts, and traceable manifest/run/paper row models.
 - [x] 04.1-02-PLAN.md - Validate sidecar expanded-dataset manifests and materialize evaluator-compatible sidecar roots.
 - [x] 04.1-03-PLAN.md - Add evaluator, prompt, scoring, visualization, and test contracts for the two new static-compatible task categories.
-- [ ] 04.1-04-PLAN.md - Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts.
+- [x] 04.1-04-PLAN.md - Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts.
 - [ ] 04.1-05-PLAN.md - Gate and run the Adaptive Attacker Exp3-style supplemental matrix under Phase 2 threat-model controls.
 - [ ] 04.1-06-PLAN.md - Generate expanded-dataset analysis, paper table rows, divergence notes, and claim-boundary outputs.
 
