@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Adaptive Attacker Main-Body Evidence** - Run, analyze, and package session-memory adaptive attacker evidence for the main paper body. Completed 2026-05-18.
 - [x] **Phase 3: Dataset Scope, Statistical Confidence, and Limitations** - Produce dataset-scope, statistical-confidence, retry-calibration, infrastructure-error, and limitations artifacts. Completed 2026-05-19.
 - [x] **Phase 4: SOTA Solver and Larger Benchmark Strengthening** - Add fair comparison hooks for Halligan, Oedipus, specialized CAPTCHA solvers, and compatible larger external benchmark subsets. Completed 2026-05-19.
+- [ ] **Phase 04.1: Expanded Dataset and Supplemental Experiments** (INSERTED) - Expand `captcha_data` or compatible offline dataset subsets, run supplemental experiments, and update paper claims/tables with directly evaluated expanded-dataset evidence.
 - [ ] **Phase 5: Defense Methodology and HCI Scope** - Convert measured structural hardness evidence into an actionable practitioner methodology with explicit human-clarity and HCI limitations.
 - [ ] **Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment** - Tie reviewer requests, disclosure details, artifact availability, figures/tables, and manuscript claims to regenerated, redacted, shareable artifacts.
 
@@ -97,9 +98,25 @@ Plans:
 - [x] 04-02-PLAN.md - Add offline coverage and Halligan-first import-validation CLI paths.
 - [x] 04-03-PLAN.md - Build comprehensive paper-ready baseline tables and concise notes.
 
+### Phase 04.1: Expanded Dataset and Supplemental Experiments (INSERTED)
+
+**Goal:** Researchers can expand `captcha_data` or compatible offline dataset subsets, run supplemental experiments through the existing reproducibility/safety contracts, and produce paper-ready evidence showing whether COGNITION's structural hardness boundary persists beyond the original dataset slice.
+**Requirements**: EXPAND-01, EXPAND-02, EXPAND-03, EXPAND-04, EXPAND-05, EXPAND-06, EXPAND-07, EXPAND-08
+**Depends on:** Phase 4
+**Reviewer alignment**: Strengthens the response to shepherd concerns about benchmark coverage, dataset breadth, and whether external/SOTA baseline observations are supported by directly evaluated expanded-dataset evidence.
+**Plans:** 6 plans
+
+Plans:
+- [ ] 04.1-01-PLAN.md - Define Phase 04.1 artifact schemas, writer contracts, and traceable manifest/run/paper row models.
+- [ ] 04.1-02-PLAN.md - Validate sidecar expanded-dataset manifests and materialize evaluator-compatible sidecar roots.
+- [ ] 04.1-03-PLAN.md - Add evaluator, prompt, scoring, visualization, and test contracts for the two new static-compatible task categories.
+- [ ] 04.1-04-PLAN.md - Gate and run the static all-model supplemental matrix through revision preflight and append-only attempt artifacts.
+- [ ] 04.1-05-PLAN.md - Gate and run the Adaptive Attacker Exp3-style supplemental matrix under Phase 2 threat-model controls.
+- [ ] 04.1-06-PLAN.md - Generate expanded-dataset analysis, paper table rows, divergence notes, and claim-boundary outputs.
+
 ### Phase 5: Defense Methodology and HCI Scope
 **Goal**: Researchers can generate an actionable defense methodology grounded in measured structural hardness evidence while clearly scoping human-clarity and formal HCI claims.
-**Depends on**: Phase 4
+**Depends on**: Phase 04.1
 **Requirements**: DEF-01, DEF-02, DEF-03, DEF-04, DEF-05, DEF-06
 **Reviewer alignment**: Converts high-level defense guidelines into a reusable practitioner methodology while preserving limits around usability, accessibility, maintenance, and production deployment claims.
 **Success Criteria** (what must be TRUE):
@@ -130,7 +147,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -138,6 +155,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Adaptive Attacker Main-Body Evidence | 5/5 | Complete | 2026-05-18 |
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 4/4 | Complete | 2026-05-19 |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 3/3 | Complete | 2026-05-19 |
+| 04.1. Expanded Dataset and Supplemental Experiments | 0/6 | Not started | - |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |
 | 6. Ethics, Artifact Availability, and Paper Claim Alignment | 0/TBD | Not started | - |
 

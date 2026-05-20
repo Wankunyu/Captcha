@@ -50,6 +50,17 @@ Requirements for the current shepherded revision milestone. Each requirement map
 - [x] **BASE-05**: External baseline or larger-dataset imports validate required fields, metric definitions, task labels, sample counts, and comparability assumptions before appearing in paper-ready outputs.
 - [x] **BASE-06**: The framework can run or import at least one smoke subset for a compatible larger external benchmark or baseline comparison when artifacts are available and feasible within the shepherding timeline.
 
+### Expanded Dataset and Supplemental Experiments
+
+- [ ] **EXPAND-01**: Researcher can validate a sidecar expanded-dataset manifest that preserves provenance, evidence origin, source paths, task family, sample counts, label format, metadata alignment, answer-format normalization, compatibility, evaluation status, limitation notes, and adaptive eligibility without mutating `captcha_data/`.
+- [ ] **EXPAND-02**: Researcher can materialize a sidecar evaluator-compatible root shaped as `<dataset_root>/<TaskType>/ground_truth.json` containing supplemented hard or low-sample original categories plus exactly two new static-compatible CAPTCHA categories.
+- [ ] **EXPAND-03**: The two Phase 04.1 new static-compatible task categories have aligned evaluator contracts across task loading, prompts, JSON schemas, scoring, visualization metadata, and offline tests.
+- [ ] **EXPAND-04**: Researcher can generate a static supplemental preflight matrix for every existing paper-facing provider/model row, including prompt and few-shot hashes, unique-or-resumable output directories, expected request counts, cost previews, manifest references, and no provider construction.
+- [ ] **EXPAND-05**: Researcher can run static supplemental evaluations for the expanded dataset through revision run manifests, append-only per-attempt records, and derived summaries before paper table generation.
+- [ ] **EXPAND-06**: Researcher can run an Adaptive Attacker Exp3-style supplemental preflight and execution path over adaptive-eligible expanded rows while preserving offline instances, binary pass/fail feedback, explicit local policy-memory notes, no corrective hints, and append-only adaptive attempts.
+- [ ] **EXPAND-07**: Expanded-dataset analysis separates scientific, protocol, and infrastructure failures, compares original and expanded conclusions, surfaces divergences, and keeps the 40% operational cutoff scoped as a reporting heuristic.
+- [ ] **EXPAND-08**: Paper-ready Phase 04.1 outputs update main-body table rows and claim-boundary notes while distinguishing directly evaluated expanded-dataset evidence from contextual external SOTA triangulation and avoiding population-level deployment estimates.
+
 ### Defense Methodology and HCI Scope
 
 - [ ] **DEF-01**: Researcher can generate an actionable defense methodology document that converts empirical hardness factors into practitioner steps.
@@ -140,6 +151,14 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | BASE-04 | Phase 4 | Complete |
 | BASE-05 | Phase 4 | Complete |
 | BASE-06 | Phase 4 | Complete |
+| EXPAND-01 | Phase 04.1 | Pending |
+| EXPAND-02 | Phase 04.1 | Pending |
+| EXPAND-03 | Phase 04.1 | Pending |
+| EXPAND-04 | Phase 04.1 | Pending |
+| EXPAND-05 | Phase 04.1 | Pending |
+| EXPAND-06 | Phase 04.1 | Pending |
+| EXPAND-07 | Phase 04.1 | Pending |
+| EXPAND-08 | Phase 04.1 | Pending |
 | DEF-01 | Phase 5 | Pending |
 | DEF-02 | Phase 5 | Pending |
 | DEF-03 | Phase 5 | Pending |
@@ -156,8 +175,8 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | PAPER-08 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 39 total
-- Mapped to phases: 39
+- v1 requirements: 47 total
+- Mapped to phases: 47
 - Unmapped: 0
 
 ---
