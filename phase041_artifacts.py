@@ -377,7 +377,11 @@ class ExpandedPaperEvidenceRow(BaseModel):
     expanded_static_rate: float | None = Field(default=None, ge=0, le=1)
     expanded_adaptive_rate: float | None = Field(default=None, ge=0, le=1)
     agreement_status: str
+    diverges_from_original: bool = False
     divergence_reason: str
+    scientific_wrong_count: int = Field(default=0, ge=0)
+    protocol_failure_count: int = Field(default=0, ge=0)
+    infrastructure_failure_count: int = Field(default=0, ge=0)
     claim_boundary_note: str
     direct_evidence: bool
     contextual_sota_only: bool

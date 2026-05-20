@@ -1,4 +1,5 @@
 import argparse
+import csv
 import inspect
 import json
 import re
@@ -17,10 +18,14 @@ from adaptive_artifacts import FEEDBACK_MODE, MEMORY_MODE, SAMPLING_MODE, STOPPI
 from phase041_artifacts import (
     ExpandedDatasetManifestRow,
     ExpandedAdaptiveSummaryRow,
+    ExpandedClaimBoundaryNoteRow,
+    ExpandedPaperEvidenceRow,
     ExpandedPreflightMatrixRow,
     ExpandedRunMatrixRow,
     ExpandedStaticSummaryRow,
     write_expanded_adaptive_summary,
+    write_expanded_claim_boundaries,
+    write_expanded_paper_evidence,
     write_expanded_run_matrix,
     write_expanded_preflight_matrix,
     write_expanded_static_summary,
@@ -1040,6 +1045,497 @@ def collect_adaptive_supplemental_runs(
     }
 
 
+PAPER_CUTOFF = 0.40
+
+
+def _payload_rows(path: Path) -> list[dict[str, Any]]:
+    payload = _read_json(path)
+    if isinstance(payload, dict):
+        rows = payload.get("rows")
+    else:
+        rows = payload
+    if not isinstance(rows, list):
+        raise ValueError(f"{path} must contain a rows array")
+    return [dict(row) for row in rows if isinstance(row, dict)]
+
+
+def load_phase041_static_summary(path: str | Path) -> list[dict[str, Any]]:
+    return _payload_rows(Path(path))
+
+
+def load_phase041_adaptive_summary(path: str | Path) -> list[dict[str, Any]]:
+    return _payload_rows(Path(path))
+
+
+def load_original_exp2_rates(results_dir: str | Path) -> dict[tuple[str, str], float]:
+    root = Path(results_dir)
+    exp2_root = root / "exp2" if (root / "exp2").is_dir() else root
+    rates: dict[tuple[str, str], float] = {}
+    for results_path in sorted(exp2_root.glob("*/*/results.csv")):
+        provider = results_path.parent.parent.name
+        model = results_path.parent.name
+        provider_model = f"{provider}/{model}"
+        with results_path.open("r", encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                task_type = row.get("type") or row.get("task_type")
+                raw_rate = row.get("pass_at_1") or row.get("pass_rate")
+                if not task_type or raw_rate in (None, ""):
+                    continue
+                rates[(provider_model, task_type)] = float(raw_rate)
+    return rates
+
+
+def _rate_side(rate: float | None) -> str | None:
+    if rate is None:
+        return None
+    return "high" if rate >= PAPER_CUTOFF else "low"
+
+
+def _agreement_status(
+    original_rate: float | None,
+    expanded_static_rate: float | None,
+    expanded_adaptive_rate: float | None,
+) -> tuple[str, str]:
+    original_side = _rate_side(original_rate)
+    expanded_sides = [
+        side
+        for side in (
+            _rate_side(expanded_static_rate),
+            _rate_side(expanded_adaptive_rate),
+        )
+        if side is not None
+    ]
+    if original_side is None or not expanded_sides:
+        return "inconclusive", "Original or expanded rate is unavailable."
+    if any(side != original_side for side in expanded_sides):
+        return (
+            "diverges_from_original",
+            "Expanded static or adaptive rate crosses the 40% reporting cutoff "
+            "in the opposite direction from the original Exp2 rate.",
+        )
+    return "supports_original", ""
+
+
+def _claim_boundary_note(
+    agreement_status: str,
+    evidence_origin: str,
+    protocol_failure_count: int,
+    infrastructure_failure_count: int,
+) -> str:
+    scope = (
+        "Directly evaluated expanded-dataset evidence; use as supplemental "
+        "validation-slice evidence, not a population-level deployment estimate."
+    )
+    if agreement_status == "diverges_from_original":
+        failure_note = (
+            " Failure-class caveat: infrastructure failures must not be counted "
+            "as structural hardness; provider/runtime failures need separate caveats."
+            if protocol_failure_count or infrastructure_failure_count
+            else ""
+        )
+        return (
+            f"{scope} This row diverges from the original Exp2 cutoff direction "
+            "and should constrain the paper claim."
+            f"{failure_note}"
+        )
+    if protocol_failure_count or infrastructure_failure_count:
+        return (
+            f"{scope} Failure-class caveats are present and provider/runtime "
+            "failures must not be counted as structural hardness."
+        )
+    if evidence_origin == "new_category":
+        return (
+            f"{scope} New-category rows broaden task coverage but remain "
+            "small sidecar slices."
+        )
+    return f"{scope} Expanded slice is consistent with the original cutoff direction."
+
+
+def build_expanded_validation_analysis_rows(
+    manifest_rows: list[ExpandedDatasetManifestRow],
+    static_rows: list[dict[str, Any]],
+    adaptive_rows: list[dict[str, Any]],
+    original_rates: dict[tuple[str, str], float],
+    *,
+    run_id: str,
+    static_summary_path: str,
+    adaptive_summary_path: str,
+) -> list[dict[str, Any]]:
+    manifest_by_task = {row.task_type: row for row in manifest_rows}
+    adaptive_by_key = {
+        (str(row.get("provider_model")), str(row.get("task_type"))): row
+        for row in adaptive_rows
+    }
+    rows: list[dict[str, Any]] = []
+    for static_row in static_rows:
+        provider_model = str(static_row.get("provider_model") or "")
+        task_type = str(static_row.get("task_type") or "")
+        manifest_row = manifest_by_task.get(task_type)
+        adaptive_row = adaptive_by_key.get((provider_model, task_type), {})
+        original_rate = original_rates.get((provider_model, task_type))
+        expanded_static_rate = static_row.get("pass_rate")
+        expanded_adaptive_rate = adaptive_row.get("adaptive_success_rate")
+        agreement_status, divergence_reason = _agreement_status(
+            original_rate,
+            float(expanded_static_rate) if expanded_static_rate is not None else None,
+            float(expanded_adaptive_rate) if expanded_adaptive_rate is not None else None,
+        )
+        scientific_wrong_count = int(static_row.get("scientific_wrong_count") or 0) + int(
+            adaptive_row.get("scientific_wrong_count") or 0
+        )
+        protocol_failure_count = int(static_row.get("protocol_failure_count") or 0) + int(
+            adaptive_row.get("protocol_failure_count") or 0
+        )
+        infrastructure_failure_count = int(
+            static_row.get("infrastructure_failure_count") or 0
+        ) + int(adaptive_row.get("infrastructure_failure_count") or 0)
+        evidence_origin = str(
+            static_row.get("evidence_origin")
+            or (manifest_row.evidence_origin if manifest_row else "supplemented_category")
+        )
+        claim_note = _claim_boundary_note(
+            agreement_status,
+            evidence_origin,
+            protocol_failure_count,
+            infrastructure_failure_count,
+        )
+        rows.append(
+            {
+                "run_id": run_id,
+                "evidence_row_id": f"{_slug(provider_model)}-{_slug(task_type)}",
+                "provider": str(static_row.get("provider") or ""),
+                "model": str(static_row.get("model") or ""),
+                "provider_model": provider_model,
+                "task_type": task_type,
+                "task_family": str(
+                    static_row.get("task_family")
+                    or (manifest_row.task_family if manifest_row else "unknown")
+                ),
+                "evidence_origin": evidence_origin,
+                "slice_type": str(
+                    static_row.get("slice_type")
+                    or (manifest_row.slice_type if manifest_row else "supplement_existing")
+                ),
+                "sample_count": int(static_row.get("sample_count") or 0),
+                "original_rate": original_rate,
+                "expanded_static_rate": expanded_static_rate,
+                "expanded_adaptive_rate": expanded_adaptive_rate,
+                "agreement_status": agreement_status,
+                "diverges_from_original": agreement_status == "diverges_from_original",
+                "divergence_reason": divergence_reason,
+                "scientific_wrong_count": scientific_wrong_count,
+                "protocol_failure_count": protocol_failure_count,
+                "infrastructure_failure_count": infrastructure_failure_count,
+                "claim_boundary_note": claim_note,
+                "direct_evidence": True,
+                "contextual_sota_only": False,
+                "claim_use": (
+                    "main_body_caveated"
+                    if agreement_status != "supports_original"
+                    or protocol_failure_count
+                    or infrastructure_failure_count
+                    else "main_body_direct_evidence"
+                ),
+                "source_artifact_path": f"{static_summary_path};{adaptive_summary_path}",
+            }
+        )
+    return rows
+
+
+def _contextual_sota_rows(
+    phase4_paper_rows: list[dict[str, Any]],
+    *,
+    run_id: str,
+    source_artifact_path: str,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for index, row in enumerate(phase4_paper_rows, start=1):
+        system_name = str(row.get("system_name") or f"external-system-{index}")
+        metric_value = row.get("normalized_success_rate")
+        if metric_value is None:
+            metric_value = row.get("reported_metric_value")
+        note = (
+            "Contextual external SOTA triangulation only; not directly evaluated "
+            "on the Phase 04.1 expanded sidecar dataset."
+        )
+        rows.append(
+            {
+                "run_id": run_id,
+                "evidence_row_id": f"contextual-sota-{index}-{_slug(system_name)}",
+                "provider": "external",
+                "model": system_name,
+                "provider_model": f"external/{system_name}",
+                "task_type": "External_SOTA_Context",
+                "task_family": "Contextual SOTA",
+                "evidence_origin": "original_captchaworld",
+                "slice_type": "original",
+                "sample_count": 0,
+                "original_rate": float(metric_value) if metric_value is not None else None,
+                "expanded_static_rate": None,
+                "expanded_adaptive_rate": None,
+                "agreement_status": "inconclusive",
+                "divergence_reason": "Contextual SOTA rows are not direct expanded evidence.",
+                "scientific_wrong_count": 0,
+                "protocol_failure_count": 0,
+                "infrastructure_failure_count": 0,
+                "claim_boundary_note": note,
+                "direct_evidence": False,
+                "contextual_sota_only": True,
+                "claim_use": "appendix_context",
+                "source_artifact_path": source_artifact_path,
+            }
+        )
+    return rows
+
+
+def build_expanded_paper_evidence_rows(
+    validation_rows: list[dict[str, Any]],
+    phase4_paper_rows: list[dict[str, Any]] | None = None,
+    *,
+    run_id: str,
+    phase4_paper_table_path: str = "",
+) -> list[ExpandedPaperEvidenceRow]:
+    raw_rows = [dict(row) for row in validation_rows]
+    if phase4_paper_rows:
+        raw_rows.extend(
+            _contextual_sota_rows(
+                phase4_paper_rows,
+                run_id=run_id,
+                source_artifact_path=phase4_paper_table_path,
+            )
+        )
+    return [ExpandedPaperEvidenceRow.model_validate(row) for row in raw_rows]
+
+
+def _claim_boundary_rows(
+    paper_rows: list[ExpandedPaperEvidenceRow],
+    *,
+    run_id: str,
+    source_artifact_path: str,
+) -> list[ExpandedClaimBoundaryNoteRow]:
+    rows: list[ExpandedClaimBoundaryNoteRow] = []
+    for row in paper_rows:
+        rows.append(
+            ExpandedClaimBoundaryNoteRow(
+                run_id=run_id,
+                note_id=f"boundary-{row.evidence_row_id}",
+                claim_key="expanded-dataset-structural-hardness-boundary",
+                task_type=row.task_type,
+                task_family=row.task_family,
+                evidence_origin=row.evidence_origin,
+                agreement_status=row.agreement_status,
+                divergence_reason=row.divergence_reason,
+                claim_use=row.claim_use,
+                direct_evidence=row.direct_evidence,
+                contextual_sota_only=row.contextual_sota_only,
+                claim_boundary_note=row.claim_boundary_note,
+                limitation_notes=(
+                    "Phase 04.1 expanded sidecar evidence is a validation slice, "
+                    "not a population-level deployment estimate."
+                ),
+                source_artifact_path=source_artifact_path,
+                visible_in_main_body=row.direct_evidence,
+            )
+        )
+    return rows
+
+
+def render_expanded_claim_boundary_notes(
+    paper_rows: list[ExpandedPaperEvidenceRow],
+    *,
+    phase4_notes: str = "",
+) -> str:
+    direct_count = sum(row.direct_evidence for row in paper_rows)
+    divergence_rows = [
+        row for row in paper_rows if row.agreement_status == "diverges_from_original"
+    ]
+    contextual_count = sum(row.contextual_sota_only for row in paper_rows)
+    return "\n".join(
+        [
+            "# Phase 04.1 Expanded Dataset Claim Boundary Notes",
+            "",
+            "## Directly evaluated expanded-dataset evidence",
+            f"Direct evidence rows: {direct_count}. These rows come from the "
+            "Phase 04.1 static and adaptive sidecar runs.",
+            "",
+            "## Divergence handling",
+            (
+                f"Divergent rows: {len(divergence_rows)}. Divergence is surfaced "
+                "when expanded evidence crosses the 40% reporting cutoff in the "
+                "opposite direction from original Exp2 evidence."
+            ),
+            "",
+            "## Contextual external SOTA triangulation",
+            f"Contextual SOTA-only rows: {contextual_count}. Phase 4 baseline rows "
+            "remain contextual and are not direct expanded-dataset evidence.",
+            "",
+            "## Scope limits",
+            "The expanded sidecar strengthens benchmark breadth but does not erase "
+            "CaptchaWorld limitations and must not be read as a population-level "
+            "deployment estimate.",
+            "",
+            "## Phase 4 Context",
+            phase4_notes.strip() or "No Phase 4 baseline notes were provided.",
+            "",
+        ]
+    )
+
+
+def render_expanded_divergence_notes(paper_rows: list[ExpandedPaperEvidenceRow]) -> str:
+    divergence_rows = [
+        row for row in paper_rows if row.agreement_status == "diverges_from_original"
+    ]
+    lines = [
+        "# Phase 04.1 Expanded Dataset Divergence Notes",
+        "",
+        "## Divergence handling",
+    ]
+    if not divergence_rows:
+        lines.append("No direct expanded rows diverged from original Exp2 cutoff direction.")
+    for row in divergence_rows:
+        lines.append(
+            f"- {row.provider_model} / {row.task_type}: {row.divergence_reason} "
+            f"{row.claim_boundary_note}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Scope limits",
+            "Divergence rows constrain claim wording; they do not provide "
+            "population-level deployment estimates.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_expanded_sota_distinction_notes(
+    paper_rows: list[ExpandedPaperEvidenceRow],
+) -> str:
+    contextual_rows = [row for row in paper_rows if row.contextual_sota_only]
+    return "\n".join(
+        [
+            "# Phase 04.1 SOTA Distinction Notes",
+            "",
+            "## Contextual external SOTA triangulation",
+            f"Contextual rows: {len(contextual_rows)}. These rows triangulate "
+            "related external solver claims but are not direct expanded-dataset evidence.",
+            "",
+            "## Directly evaluated expanded-dataset evidence",
+            "Direct evidence comes only from Phase 04.1 static and adaptive runs.",
+            "",
+            "## Scope limits",
+            "Do not merge external SOTA context into CaptchaWorld expanded-slice "
+            "rates or population-level deployment estimates.",
+            "",
+        ]
+    )
+
+
+def _write_dict_csv(path: Path, rows: list[dict[str, Any]]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in fieldnames:
+                fieldnames.append(key)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+    return path
+
+
+def write_phase041_paper_outputs(
+    *,
+    manifest_path: str | Path,
+    static_summary_path: str | Path,
+    adaptive_summary_path: str | Path,
+    phase4_paper_table_path: str | Path,
+    phase4_notes_path: str | Path,
+    results_dir: str | Path,
+    output_root: str | Path,
+    run_id: str,
+) -> dict[str, object]:
+    manifest_rows = load_phase041_manifest(Path(manifest_path), run_id=run_id)
+    validate_phase041_manifest(manifest_rows)
+    static_rows = load_phase041_static_summary(static_summary_path)
+    adaptive_rows = load_phase041_adaptive_summary(adaptive_summary_path)
+    original_rates = load_original_exp2_rates(results_dir)
+    phase4_rows = _payload_rows(Path(phase4_paper_table_path))
+    phase4_notes = Path(phase4_notes_path).read_text(encoding="utf-8")
+    run_dir = revision_run_dir(output_root, run_id)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    validation_rows = build_expanded_validation_analysis_rows(
+        manifest_rows,
+        static_rows,
+        adaptive_rows,
+        original_rates,
+        run_id=run_id,
+        static_summary_path=str(static_summary_path),
+        adaptive_summary_path=str(adaptive_summary_path),
+    )
+    paper_rows = build_expanded_paper_evidence_rows(
+        validation_rows,
+        phase4_rows,
+        run_id=run_id,
+        phase4_paper_table_path=str(phase4_paper_table_path),
+    )
+    claim_rows = _claim_boundary_rows(
+        paper_rows,
+        run_id=run_id,
+        source_artifact_path=str(run_dir / "expanded_main_body_table.json"),
+    )
+
+    validation_csv = run_dir / "expanded_dataset_validation_analysis.csv"
+    validation_json = run_dir / "expanded_dataset_validation_analysis.json"
+    _write_dict_csv(validation_csv, validation_rows)
+    _write_json(
+        validation_json,
+        {
+            "schema_version": "cognition.revision.phase041.validation_analysis.v1",
+            "rows": validation_rows,
+        },
+    )
+
+    main_csv = run_dir / "expanded_main_body_table.csv"
+    main_json = run_dir / "expanded_main_body_table.json"
+    write_expanded_paper_evidence(main_csv, main_json, paper_rows)
+
+    claim_csv = run_dir / "expanded_claim_boundary_rows.csv"
+    claim_json = run_dir / "expanded_claim_boundary_rows.json"
+    write_expanded_claim_boundaries(claim_csv, claim_json, claim_rows)
+
+    claim_notes = run_dir / "expanded_claim_boundary_notes.md"
+    divergence_notes = run_dir / "expanded_divergence_notes.md"
+    sota_notes = run_dir / "expanded_sota_distinction_notes.md"
+    claim_notes.write_text(
+        render_expanded_claim_boundary_notes(paper_rows, phase4_notes=phase4_notes),
+        encoding="utf-8",
+    )
+    divergence_notes.write_text(
+        render_expanded_divergence_notes(paper_rows),
+        encoding="utf-8",
+    )
+    sota_notes.write_text(
+        render_expanded_sota_distinction_notes(paper_rows),
+        encoding="utf-8",
+    )
+
+    return {
+        "validation_row_count": len(validation_rows),
+        "paper_row_count": len(paper_rows),
+        "claim_boundary_row_count": len(claim_rows),
+        "expanded_dataset_validation_analysis_json": str(validation_json),
+        "expanded_main_body_table_json": str(main_json),
+        "expanded_claim_boundary_notes": str(claim_notes),
+        "expanded_divergence_notes": str(divergence_notes),
+        "expanded_sota_distinction_notes": str(sota_notes),
+    }
+
+
 def _run_preflight_matrix(args: argparse.Namespace) -> dict[str, object]:
     rows = build_static_preflight_matrix(
         manifest_path=Path(args.manifest),
@@ -1116,6 +1612,19 @@ def _run_collect_adaptive(args: argparse.Namespace) -> dict[str, object]:
         stream=not args.no_stream,
         timeout_sec=args.timeout_sec,
         seed=args.seed,
+    )
+
+
+def _run_paper_outputs(args: argparse.Namespace) -> dict[str, object]:
+    return write_phase041_paper_outputs(
+        manifest_path=Path(args.manifest),
+        static_summary_path=Path(args.static_summary),
+        adaptive_summary_path=Path(args.adaptive_summary),
+        phase4_paper_table_path=Path(args.phase4_paper_table),
+        phase4_notes_path=Path(args.phase4_notes),
+        results_dir=Path(args.results_dir),
+        output_root=Path(args.output_root),
+        run_id=args.run_id,
     )
 
 
@@ -1251,6 +1760,42 @@ def build_parser() -> argparse.ArgumentParser:
     collect_adaptive.add_argument("--timeout-sec", type=float, default=600.0)
     collect_adaptive.add_argument("--seed", type=int, default=1234)
 
+    paper_outputs = subparsers.add_parser(
+        "paper-outputs",
+        help="Generate Phase 04.1 paper-facing expanded dataset outputs.",
+    )
+    paper_outputs.add_argument(
+        "--manifest",
+        default=str(PHASE041_SIDECAR_ROOT / "manifest.json"),
+    )
+    paper_outputs.add_argument(
+        "--static-summary",
+        default=str(
+            Path("results/revision")
+            / PHASE041_STATIC_SUPPLEMENTAL_RUN_ID
+            / "expanded_static_summary.json"
+        ),
+    )
+    paper_outputs.add_argument(
+        "--adaptive-summary",
+        default=str(
+            Path("results/revision")
+            / PHASE041_ADAPTIVE_SUPPLEMENTAL_RUN_ID
+            / "expanded_adaptive_summary.json"
+        ),
+    )
+    paper_outputs.add_argument(
+        "--phase4-paper-table",
+        default="results/revision/phase4-paper/paper_baseline_table.json",
+    )
+    paper_outputs.add_argument(
+        "--phase4-notes",
+        default="results/revision/phase4-paper/baseline_notes.md",
+    )
+    paper_outputs.add_argument("--results-dir", default="./results")
+    paper_outputs.add_argument("--output-root", default="./results/revision")
+    paper_outputs.add_argument("--run-id", default="phase04_1_paper_outputs")
+
     return parser
 
 
@@ -1272,6 +1817,8 @@ def main(argv: list[str] | None = None) -> int:
             summary = _run_adaptive_preflight_matrix(args)
         elif args.command == "collect-adaptive":
             summary = _run_collect_adaptive(args)
+        elif args.command == "paper-outputs":
+            summary = _run_paper_outputs(args)
         else:
             parser.error(f"unknown command: {args.command}")
     except (

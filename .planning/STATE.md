@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04.1-05-PLAN.md
-last_updated: "2026-05-20T11:55:25Z"
-last_activity: 2026-05-20 - Completed 04.1-05 adaptive supplemental matrix
+status: ready_for_planning
+stopped_at: Completed 04.1-06-PLAN.md
+last_updated: "2026-05-20T12:22:00Z"
+last_activity: 2026-05-20 - Completed Phase 04.1 paper-facing expanded-dataset outputs
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 23
-  completed_plans: 22
-  percent: 95
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 04.1 - Expanded Dataset and Supplemental Experiments
+**Current focus:** Phase 5 - Defense Methodology and HCI Scope
 
 ## Current Position
 
-Phase: 04.1
-Plan: 6 of 6
-Status: Ready for next plan
-Last activity: 2026-05-20 - Completed 04.1-05 adaptive supplemental matrix
+Phase: 5
+Plan: Not planned yet
+Status: Ready to plan next phase
+Last activity: 2026-05-20 - Completed Phase 04.1 paper-facing expanded-dataset outputs
 
-Progress: [█████████░] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 23
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -48,7 +48,7 @@ Progress: [█████████░] 95%
 | 02 | 5 | - | - |
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
-| 04.1 | 5 | 163min recorded | - |
+| 04.1 | 6 | 175min recorded | - |
 
 **Recent Trend:**
 
@@ -70,6 +70,7 @@ Progress: [█████████░] 95%
 | Phase 04.1 P03 | 3min | 2 tasks | 5 files |
 | Phase 04.1 P04 | 88min | 3 tasks | 4 source/test files + ignored revision artifacts |
 | Phase 04.1 P05 | 60min | 3 tasks + data top-up | 5 source/test/planning files + sidecar data + ignored revision artifacts |
+| Phase 04.1 P06 | 12min | 2 tasks | 3 source/test files + ignored revision artifacts |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Recent decisions affecting current work:
 - Phase 04.1 new-category rows now require at least 10 samples per category before provider evidence generation.
 - Adaptive supplemental runs use Exp3-style settings over the expanded sidecar slice: prompt mode `opt`, attempt budget 6, without-replacement sampling, binary pass/fail feedback, explicit policy-memory notes, and first-success-or-budget stopping.
 - Gemini response schemas strip unsupported `additionalProperties` before API submission so reflection memory remains active for Gemini adaptive runs.
+- Phase 04.1 paper outputs preserve divergence from original Exp2 cutoff direction, separate direct expanded evidence from contextual SOTA rows, and expose scientific/protocol/infrastructure failure counts.
 
 ### Pending Todos
 
@@ -136,7 +138,8 @@ None yet.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
 - [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
-- [Phase 04.1]: Expanded-dataset work must stay offline and dataset-based, with validated task filters, manifests, attempt logs, and paper claim updates before downstream defense methodology.
+- [Resolved in Phase 04.1]: Expanded-dataset sidecar data, static/adaptive supplemental runs, paper output rows, divergence notes, and claim-boundary artifacts are complete.
+- [Phase 5]: Defense methodology should use Phase 04.1 direct expanded evidence without erasing CaptchaWorld and population-level deployment limits.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
 ### Quick Tasks Completed
@@ -159,12 +162,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-20T09:03:45.733Z
-Stopped at: Completed 04.1-05-PLAN.md
+Last session: 2026-05-20T12:22:00Z
+Stopped at: Completed 04.1-06-PLAN.md
 Resume file: None
 
-**Next Plan:** 04.1-06 (Generate expanded-dataset analysis, paper table rows, divergence notes, and claim-boundary outputs)
+**Next Step:** Plan Phase 5 (Defense Methodology and HCI Scope)
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
-**Planned Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — 6 plans — 2026-05-20T08:12:57.579Z
+**Completed Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — 6 plans — 2026-05-20
