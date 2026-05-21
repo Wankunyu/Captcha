@@ -345,11 +345,17 @@ def test_collect_static_invokes_phase042_revision_contract(
     assert first_call["resume_revision_output"] is True
     medium_call = next(call for call in calls if call["revision_run_id"].endswith("gpt-5.1_medium"))
     none_call = next(call for call in calls if call["revision_run_id"].endswith("gpt-5.1_none"))
+    fireworks_call = next(call for call in calls if call["provider"] == "fireworks")
     assert medium_call["model"] == "gpt-5.1"
     assert medium_call["thinking"] is True
     assert medium_call["thinking_options"] == {"effort": "medium"}
     assert none_call["model"] == "gpt-5.1"
     assert none_call["thinking"] is False
+    assert fireworks_call["model"] == (
+        "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
+    )
+    assert fireworks_call["thinking"] is False
+    assert fireworks_call["thinking_options"] is None
     payload = json.loads(
         (
             output_root

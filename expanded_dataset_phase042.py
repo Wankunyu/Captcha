@@ -1515,6 +1515,13 @@ def _runtime_model_kwargs(provider: str, model_label: str) -> dict[str, object]:
             "thinking": True,
             "thinking_options": {"effort": effort},
         }
+    if provider == "fireworks" and model_label.startswith("accounts_fireworks_models_"):
+        model_name = model_label.removeprefix("accounts_fireworks_models_")
+        return {
+            "model": f"accounts/fireworks/models/{model_name}",
+            "thinking": False,
+            "thinking_options": None,
+        }
     return {"model": model_label, "thinking": False, "thinking_options": None}
 
 
