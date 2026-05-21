@@ -23,6 +23,60 @@ def _write_json(path: Path, payload: object) -> Path:
     return path
 
 
+def _write_phase042_pricing(path: Path) -> Path:
+    path.write_text(
+        "\n".join(
+            [
+                "pricing:",
+                "  openai:",
+                "    gpt-5: {in_per_1k: 0.00125, out_per_1k: 0.0100}",
+                "    gpt-5.1: {in_per_1k: 0.00125, out_per_1k: 0.0100}",
+                "  anthropic:",
+                "    claude-sonnet-4-5: {in_per_1k: 0.003, out_per_1k: 0.015}",
+                "  gemini:",
+                "    gemini-2.5-flash: {in_per_1k: 0.00030, out_per_1k: 0.0025}",
+                "    gemini-2.5-pro: {in_per_1k: 0.00125, out_per_1k: 0.0100}",
+                "  fireworks:",
+                "    accounts/fireworks/models/qwen3-vl-235b-a22b-instruct: "
+                "{in_per_1k: 0.00022, out_per_1k: 0.00088}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _write_exp2_token_summaries(results_dir: Path) -> None:
+    for provider_model in PHASE042_PAPER_FACING_PROVIDER_MODELS:
+        provider, model = provider_model.split("/", 1)
+        summary_model = (
+            "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
+            if provider == "fireworks"
+            else ("gpt-5.1" if model.startswith("gpt-5.1_") else model)
+        )
+        _write_json(
+            (
+                results_dir
+                / "exp2"
+                / provider
+                / model
+                / f"exp2_opt_{provider}_{model}_token_summary.json"
+            ),
+            {
+                "experiment": "exp2_opt",
+                "provider": provider,
+                "model": summary_model,
+                "overall": {
+                    "total_questions": 10,
+                    "total_tokens_in": 10000,
+                    "total_tokens_out": 1000,
+                    "total_tokens": 11000,
+                },
+            },
+        )
+
+
 def _selected_row(task_type: str, sample_count: int = 10) -> dict[str, object]:
     return {
         "selected_id": f"phase042-{task_type.lower()}",
@@ -172,6 +226,38 @@ def test_static_preflight_uses_only_three_new_categories(tmp_path: Path, monkeyp
     assert {tuple(row.task_types) for row in rows} == {PHASE042_STATIC_TASK_TYPES}
     assert "Dice_Count" not in rows[0].task_types
     assert "Geometry_Click" not in rows[0].task_types
+
+
+def test_static_preflight_estimates_cost_from_token_pricing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    selected_manifest, dataset_root, results_dir = _write_phase042_static_fixture(tmp_path)
+    pricing_file = _write_phase042_pricing(tmp_path / "pricing.phase04_2.yaml")
+    _write_exp2_token_summaries(results_dir)
+    monkeypatch.setattr(revision_preflight, "build_report", _fake_preflight_report)
+
+    rows = build_phase042_static_preflight_matrix(
+        selected_manifest_path=selected_manifest,
+        dataset_root=dataset_root,
+        results_dir=results_dir,
+        output_root=tmp_path / "results/revision",
+        pricing_file=pricing_file,
+        write_reports=True,
+    )
+
+    assert all(row.cost_preview["approximate_cost_usd"] > 0 for row in rows)
+    assert all(row.cost_preview["pricing_source"] == str(pricing_file) for row in rows)
+    assert rows[0].cost_preview["pricing_model"] == "gpt-5"
+    medium = next(row for row in rows if row.model == "gpt-5.1_medium")
+    fireworks = next(row for row in rows if row.provider == "fireworks")
+    assert medium.cost_preview["pricing_model"] == "gpt-5.1"
+    assert fireworks.cost_preview["pricing_model"] == (
+        "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
+    )
+    assert "unavailable_reason" not in fireworks.cost_preview
+    report_payload = json.loads(Path(fireworks.preflight_report_path).read_text(encoding="utf-8"))
+    assert report_payload["cost_preview"]["approximate_cost_usd"] > 0
 
 
 def test_static_preflight_never_constructs_providers(tmp_path: Path, monkeypatch) -> None:

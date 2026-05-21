@@ -8,6 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
+import yaml
 from PIL import Image
 from pydantic import ValidationError
 
@@ -39,6 +40,7 @@ PHASE042_NOVELTY_HASH_REPORT_JSON = PHASE042_SIDECAR_ROOT / "novelty_hash_report
 PHASE042_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "evaluator_slice"
 PHASE042_ADAPTIVE_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "adaptive_evaluator_slice"
 PHASE042_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_2_static_supplemental"
+PHASE042_PUBLIC_PRICING_FILE = Path("pricing.phase04_2.yaml")
 PHASE042_TARGET_TASK_TYPES = (
     "Dice_Count",
     "Click_Order",
@@ -1204,6 +1206,150 @@ def _preflight_report_payload(report: object) -> dict[str, Any]:
     raise TypeError("preflight report must be a pydantic model or dict")
 
 
+def _load_phase042_mapping(path: str | Path, label: str) -> dict[str, Any]:
+    config_path = Path(path)
+    if not config_path.is_file():
+        raise FileNotFoundError(f"{label} does not exist: {config_path}")
+    with config_path.open("r", encoding="utf-8") as handle:
+        if config_path.suffix.lower() == ".json":
+            payload = json.load(handle)
+        else:
+            payload = yaml.safe_load(handle) or {}
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a mapping: {config_path}")
+    return payload
+
+
+def _phase042_model_key_candidates(provider: str, model: str) -> list[str]:
+    candidates = [model]
+    if provider == "openai" and model.startswith("gpt-5.1_"):
+        candidates.append("gpt-5.1")
+    if provider == "fireworks":
+        candidates.append(model.replace("_", "/"))
+    candidates.extend(candidate.lower() for candidate in list(candidates))
+    return list(dict.fromkeys(candidates))
+
+
+def _phase042_model_pricing(
+    pricing_data: dict[str, Any],
+    provider: str,
+    model: str,
+) -> tuple[str, dict[str, Any]] | None:
+    provider_pricing = (pricing_data.get("pricing") or {}).get(provider, {})
+    if not isinstance(provider_pricing, dict):
+        return None
+    for model_key in _phase042_model_key_candidates(provider, model):
+        model_pricing = provider_pricing.get(model_key)
+        if isinstance(model_pricing, dict):
+            return model_key, model_pricing
+    return None
+
+
+def _phase042_exp2_token_summary_path(
+    results_dir: str | Path,
+    provider: str,
+    model: str,
+) -> Path | None:
+    exp2_root = _exp2_root(Path(results_dir))
+    model_root = exp2_root / provider / model
+    if not model_root.is_dir():
+        return None
+    summaries = sorted(model_root.glob("*token_summary.json"))
+    return summaries[0] if summaries else None
+
+
+def _phase042_overall_token_averages(token_summary_path: Path) -> dict[str, float | int]:
+    payload = _load_phase042_mapping(token_summary_path, "token summary")
+    overall = payload.get("overall") or {}
+    if not isinstance(overall, dict):
+        raise ValueError(f"token summary overall must be a mapping: {token_summary_path}")
+    question_count = int(overall.get("total_questions") or overall.get("count") or 0)
+    tokens_in = int(overall.get("total_tokens_in") or overall.get("tokens_in") or 0)
+    tokens_out = int(overall.get("total_tokens_out") or overall.get("tokens_out") or 0)
+    if question_count <= 0:
+        raise ValueError(f"token summary has no historical question count: {token_summary_path}")
+    return {
+        "historical_question_count": question_count,
+        "tokens_in_per_request": tokens_in / question_count,
+        "tokens_out_per_request": tokens_out / question_count,
+    }
+
+
+def _phase042_token_pricing_cost_preview(
+    base_preview: dict[str, Any],
+    *,
+    pricing_file: str | Path | None,
+    results_dir: str | Path,
+    provider: str,
+    model: str,
+    expected_request_count: int,
+) -> dict[str, Any]:
+    preview = dict(base_preview)
+    if preview.get("approximate_cost_usd") is not None or not pricing_file:
+        return preview
+
+    try:
+        pricing_data = _load_phase042_mapping(pricing_file, "pricing metadata")
+        pricing_match = _phase042_model_pricing(pricing_data, provider, model)
+    except Exception as exc:
+        preview["pricing_source"] = str(pricing_file)
+        preview["unavailable_reason"] = f"pricing metadata unreadable: {exc}"
+        return preview
+    if not pricing_match:
+        preview["pricing_source"] = str(pricing_file)
+        preview["unavailable_reason"] = "pricing metadata not provided for provider/model"
+        return preview
+
+    pricing_model, model_pricing = pricing_match
+    in_per_1k = model_pricing.get("in_per_1k")
+    out_per_1k = model_pricing.get("out_per_1k")
+    if in_per_1k is None or out_per_1k is None:
+        return preview
+
+    token_summary_path = _phase042_exp2_token_summary_path(results_dir, provider, model)
+    if not token_summary_path:
+        preview["pricing_source"] = str(pricing_file)
+        preview["unavailable_reason"] = (
+            "historical Exp2 token summary not found for provider/model"
+        )
+        return preview
+
+    try:
+        token_averages = _phase042_overall_token_averages(token_summary_path)
+        tokens_in_per_request = float(token_averages["tokens_in_per_request"])
+        tokens_out_per_request = float(token_averages["tokens_out_per_request"])
+        expected_tokens_in = tokens_in_per_request * expected_request_count
+        expected_tokens_out = tokens_out_per_request * expected_request_count
+        approximate_cost = (
+            expected_tokens_in * float(in_per_1k) / 1000
+            + expected_tokens_out * float(out_per_1k) / 1000
+        )
+    except Exception as exc:
+        preview["pricing_source"] = str(pricing_file)
+        preview["unavailable_reason"] = f"historical token estimate unavailable: {exc}"
+        return preview
+
+    preview.update(
+        {
+            "expected_request_count": expected_request_count,
+            "approximate_cost_usd": round(approximate_cost, 6),
+            "pricing_source": str(pricing_file),
+            "pricing_model": pricing_model,
+            "pricing_basis": "in_per_1k/out_per_1k using Exp2 overall average tokens per request",
+            "token_estimate_source": str(token_summary_path),
+            "historical_question_count": int(token_averages["historical_question_count"]),
+            "estimated_tokens_in_per_request": round(tokens_in_per_request, 3),
+            "estimated_tokens_out_per_request": round(tokens_out_per_request, 3),
+            "estimated_total_tokens_in": round(expected_tokens_in),
+            "estimated_total_tokens_out": round(expected_tokens_out),
+            "in_per_1k": float(in_per_1k),
+            "out_per_1k": float(out_per_1k),
+        }
+    )
+    preview.pop("unavailable_reason", None)
+    return preview
+
+
 def _csv_value(value: object) -> object:
     if isinstance(value, (list, dict)):
         return json.dumps(value, ensure_ascii=False)
@@ -1318,6 +1464,15 @@ def build_phase042_static_preflight_matrix(
         )
         report = revision_preflight.build_report(preflight_args)
         report_payload = _preflight_report_payload(report)
+        cost_preview = _phase042_token_pricing_cost_preview(
+            dict(report_payload.get("cost_preview") or {}),
+            pricing_file=pricing_file,
+            results_dir=results_dir,
+            provider=str(matrix_row["provider"]),
+            model=str(matrix_row["model"]),
+            expected_request_count=int(report_payload.get("expected_request_count") or 0),
+        )
+        report_payload["cost_preview"] = cost_preview
         report_path = reports_dir / f"{_slug(str(matrix_row['provider_model']))}.json"
         if write_reports:
             _write_json(report_path, report_payload)
@@ -1334,7 +1489,7 @@ def build_phase042_static_preflight_matrix(
                 task_types=task_types,
                 prompt_config=dict(report_payload.get("prompt_config") or {}),
                 expected_request_count=int(report_payload.get("expected_request_count") or 0),
-                cost_preview=dict(report_payload.get("cost_preview") or {}),
+                cost_preview=cost_preview,
                 output_dir=str(report_payload.get("output_dir") or matrix_row["output_dir"]),
                 preflight_report_path=str(report_path),
                 overwrite=effective_overwrite,
