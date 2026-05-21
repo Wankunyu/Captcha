@@ -151,9 +151,9 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | BASE-04 | Phase 4 | Complete |
 | BASE-05 | Phase 4 | Complete |
 | BASE-06 | Phase 4 | Complete |
-| EXPAND-01 | Phase 04.2 | Pending - corrected provenance contract |
-| EXPAND-02 | Phase 04.2 | Pending - replace/regenerate all rows copied from old captcha_data and non-paper-eligible synthetic rows |
-| EXPAND-03 | Phase 04.2 | Pending - provenance records required for new categories |
+| EXPAND-01 | Phase 04.2 | In progress - Plan 04.2-01 source triage complete; validation contract pending |
+| EXPAND-02 | Phase 04.2 | In progress - Plan 04.2-01 candidate roots staged; materialization pending |
+| EXPAND-03 | Phase 04.2 | In progress - Plan 04.2-01 category targets retained; evaluator contract checks pending |
 | EXPAND-04 | Phase 04.2 | Pending - rerun static preflight on corrected sidecar |
 | EXPAND-05 | Phase 04.2 | Pending - rerun static collection on corrected sidecar |
 | EXPAND-06 | Phase 04.2 | Pending - rerun adaptive collection on corrected sidecar |
