@@ -12,14 +12,19 @@ import yaml
 from PIL import Image
 from pydantic import ValidationError
 
+import adaptive_attacker
+import adaptive_preflight
 import revision_preflight
 import run_eval
+from adaptive_artifacts import FEEDBACK_MODE, MEMORY_MODE, SAMPLING_MODE, STOPPING_RULE
 from phase042_artifacts import (
+    PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     PHASE042_GPT_IMAGE_SOURCE_KIND,
     PHASE042_PREFLIGHT_MATRIX_SCHEMA_VERSION,
     PHASE042_REAL_EXTERNAL_SOURCE_KINDS,
     PHASE042_SELECTED_SOURCE_KINDS,
     PHASE042_STATIC_SUMMARY_SCHEMA_VERSION,
+    Phase042AdaptiveSummaryRow,
     Phase042PreflightMatrixRow,
     Phase042SelectedManifestRow,
     Phase042StaticSummaryRow,
@@ -40,6 +45,7 @@ PHASE042_NOVELTY_HASH_REPORT_JSON = PHASE042_SIDECAR_ROOT / "novelty_hash_report
 PHASE042_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "evaluator_slice"
 PHASE042_ADAPTIVE_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "adaptive_evaluator_slice"
 PHASE042_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_2_static_supplemental"
+PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID = "phase04_2_adaptive_supplemental"
 PHASE042_PUBLIC_PRICING_FILE = Path("pricing.phase04_2.yaml")
 PHASE042_TARGET_TASK_TYPES = (
     "Dice_Count",
@@ -98,6 +104,14 @@ PHASE042_PAPER_FACING_PROVIDER_MODELS = [
     "fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct",
 ]
 PHASE042_STATIC_TASK_TYPES = ("Symbol_Count", "Relation_Match", "Hole_Counting")
+PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K = 5
+PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K = 3
+PHASE042_ADAPTIVE_ROUND_COUNT = 5
+PHASE042_ADAPTIVE_SCOPE_RATIONALE = (
+    "Hard/boundary-hard scope only: six original hard task types plus the three "
+    "new external categories; recognition-oriented tasks are excluded to avoid "
+    "ceiling-effect evidence with limited additional insight."
+)
 
 
 def _stable_text(value: object) -> str:
@@ -1727,6 +1741,416 @@ def collect_phase042_static_runs(
     }
 
 
+def _adaptive_preflight_report_payload(report: object) -> dict[str, Any]:
+    if hasattr(report, "model_dump"):
+        return report.model_dump(mode="json")  # type: ignore[no-any-return]
+    if isinstance(report, dict):
+        return dict(report)
+    raise TypeError("adaptive preflight report must be a pydantic model or dict")
+
+
+def _round_run_id(run_id: str, round_index: int, provider_model: str) -> str:
+    return f"{run_id}-round{round_index:02d}-{_slug(provider_model)}"
+
+
+def _round_seed(seed: int, round_index: int, provider_index: int) -> int:
+    return seed + (round_index - 1) * 1000 + provider_index
+
+
+def build_phase042_adaptive_preflight_matrix(
+    *,
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+    dataset_root: str | Path = PHASE042_ADAPTIVE_EVALUATOR_SLICE,
+    results_dir: str | Path = "results",
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID,
+    prompts_file: str | Path = "prompts_optimized.yaml",
+    prompt_mode: str = "opt",
+    attempt_budget_k: int = PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K,
+    intermediate_budget_k: int = PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K,
+    round_count: int = PHASE042_ADAPTIVE_ROUND_COUNT,
+    seed: int = 1234,
+    resume: bool = True,
+    overwrite: bool = False,
+    write_reports: bool = False,
+    pricing_file: str | Path | None = None,
+) -> list[Phase042PreflightMatrixRow]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+    if attempt_budget_k != PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K:
+        raise ValueError("Phase 04.2 adaptive supplemental runs require attempt_budget_k=5")
+    if intermediate_budget_k != PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K:
+        raise ValueError("Phase 04.2 adaptive summaries require intermediate_budget_k=3")
+    if round_count != PHASE042_ADAPTIVE_ROUND_COUNT:
+        raise ValueError("Phase 04.2 adaptive supplemental runs require round_count=5")
+    _assert_no_phase041_path_values(
+        [selected_manifest_path, dataset_root, results_dir, output_root, run_id],
+        context="Phase 04.2 adaptive preflight",
+    )
+
+    manifest_path = Path(selected_manifest_path)
+    validate_phase042_selected_manifest(load_phase042_selected_manifest(manifest_path))
+    task_types = list(PHASE042_ADAPTIVE_TASK_TYPES)
+    dataset_root = Path(dataset_root)
+    _validate_materialized_dataset_root(dataset_root, task_types)
+
+    provider_rows = build_phase042_paper_facing_run_matrix(
+        results_dir=results_dir,
+        materialized_dataset_root=dataset_root,
+        output_root=output_root,
+        run_id=run_id,
+    )
+    adaptive_run_dir = revision_run_dir(output_root, run_id)
+    reports_dir = adaptive_run_dir / "adaptive_preflight_reports"
+    manifest_hash = sha256_file(manifest_path)
+
+    preflight_rows: list[Phase042PreflightMatrixRow] = []
+    for provider_index, matrix_row in enumerate(provider_rows):
+        provider_model = str(matrix_row["provider_model"])
+        for round_index in range(1, round_count + 1):
+            row_run_id = _round_run_id(run_id, round_index, provider_model)
+            row_seed = _round_seed(seed, round_index, provider_index)
+            effective_overwrite = overwrite or bool(matrix_row["overwrite"])
+            effective_resume = False if effective_overwrite else (
+                resume or bool(matrix_row["resume"])
+            )
+            preflight_args = argparse.Namespace(
+                dataset_root=str(dataset_root),
+                types=task_types,
+                prompts_file=str(prompts_file),
+                few_shot_config=None,
+                prompt_prefix=None,
+                prompt_suffix=None,
+                pricing_file=str(pricing_file) if pricing_file else None,
+                output_root=str(output_root),
+                run_id=row_run_id,
+                provider=matrix_row["provider"],
+                model=matrix_row["model"],
+                prompt_mode=prompt_mode,
+                max_per_type=None,
+                attempt_budget_k=attempt_budget_k,
+                sampling_mode=SAMPLING_MODE,
+                feedback_mode=FEEDBACK_MODE,
+                memory_mode=MEMORY_MODE,
+                stopping_rule=STOPPING_RULE,
+                overwrite=effective_overwrite,
+                resume=effective_resume,
+                write_report=False,
+            )
+            report = adaptive_preflight.build_report(preflight_args)
+            report_payload = _adaptive_preflight_report_payload(report)
+            cost_preview = _phase042_token_pricing_cost_preview(
+                dict(report_payload.get("cost_preview") or {}),
+                pricing_file=pricing_file,
+                results_dir=results_dir,
+                provider=str(matrix_row["provider"]),
+                model=str(matrix_row["model"]),
+                expected_request_count=int(
+                    report_payload.get("expected_request_count_max")
+                    or report_payload.get("expected_request_count")
+                    or 0
+                ),
+            )
+            report_payload["cost_preview"] = cost_preview
+            report_path = reports_dir / f"{_slug(provider_model)}-round{round_index:02d}.json"
+            if write_reports:
+                _write_json(report_path, report_payload)
+            preflight_rows.append(
+                Phase042PreflightMatrixRow(
+                    run_id=row_run_id,
+                    provider=str(matrix_row["provider"]),
+                    model=str(matrix_row["model"]),
+                    provider_model=provider_model,
+                    run_scope="adaptive",
+                    selected_manifest_path=str(manifest_path),
+                    selected_manifest_sha256=manifest_hash,
+                    materialized_dataset_root=str(dataset_root),
+                    task_types=task_types,
+                    prompt_config=dict(report_payload.get("prompt_config") or {}),
+                    expected_request_count=int(
+                        report_payload.get("expected_request_count_max") or 0
+                    ),
+                    cost_preview=cost_preview,
+                    output_dir=str(
+                        report_payload.get("output_dir")
+                        or revision_run_dir(output_root, row_run_id)
+                    ),
+                    preflight_report_path=str(report_path),
+                    overwrite=effective_overwrite,
+                    resume=effective_resume,
+                    attempt_budget_k=attempt_budget_k,
+                    sampling_mode=str(report_payload.get("sampling_mode") or SAMPLING_MODE),
+                    feedback_mode=str(report_payload.get("feedback_mode") or FEEDBACK_MODE),
+                    memory_mode=str(report_payload.get("memory_mode") or MEMORY_MODE),
+                    stopping_rule=str(report_payload.get("stopping_rule") or STOPPING_RULE),
+                    solve_request_count=int(report_payload.get("solve_request_count") or 0),
+                    reflection_request_count_max=int(
+                        report_payload.get("reflection_request_count_max") or 0
+                    ),
+                    expected_request_count_max=int(
+                        report_payload.get("expected_request_count_max") or 0
+                    ),
+                    round_id=f"round{round_index:02d}",
+                    round_index=round_index,
+                    round_count=round_count,
+                    seed=row_seed,
+                    intermediate_budget_k=intermediate_budget_k,
+                    adaptive_scope_rationale=PHASE042_ADAPTIVE_SCOPE_RATIONALE,
+                )
+            )
+
+    _write_phase042_preflight_matrix(
+        adaptive_run_dir / "expanded_adaptive_preflight_matrix.csv",
+        adaptive_run_dir / "expanded_adaptive_preflight_matrix.json",
+        preflight_rows,
+    )
+    return preflight_rows
+
+
+def _load_adaptive_summary_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        raise FileNotFoundError(f"adaptive summary does not exist: {path}")
+    payload = _read_json(path)
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError(f"adaptive summary must contain rows: {path}")
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def _load_adaptive_attempt_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        raise FileNotFoundError(f"adaptive attempts do not exist: {path}")
+    attempts: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                payload = json.loads(line)
+                if isinstance(payload, dict):
+                    attempts.append(payload)
+    return attempts
+
+
+def derive_phase042_adaptive_success_at_k(
+    attempts: Iterable[dict[str, Any]],
+    *,
+    task_type: str,
+    k: int,
+) -> dict[str, object]:
+    task_attempts = [
+        attempt
+        for attempt in attempts
+        if attempt.get("task_type") == task_type and int(attempt.get("attempt_index") or 0) <= k
+    ]
+    success_attempts = [
+        int(attempt.get("attempt_index") or 0)
+        for attempt in task_attempts
+        if bool(attempt.get("correct"))
+    ]
+    attempts_to_success = min(success_attempts) if success_attempts else None
+    return {
+        "success": attempts_to_success is not None,
+        "attempts_to_success": attempts_to_success,
+    }
+
+
+def _phase042_task_sample_count(
+    dataset_root: Path,
+    manifest_by_task: dict[str, Phase042SelectedManifestRow],
+    task_type: str,
+) -> int:
+    manifest_row = manifest_by_task.get(task_type)
+    if manifest_row:
+        return manifest_row.sample_count
+    ground_truth_path = dataset_root / task_type / "ground_truth.json"
+    if ground_truth_path.is_file():
+        ground_truth = _read_json(ground_truth_path)
+        if isinstance(ground_truth, dict | list):
+            return len(ground_truth)
+    return 0
+
+
+def _build_phase042_adaptive_summary_rows(
+    matrix_rows: list[Phase042PreflightMatrixRow],
+    manifest_rows: list[Phase042SelectedManifestRow],
+) -> list[Phase042AdaptiveSummaryRow]:
+    manifest_by_task = {row.task_type: row for row in manifest_rows}
+    expanded_rows: list[Phase042AdaptiveSummaryRow] = []
+    for matrix_row in matrix_rows:
+        run_dir = Path(matrix_row.output_dir)
+        attempts = _load_adaptive_attempt_rows(run_dir / "adaptive_attempts.jsonl")
+        for row in _load_adaptive_summary_rows(run_dir / "adaptive_summary.json"):
+            task_type = str(row.get("task_type") or "")
+            manifest_row = manifest_by_task.get(task_type)
+            success_at_3 = derive_phase042_adaptive_success_at_k(
+                attempts,
+                task_type=task_type,
+                k=matrix_row.intermediate_budget_k or PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K,
+            )
+            success_at_5 = derive_phase042_adaptive_success_at_k(
+                attempts,
+                task_type=task_type,
+                k=matrix_row.attempt_budget_k or PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K,
+            )
+            expanded_rows.append(
+                Phase042AdaptiveSummaryRow(
+                    run_id=matrix_row.run_id,
+                    provider=matrix_row.provider,
+                    model=matrix_row.model,
+                    provider_model=matrix_row.provider_model,
+                    task_type=task_type,
+                    task_family=(
+                        manifest_row.task_family
+                        if manifest_row
+                        else PHASE042_TASK_FAMILIES.get(task_type, "unknown")
+                    ),
+                    evidence_origin=(
+                        manifest_row.evidence_origin
+                        if manifest_row
+                        else "supplemented_category"
+                    ),
+                    sample_count=_phase042_task_sample_count(
+                        Path(matrix_row.materialized_dataset_root),
+                        manifest_by_task,
+                        task_type,
+                    ),
+                    session_count=1,
+                    round_id=matrix_row.round_id,
+                    round_index=matrix_row.round_index,
+                    round_count=matrix_row.round_count,
+                    attempt_budget_k=int(row.get("attempt_budget_k") or 0),
+                    intermediate_budget_k=matrix_row.intermediate_budget_k,
+                    success_count=int(row.get("n_success") or 0),
+                    success_at_3=bool(success_at_3["success"]),
+                    success_at_5=bool(success_at_5["success"]),
+                    attempts_to_success_at_3=success_at_3["attempts_to_success"],
+                    attempts_to_success_at_5=success_at_5["attempts_to_success"],
+                    scientific_wrong_count=int(row.get("scientific_wrong_count") or 0),
+                    protocol_failure_count=int(row.get("protocol_failure_count") or 0),
+                    infrastructure_failure_count=int(
+                        row.get("infrastructure_failure_count") or 0
+                    ),
+                    adaptive_success_rate=float(row.get("success_rate") or 0.0),
+                    feedback_mode=str(row.get("feedback_mode") or FEEDBACK_MODE),
+                    memory_mode=str(row.get("memory_mode") or MEMORY_MODE),
+                    stopping_rule=STOPPING_RULE,
+                    run_manifest_path=str(run_dir / "run_manifest.json"),
+                    adaptive_attempt_log_path=str(run_dir / "adaptive_attempts.jsonl"),
+                    adaptive_summary_source_path=str(run_dir / "adaptive_summary.json"),
+                    selected_manifest_path=matrix_row.selected_manifest_path,
+                    claim_use="main_body_caveated",
+                )
+            )
+    return expanded_rows
+
+
+def _write_phase042_adaptive_summary(
+    output_csv: Path,
+    output_json: Path,
+    rows: Iterable[Phase042AdaptiveSummaryRow | dict[str, Any]],
+) -> tuple[Path, Path]:
+    validated = [
+        row if isinstance(row, Phase042AdaptiveSummaryRow) else Phase042AdaptiveSummaryRow(**row)
+        for row in rows
+    ]
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = list(Phase042AdaptiveSummaryRow.model_fields)
+    with output_csv.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in validated:
+            writer.writerow(
+                {key: _csv_value(value) for key, value in row.model_dump(mode="json").items()}
+            )
+    _write_json(
+        output_json,
+        {
+            "schema_version": PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
+            "rows": [row.model_dump(mode="json") for row in validated],
+        },
+    )
+    return output_csv, output_json
+
+
+def collect_phase042_adaptive_runs(
+    *,
+    preflight_matrix_path: str | Path,
+    output_root: str | Path = "results/revision",
+    selected_manifest_path: str | Path | None = None,
+    confirmed_adaptive_cost: bool = False,
+    resume: bool = True,
+    overwrite: bool = False,
+    secrets_file: str | Path = "secrets.yaml",
+    stream: bool = False,
+    timeout_sec: float = 600.0,
+) -> dict[str, object]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+    _assert_no_phase041_path_values(
+        [preflight_matrix_path, output_root, selected_manifest_path or "", secrets_file],
+        context="Phase 04.2 adaptive collection",
+    )
+    matrix_rows = _load_phase042_preflight_matrix(Path(preflight_matrix_path))
+    if not matrix_rows:
+        raise ValueError("preflight matrix must contain at least one row")
+    if any(row.run_scope != "adaptive" for row in matrix_rows):
+        raise ValueError("collect-adaptive requires adaptive preflight matrix rows")
+    if not confirmed_adaptive_cost:
+        raise ValueError("collect-adaptive requires --confirmed-adaptive-cost")
+    for row in matrix_rows:
+        if row.attempt_budget_k != PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K:
+            raise ValueError(f"adaptive row must have attempt_budget_k=5: {row.run_id}")
+        if row.intermediate_budget_k != PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K:
+            raise ValueError(f"adaptive row must have intermediate_budget_k=3: {row.run_id}")
+        if row.round_count != PHASE042_ADAPTIVE_ROUND_COUNT:
+            raise ValueError(f"adaptive row must have round_count=5: {row.run_id}")
+
+    manifest_path = Path(selected_manifest_path or matrix_rows[0].selected_manifest_path)
+    manifest_rows = validate_phase042_selected_manifest(
+        load_phase042_selected_manifest(manifest_path)
+    )
+
+    run_results: list[dict[str, Any]] = []
+    for matrix_row in matrix_rows:
+        runtime_model = _runtime_model_kwargs(matrix_row.provider, matrix_row.model)
+        prompts_file = matrix_row.prompt_config.get("prompts_file") or "prompts_optimized.yaml"
+        run_results.append(
+            adaptive_attacker.run_adaptive_experiment(
+                dataset_root=matrix_row.materialized_dataset_root,
+                types=list(matrix_row.task_types),
+                provider=matrix_row.provider,
+                model=str(runtime_model["model"]),
+                run_id=matrix_row.run_id,
+                output_root=str(output_root),
+                attempt_budget_k=PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K,
+                max_per_type=None,
+                prompts_file=str(prompts_file),
+                prompt_mode="opt",
+                secrets_file=str(secrets_file),
+                timeout_sec=timeout_sec,
+                seed=int(matrix_row.seed or 1234),
+                stream=stream,
+                overwrite=overwrite,
+                resume=resume,
+                thinking=bool(runtime_model["thinking"]),
+                thinking_options=runtime_model["thinking_options"],
+            )
+        )
+
+    summary_rows = _build_phase042_adaptive_summary_rows(matrix_rows, manifest_rows)
+    summary_dir = Path(preflight_matrix_path).parent
+    summary_csv = summary_dir / "expanded_adaptive_summary.csv"
+    summary_json = summary_dir / "expanded_adaptive_summary.json"
+    _write_phase042_adaptive_summary(summary_csv, summary_json, summary_rows)
+    return {
+        "run_count": len(matrix_rows),
+        "run_result_count": len(run_results),
+        "adaptive_summary_row_count": len(summary_rows),
+        "adaptive_summary_csv": str(summary_csv),
+        "adaptive_summary_json": str(summary_json),
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Phase 04.2 corrected-provenance dataset utilities."
@@ -1869,6 +2293,81 @@ def build_parser() -> argparse.ArgumentParser:
     collect_static_parser.add_argument("--no-stream", action="store_true")
     collect_static_parser.add_argument("--timeout-sec", type=float, default=600.0)
     collect_static_parser.add_argument("--seed", type=int, default=1234)
+    adaptive_preflight_parser = subparsers.add_parser(
+        "adaptive-preflight-matrix",
+        help="Build Phase 04.2 adaptive supplemental preflight matrix.",
+    )
+    adaptive_preflight_parser.add_argument(
+        "--selected-manifest",
+        type=Path,
+        default=PHASE042_SELECTED_MANIFEST_JSON,
+    )
+    adaptive_preflight_parser.add_argument(
+        "--dataset-root",
+        type=Path,
+        default=PHASE042_ADAPTIVE_EVALUATOR_SLICE,
+    )
+    adaptive_preflight_parser.add_argument("--results-dir", type=Path, default=Path("results"))
+    adaptive_preflight_parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("results/revision"),
+    )
+    adaptive_preflight_parser.add_argument(
+        "--run-id",
+        default=PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID,
+    )
+    adaptive_preflight_parser.add_argument(
+        "--prompts-file",
+        type=Path,
+        default=Path("prompts_optimized.yaml"),
+    )
+    adaptive_preflight_parser.add_argument("--prompt-mode", default="opt")
+    adaptive_preflight_parser.add_argument("--pricing-file", type=Path, default=None)
+    adaptive_preflight_parser.add_argument(
+        "--attempt-budget-k",
+        type=int,
+        default=PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K,
+    )
+    adaptive_preflight_parser.add_argument(
+        "--intermediate-budget-k",
+        type=int,
+        default=PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K,
+    )
+    adaptive_preflight_parser.add_argument(
+        "--round-count",
+        type=int,
+        default=PHASE042_ADAPTIVE_ROUND_COUNT,
+    )
+    adaptive_preflight_parser.add_argument("--seed", type=int, default=1234)
+    adaptive_preflight_parser.add_argument("--overwrite", action="store_true")
+    adaptive_preflight_parser.add_argument("--resume", action="store_true", default=True)
+    adaptive_preflight_parser.add_argument("--write-reports", action="store_true")
+    collect_adaptive_parser = subparsers.add_parser(
+        "collect-adaptive",
+        help="Run Phase 04.2 adaptive supplemental collection after confirmed cost review.",
+    )
+    collect_adaptive_parser.add_argument(
+        "--preflight-matrix",
+        type=Path,
+        default=(
+            Path("results/revision")
+            / PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID
+            / "expanded_adaptive_preflight_matrix.json"
+        ),
+    )
+    collect_adaptive_parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("results/revision"),
+    )
+    collect_adaptive_parser.add_argument("--selected-manifest", type=Path, default=None)
+    collect_adaptive_parser.add_argument("--secrets-file", type=Path, default=Path("secrets.yaml"))
+    collect_adaptive_parser.add_argument("--confirmed-adaptive-cost", action="store_true")
+    collect_adaptive_parser.add_argument("--resume", action="store_true", default=True)
+    collect_adaptive_parser.add_argument("--overwrite", action="store_true")
+    collect_adaptive_parser.add_argument("--no-stream", action="store_true")
+    collect_adaptive_parser.add_argument("--timeout-sec", type=float, default=600.0)
     return parser
 
 
@@ -1944,6 +2443,52 @@ def main(argv: list[str] | None = None) -> int:
             stream=not args.no_stream,
             timeout_sec=args.timeout_sec,
             seed=args.seed,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "adaptive-preflight-matrix":
+        rows = build_phase042_adaptive_preflight_matrix(
+            selected_manifest_path=args.selected_manifest,
+            dataset_root=args.dataset_root,
+            results_dir=args.results_dir,
+            output_root=args.output_root,
+            run_id=args.run_id,
+            prompts_file=args.prompts_file,
+            prompt_mode=args.prompt_mode,
+            attempt_budget_k=args.attempt_budget_k,
+            intermediate_budget_k=args.intermediate_budget_k,
+            round_count=args.round_count,
+            seed=args.seed,
+            resume=args.resume,
+            overwrite=args.overwrite,
+            write_reports=args.write_reports,
+            pricing_file=args.pricing_file,
+        )
+        run_dir = revision_run_dir(args.output_root, args.run_id)
+        print(
+            json.dumps(
+                {
+                    "row_count": len(rows),
+                    "output_csv": str(run_dir / "expanded_adaptive_preflight_matrix.csv"),
+                    "output_json": str(run_dir / "expanded_adaptive_preflight_matrix.json"),
+                    "preflight_reports_dir": str(run_dir / "adaptive_preflight_reports"),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
+    if args.command == "collect-adaptive":
+        result = collect_phase042_adaptive_runs(
+            preflight_matrix_path=args.preflight_matrix,
+            output_root=args.output_root,
+            selected_manifest_path=args.selected_manifest,
+            confirmed_adaptive_cost=args.confirmed_adaptive_cost,
+            resume=args.resume,
+            overwrite=args.overwrite,
+            secrets_file=args.secrets_file,
+            stream=not args.no_stream,
+            timeout_sec=args.timeout_sec,
         )
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0

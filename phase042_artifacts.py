@@ -382,6 +382,12 @@ class Phase042PreflightMatrixRow(BaseModel):
     solve_request_count: int | None = Field(default=None, ge=0)
     reflection_request_count_max: int | None = Field(default=None, ge=0)
     expected_request_count_max: int | None = Field(default=None, ge=0)
+    round_id: str | None = None
+    round_index: int | None = Field(default=None, ge=1)
+    round_count: int | None = Field(default=None, ge=1)
+    seed: int | None = None
+    intermediate_budget_k: int | None = Field(default=None, ge=1)
+    adaptive_scope_rationale: str | None = None
 
     @field_validator("schema_version")
     @classmethod
@@ -471,8 +477,16 @@ class Phase042AdaptiveSummaryRow(BaseModel):
     evidence_origin: str
     sample_count: int = Field(ge=0)
     session_count: int = Field(ge=0)
+    round_id: str | None = None
+    round_index: int | None = Field(default=None, ge=1)
+    round_count: int | None = Field(default=None, ge=1)
     attempt_budget_k: int = Field(ge=1)
+    intermediate_budget_k: int | None = Field(default=None, ge=1)
     success_count: int = Field(ge=0)
+    success_at_3: bool | None = None
+    success_at_5: bool | None = None
+    attempts_to_success_at_3: int | None = Field(default=None, ge=1)
+    attempts_to_success_at_5: int | None = Field(default=None, ge=1)
     scientific_wrong_count: int = Field(ge=0)
     protocol_failure_count: int = Field(ge=0)
     infrastructure_failure_count: int = Field(ge=0)
