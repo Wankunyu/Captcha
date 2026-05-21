@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Inserted Phase 04.2 for corrected provenance dataset expansion
-last_updated: "2026-05-21T03:22:52.425Z"
-last_activity: 2026-05-21 -- Completed Phase 04.2 Plan 01 source triage and prompt pack
+stopped_at: Completed 04.2-02-PLAN.md
+last_updated: "2026-05-21T03:35:04.837Z"
+last_activity: 2026-05-21
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 30
-  completed_plans: 24
-  percent: 80
+  completed_plans: 25
+  percent: 83
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.2 (corrected-provenance-dataset-expansion) — EXECUTING
-Plan: 2 of 7
-Status: Ready to execute Phase 04.2 Plan 02
-Last activity: 2026-05-21 -- Completed Phase 04.2 Plan 01 source triage and prompt pack
+Plan: 3 of 7
+Status: Ready to execute
+Last activity: 2026-05-21
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -49,7 +49,7 @@ Progress: [████████░░] 80%
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
 | 04.1 | 6 | 175min recorded | - |
-| 04.2 | 1/7 | 15min recorded | - |
+| 04.2 | 2/7 | 24min recorded | - |
 
 **Recent Trend:**
 
@@ -73,6 +73,7 @@ Progress: [████████░░] 80%
 | Phase 04.1 P05 | 60min | 3 tasks + data top-up | 5 source/test/planning files + sidecar data + ignored revision artifacts |
 | Phase 04.1 P06 | 12min | 2 tasks | 3 source/test files + ignored revision artifacts |
 | Phase 04.2 P01 | 15min | 2 tasks | 6 files |
+| Phase 04.2 P02 | 9min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,9 @@ Recent decisions affecting current work:
 - Corrected Phase 04.2 sidecar definition: paper-eligible expanded sidecar rows must be newly introduced relative to the current local `captcha_data/` corpus and must be real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded provenance.
 - The current `Dice_Count`, `Click_Order`, `Patch_Select`, and `Geometry_Click` Phase 04.1 rows were copied/subsampled from old `captcha_data/`, so they are not meaningful expansion evidence under Phase 04.2.
 - The current locally scripted `Symbol_Count` and `Relation_Match` rows are prototype fixtures, not paper-eligible direct expanded sidecar evidence until replaced or regenerated under the corrected provenance definition.
+- Exact SHA-256 matches against current captcha_data are hard validation failures.
+- Perceptual near matches are review warnings only and do not block selected rows when exact_captcha_data_match is false.
+- Plan 01 GPT Image fallback placeholders remain rejected until final image files and non-pending generation metadata exist.
 
 ### Pending Todos
 
@@ -168,11 +172,11 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-20T12:48:00Z
-Stopped at: Inserted Phase 04.2 for corrected provenance dataset expansion
+Last session: 2026-05-21T03:35:04.832Z
+Stopped at: Completed 04.2-02-PLAN.md
 Resume file: None
 
-**Next Step:** Execute Phase 04.2 Plan 01 (source triage, candidate staging, and GPT Image fallback prompt pack), then proceed through the provenance validator, corrected materialization, static/adaptive runs, analysis, and paper-output gates.
+**Next Step:** Execute Phase 04.2 Plan 03 (materialize the corrected evaluator slice from selected Phase 04.2 rows only). The current Plan 02 selected manifest is empty because Plan 01 GPT Image fallback candidates remain placeholders pending final image files and non-pending generation metadata.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 

@@ -136,7 +136,7 @@ Plans:
 
 Plans:
 - [x] 04.2-01-PLAN.md - Create corrected source triage, candidate staging, and GPT Image fallback prompt pack.
-- [ ] 04.2-02-PLAN.md - Implement Phase 04.2 provenance, novelty, selected-manifest, and validation-report gates.
+- [x] 04.2-02-PLAN.md - Implement Phase 04.2 provenance, novelty, selected-manifest, and validation-report gates.
 - [ ] 04.2-03-PLAN.md - Materialize the corrected evaluator slice from selected Phase 04.2 rows only.
 - [ ] 04.2-04-PLAN.md - Preflight and run the full seven-row paper-facing static supplemental matrix.
 - [ ] 04.2-05-PLAN.md - Preflight and run all corrected adaptive-eligible rows after adaptive cost confirmation.
@@ -185,7 +185,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 04.2 -> 5 -> 6
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 4/4 | Complete | 2026-05-19 |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 3/3 | Complete | 2026-05-19 |
 | 04.1. Expanded Dataset and Supplemental Experiments | 6/6 | Complete with provenance follow-up | 2026-05-20 |
-| 04.2. Corrected Provenance Dataset Expansion | 1/7 | In Progress | 2026-05-21 |
+| 04.2. Corrected Provenance Dataset Expansion | 2/7 | In Progress | 2026-05-21 |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |
 | 6. Ethics, Artifact Availability, and Paper Claim Alignment | 0/TBD | Not started | - |
 
