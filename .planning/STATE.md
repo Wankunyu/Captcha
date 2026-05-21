@@ -134,8 +134,9 @@ Recent decisions affecting current work:
 - Corrected Phase 04.2 sidecar definition: paper-eligible expanded sidecar rows must be newly introduced relative to the current local `captcha_data/` corpus and must be real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded provenance.
 - The current `Dice_Count`, `Click_Order`, `Patch_Select`, and `Geometry_Click` Phase 04.1 rows were copied/subsampled from old `captcha_data/`, so they are not meaningful expansion evidence under Phase 04.2.
 - The current locally scripted `Symbol_Count` and `Relation_Match` rows are prototype fixtures, not paper-eligible direct expanded sidecar evidence until replaced or regenerated under the corrected provenance definition.
-- Exact SHA-256 matches against current captcha_data are hard validation failures.
-- Perceptual near matches are review warnings only and do not block selected rows when exact_captcha_data_match is false.
+- Phase 04.2 OpenCaptchaWorld latest additions are selected by cleaned-ground-truth key novelty, not by image hash novelty; if a puzzle id is absent from the local cleaned `ground_truth.json`, it is treated as previously unused even when the same image bytes already exist under `captcha_data`.
+- Exact SHA-256 matches against current `captcha_data` are retained as validation review warnings for Phase 04.2 selected rows rather than hard failures when the ground-truth key is newly introduced.
+- Perceptual near matches are review warnings only and do not block selected rows.
 - Plan 01 GPT Image fallback placeholders remain rejected until final image files and non-pending generation metadata exist.
 
 ### Pending Todos
