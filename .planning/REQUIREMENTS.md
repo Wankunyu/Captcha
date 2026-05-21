@@ -52,14 +52,14 @@ Requirements for the current shepherded revision milestone. Each requirement map
 
 ### Expanded Dataset and Supplemental Experiments
 
-- [ ] **EXPAND-01**: Researcher can validate a sidecar expanded-dataset manifest that preserves source kind, source citation, source license, source provenance notes, evidence origin, source paths, task family, sample counts, label format, metadata alignment, answer-format normalization, compatibility, evaluation status, limitation notes, and adaptive eligibility without mutating `captcha_data/`. Paper-eligible sidecar rows must come from real CAPTCHA paper datasets, real open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded provenance.
-- [ ] **EXPAND-02**: Researcher can materialize a sidecar evaluator-compatible root shaped as `<dataset_root>/<TaskType>/ground_truth.json` containing supplemented hard or low-sample original categories plus exactly two new static-compatible CAPTCHA categories from paper-eligible provenance classes.
+- [ ] **EXPAND-01**: Researcher can validate a sidecar expanded-dataset manifest that preserves source kind, source citation, source license, source provenance notes, evidence origin, source paths, task family, sample counts, label format, metadata alignment, answer-format normalization, compatibility, evaluation status, limitation notes, and adaptive eligibility without mutating `captcha_data/`. Paper-eligible sidecar rows must be newly introduced relative to the current local `captcha_data/` corpus and must come from real CAPTCHA paper datasets, real open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded provenance.
+- [ ] **EXPAND-02**: Researcher can materialize a sidecar evaluator-compatible root shaped as `<dataset_root>/<TaskType>/ground_truth.json` containing expanded samples that are not copied or subsampled from the current local `captcha_data/`, covering supplemented hard or low-sample original categories plus exactly two new static-compatible CAPTCHA categories from paper-eligible provenance classes.
 - [ ] **EXPAND-03**: The two Phase 04.1 new static-compatible task categories have aligned evaluator contracts across task loading, prompts, JSON schemas, scoring, visualization metadata, offline tests, and paper-eligible provenance records.
-- [x] **EXPAND-04**: Researcher can generate a static supplemental preflight matrix for every existing paper-facing provider/model row, including prompt and few-shot hashes, unique-or-resumable output directories, expected request counts, cost previews, manifest references, and no provider construction.
-- [x] **EXPAND-05**: Researcher can run static supplemental evaluations for the expanded dataset through revision run manifests, append-only per-attempt records, and derived summaries before paper table generation.
-- [x] **EXPAND-06**: Researcher can run an Adaptive Attacker Exp3-style supplemental preflight and execution path over adaptive-eligible expanded rows while preserving offline instances, binary pass/fail feedback, explicit local policy-memory notes, no corrective hints, and append-only adaptive attempts.
-- [x] **EXPAND-07**: Expanded-dataset analysis separates scientific, protocol, and infrastructure failures, compares original and expanded conclusions, surfaces divergences, and keeps the 40% operational cutoff scoped as a reporting heuristic.
-- [x] **EXPAND-08**: Paper-ready Phase 04.1 outputs update main-body table rows and claim-boundary notes while distinguishing directly evaluated expanded-dataset evidence from contextual external SOTA triangulation and avoiding population-level deployment estimates.
+- [ ] **EXPAND-04**: Researcher can generate a static supplemental preflight matrix for every existing paper-facing provider/model row over the corrected provenance-compliant expanded sidecar, where every evaluated row is newly introduced relative to current `captcha_data/`, including prompt and few-shot hashes, unique-or-resumable output directories, expected request counts, cost previews, manifest references, and no provider construction.
+- [ ] **EXPAND-05**: Researcher can run static supplemental evaluations for the corrected provenance-compliant expanded dataset through revision run manifests, append-only per-attempt records, and derived summaries before paper table generation.
+- [ ] **EXPAND-06**: Researcher can run an Adaptive Attacker Exp3-style supplemental preflight and execution path over adaptive-eligible corrected expanded rows while preserving offline instances, binary pass/fail feedback, explicit local policy-memory notes, no corrective hints, and append-only adaptive attempts.
+- [ ] **EXPAND-07**: Corrected expanded-dataset analysis separates scientific, protocol, and infrastructure failures, compares original and expanded conclusions, surfaces divergences, and keeps the 40% operational cutoff scoped as a reporting heuristic.
+- [ ] **EXPAND-08**: Paper-ready corrected expanded-dataset outputs update main-body table rows and claim-boundary notes while distinguishing directly evaluated expanded-dataset evidence from contextual external SOTA triangulation and avoiding population-level deployment estimates.
 
 ### Defense Methodology and HCI Scope
 
@@ -151,14 +151,14 @@ Which phases cover which requirements. Updated during roadmap revision from `She
 | BASE-04 | Phase 4 | Complete |
 | BASE-05 | Phase 4 | Complete |
 | BASE-06 | Phase 4 | Complete |
-| EXPAND-01 | Phase 04.1 | Reopened - provenance contract corrected |
-| EXPAND-02 | Phase 04.1 | Reopened - replace/regenerate non-paper-eligible synthetic rows |
-| EXPAND-03 | Phase 04.1 | Reopened - provenance records required for new categories |
-| EXPAND-04 | Phase 04.1 | Complete |
-| EXPAND-05 | Phase 04.1 | Complete |
-| EXPAND-06 | Phase 04.1 | Complete |
-| EXPAND-07 | Phase 04.1 | Complete |
-| EXPAND-08 | Phase 04.1 | Complete |
+| EXPAND-01 | Phase 04.2 | Pending - corrected provenance contract |
+| EXPAND-02 | Phase 04.2 | Pending - replace/regenerate all rows copied from old captcha_data and non-paper-eligible synthetic rows |
+| EXPAND-03 | Phase 04.2 | Pending - provenance records required for new categories |
+| EXPAND-04 | Phase 04.2 | Pending - rerun static preflight on corrected sidecar |
+| EXPAND-05 | Phase 04.2 | Pending - rerun static collection on corrected sidecar |
+| EXPAND-06 | Phase 04.2 | Pending - rerun adaptive collection on corrected sidecar |
+| EXPAND-07 | Phase 04.2 | Pending - regenerate corrected analysis |
+| EXPAND-08 | Phase 04.2 | Pending - regenerate corrected paper outputs |
 | DEF-01 | Phase 5 | Pending |
 | DEF-02 | Phase 5 | Pending |
 | DEF-03 | Phase 5 | Pending |
