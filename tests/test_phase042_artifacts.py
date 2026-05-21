@@ -305,9 +305,21 @@ def test_selected_rows_reject_synthetic_fixture_source_kind() -> None:
         _selected_row(source_kind="synthetic_fixture")
 
 
-def test_selected_rows_reject_exact_captcha_data_matches() -> None:
-    with pytest.raises(ValidationError, match="exact_captcha_data_match"):
+def test_selected_rows_require_warning_for_exact_captcha_data_matches() -> None:
+    with pytest.raises(ValidationError, match="review warning"):
         _selected_row(exact_captcha_data_match=True)
+
+
+def test_selected_rows_allow_exact_captcha_data_matches_with_warning() -> None:
+    row = _selected_row(
+        exact_captcha_data_match=True,
+        review_warnings=[
+            "exact SHA-256 match warning: candidate image hash already exists "
+            "under current captcha_data: captcha_data/Dice_Count/original.png"
+        ],
+    )
+
+    assert row.exact_captcha_data_match is True
 
 
 def test_selected_rows_reject_phase041_references() -> None:

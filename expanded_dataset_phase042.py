@@ -32,8 +32,9 @@ PHASE042_TARGET_TASK_TYPES = (
     "Geometry_Click",
     "Symbol_Count",
     "Relation_Match",
+    "Hole_Counting",
 )
-PHASE042_TARGET_NEW_TASK_TYPES = {"Symbol_Count", "Relation_Match"}
+PHASE042_TARGET_NEW_TASK_TYPES = {"Symbol_Count", "Relation_Match", "Hole_Counting"}
 PHASE042_MIN_SAMPLES_PER_CATEGORY = 10
 PHASE042_SOURCE_PRIORITY = (
     "peer_reviewed_paper_dataset",
@@ -55,6 +56,7 @@ PHASE042_TASK_FAMILIES = {
     "Geometry_Click": "Spatial Precision",
     "Symbol_Count": "Counting",
     "Relation_Match": "Relational Matching",
+    "Hole_Counting": "Counting",
 }
 
 
@@ -323,6 +325,7 @@ def _selected_row_values(
     row: dict[str, Any],
     *,
     image_paths: list[str],
+    exact_match_paths: list[str],
     novelty_hashes: list[str],
     novelty_hash_report_path: Path,
     perceptual_warning_count: int,
@@ -365,7 +368,7 @@ def _selected_row_values(
         "static_compatibility_notes": str(row.get("static_compatibility_notes", "")),
         "novelty_sha256": novelty_hashes,
         "novelty_hash_report_path": novelty_hash_report_path.as_posix(),
-        "exact_captcha_data_match": False,
+        "exact_captcha_data_match": bool(exact_match_paths),
         "perceptual_warning_count": perceptual_warning_count,
         "review_warnings": review_warnings,
         "gpt_image_generation_prompt": str(row.get("gpt_image_generation_prompt", "")),
@@ -510,23 +513,27 @@ def _validate_one_candidate(
             image_hash = sha256_image(path)
             novelty_hashes.append(image_hash)
             exact_match_paths.extend(captcha_hash_index.get(image_hash, []))
-        review_warnings = _perceptual_warnings_for_paths(
+        perceptual_warnings = _perceptual_warnings_for_paths(
             resolved_paths,
             perceptual_index,
             perceptual_warning_threshold,
         )
+        review_warnings = list(perceptual_warnings)
         if exact_match_paths:
-            raise ValueError(
-                "exact SHA-256 match against current captcha_data: "
-                + ", ".join(sorted(exact_match_paths))
+            review_warnings.insert(
+                0,
+                "exact SHA-256 match warning: candidate image hash already exists "
+                "under current captcha_data: "
+                + ", ".join(sorted(set(exact_match_paths))),
             )
         selected_row = Phase042SelectedManifestRow.model_validate(
             _selected_row_values(
                 row,
                 image_paths=image_paths,
+                exact_match_paths=sorted(set(exact_match_paths)),
                 novelty_hashes=novelty_hashes,
                 novelty_hash_report_path=novelty_hash_report_path,
-                perceptual_warning_count=len(review_warnings),
+                perceptual_warning_count=len(perceptual_warnings),
                 review_warnings=review_warnings,
             )
         )
@@ -537,10 +544,10 @@ def _validate_one_candidate(
                 validation_status="accepted",
                 selected_manifest_eligible=True,
                 rejection_reason="",
-                exact_match_paths=[],
+                exact_match_paths=sorted(set(exact_match_paths)),
                 novelty_hashes=novelty_hashes,
                 novelty_hash_report_path=novelty_hash_report_path,
-                perceptual_warning_count=len(review_warnings),
+                perceptual_warning_count=len(perceptual_warnings),
                 review_warnings=review_warnings,
             )
         )
@@ -631,9 +638,18 @@ def validate_phase042_candidates(
     )
 
     exact_match_rejection_count = sum(
-        1 for row in report_rows if row.exact_captcha_data_match
+        1
+        for row in report_rows
+        if row.exact_captcha_data_match and row.validation_status == "rejected"
+    )
+    exact_match_selected_count = sum(
+        1
+        for row in report_rows
+        if row.exact_captcha_data_match and row.validation_status == "accepted"
     )
     candidate_hash_count = sum(len(row.novelty_sha256) for row in report_rows)
+    review_warning_count = sum(len(row.review_warnings) for row in report_rows)
+    perceptual_warning_count = sum(row.perceptual_warning_count for row in report_rows)
     novelty_payload = {
         "schema_version": "cognition.revision.phase042.novelty_hash_report.v1",
         "captcha_data_hash_index_size": len(captcha_hash_index),
@@ -641,8 +657,15 @@ def validate_phase042_candidates(
         "candidate_count": len(candidate_rows),
         "candidate_hash_count": candidate_hash_count,
         "exact_match_rejection_count": exact_match_rejection_count,
-        "perceptual_near_match_warning_count": len(all_review_warnings),
-        "perceptual_near_match_warnings": all_review_warnings,
+        "exact_match_selected_count": exact_match_selected_count,
+        "review_warning_count": review_warning_count,
+        "perceptual_near_match_warning_count": perceptual_warning_count,
+        "perceptual_near_match_warnings": [
+            warning
+            for warning in all_review_warnings
+            if warning.startswith("perceptual near match warning:")
+        ],
+        "review_warnings": all_review_warnings,
         "selected_count": len(selected_rows),
         "rejected_count": len(report_rows) - len(selected_rows),
         "validation_report_json": Path(validation_report_json).as_posix(),

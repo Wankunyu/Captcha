@@ -266,8 +266,13 @@ class Phase042SelectedManifestRow(BaseModel):
             "novelty_hash_report_path",
             "row is selected for Phase 04.2 evaluation",
         )
-        if self.exact_captcha_data_match:
-            raise ValueError("exact_captcha_data_match must be false for selected rows")
+        if self.exact_captcha_data_match and not any(
+            "exact SHA-256 match" in warning for warning in self.review_warnings
+        ):
+            raise ValueError(
+                "exact_captcha_data_match selected rows require an exact SHA-256 "
+                "review warning"
+            )
         if self.source_kind in PHASE042_REAL_EXTERNAL_SOURCE_KINDS:
             _require_text(
                 self.source_citation,

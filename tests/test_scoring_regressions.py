@@ -67,6 +67,20 @@ def test_relation_match_classification_scoring() -> None:
     assert not run_eval.evaluate_pass1(task, {"answer_type": "number", "value": 1})
 
 
+def test_hole_counting_multiselect_scoring() -> None:
+    task = run_eval.TaskItem(
+        type="Hole_Counting",
+        puzzle_id="holes.png",
+        prompt="select cells with holes",
+        images=[],
+        gt={"correct_patches": [1, 3]},
+    )
+
+    assert run_eval.evaluate_pass1(task, {"answer_type": "multi_select", "indices": [3, 1]})
+    assert not run_eval.evaluate_pass1(task, {"answer_type": "multi_select", "indices": [1]})
+    assert not run_eval.evaluate_pass1(task, {"answer_type": "number", "value": 2})
+
+
 def test_describe_failure_multiselect_no_name_error() -> None:
     task = run_eval.TaskItem(
         type="Image_Recognition",

@@ -53,6 +53,7 @@ class CAPTCHAVisualizer:
         'Misleading_Click': 'Click/Coordinate',
 
         'Patch_Select': 'Grid Selection',
+        'Hole_Counting': 'Grid Selection',
         'Select_Animal': 'Grid Selection',
         'Image_Recognition': 'Grid Selection',
         'Unusual_Detection': 'Grid Selection',

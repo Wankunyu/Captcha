@@ -9,7 +9,7 @@ from visualize_results import CAPTCHAVisualizer
 
 
 IGNORED_NOT_USED_KEYS = {"Hold_Button(Not Used)", "Slide_Puzzle(Not Used)"}
-PHASE041_SIDECAR_ONLY_TYPES = {"Symbol_Count", "Relation_Match"}
+PHASE041_SIDECAR_ONLY_TYPES = {"Symbol_Count", "Relation_Match", "Hole_Counting"}
 
 
 def _canonical_task_type(task_type: str) -> str:
@@ -74,6 +74,7 @@ def test_few_shot_keys_are_known() -> None:
 
 def test_phase041_new_task_types_are_registered() -> None:
     assert {"Symbol_Count", "Relation_Match"} <= SUPPORTED_TYPES
+    assert "Hole_Counting" in SUPPORTED_TYPES
 
 
 def test_phase041_prompt_keys_are_present() -> None:
@@ -83,11 +84,13 @@ def test_phase041_prompt_keys_are_present() -> None:
     prompt_types = prompts.get("types") or {}
     assert "Symbol_Count" in prompt_types
     assert "Relation_Match" in prompt_types
+    assert "Hole_Counting" in prompt_types
 
 
 def test_phase041_visualizer_task_families_are_mapped() -> None:
     assert CAPTCHAVisualizer.TASK_FAMILY["Symbol_Count"] == "Counting/Generalization"
     assert CAPTCHAVisualizer.TASK_FAMILY["Relation_Match"] == "Semantic Matching"
+    assert CAPTCHAVisualizer.TASK_FAMILY["Hole_Counting"] == "Grid Selection"
 
 
 def test_phase041_json_schema_answer_shapes() -> None:
@@ -100,6 +103,11 @@ def test_phase041_json_schema_answer_shapes() -> None:
     assert relation_schema["properties"]["answer_type"]["enum"] == ["classify"]
     assert relation_schema["properties"]["index"]["type"] == "integer"
     assert relation_schema["required"] == ["answer_type", "index"]
+
+    hole_schema = build_json_schema("Hole_Counting")
+    assert hole_schema["properties"]["answer_type"]["enum"] == ["multi_select"]
+    assert hole_schema["properties"]["indices"]["type"] == "array"
+    assert hole_schema["required"] == ["answer_type", "indices"]
 
 
 def test_phase041_build_tasks_loads_sidecar_static_categories(tmp_path: Path) -> None:
@@ -136,18 +144,40 @@ def test_phase041_build_tasks_loads_sidecar_static_categories(tmp_path: Path) ->
         encoding="utf-8",
     )
 
+    hole_dir = tmp_path / "Hole_Counting"
+    hole_dir.mkdir()
+    (hole_dir / "holes.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (hole_dir / "ground_truth.json").write_text(
+        json.dumps(
+            {
+                "holes.png": {
+                    "grid_size": [4, 4],
+                    "target_holes": 2,
+                    "correct_patches": [1, 3],
+                    "prompt": "Select cells with two holes.",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
     tasks = build_tasks(
         str(tmp_path),
-        ["Symbol_Count", "Relation_Match"],
+        ["Symbol_Count", "Relation_Match", "Hole_Counting"],
         prompts_cfg={
             "types": {
                 "Symbol_Count": "Return JSON only.",
                 "Relation_Match": "Return JSON only.",
+                "Hole_Counting": "Return JSON only.",
             }
         },
     )
 
-    assert [task.type for task in tasks] == ["Symbol_Count", "Relation_Match"]
+    assert [task.type for task in tasks] == [
+        "Symbol_Count",
+        "Relation_Match",
+        "Hole_Counting",
+    ]
     assert tasks[0].images == [str(symbol_dir / "sample1.png")]
     assert tasks[0].gt == {"count": 7}
     assert tasks[1].images == [
@@ -156,3 +186,5 @@ def test_phase041_build_tasks_loads_sidecar_static_categories(tmp_path: Path) ->
         str(relation_dir / "opt1.png"),
     ]
     assert tasks[1].gt == {"correct_index": 1, "num_options": 2}
+    assert tasks[2].images == [str(hole_dir / "holes.png")]
+    assert tasks[2].gt == {"grid_size": [4, 4], "correct_patches": [1, 3]}

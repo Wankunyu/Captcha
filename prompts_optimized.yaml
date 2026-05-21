@@ -90,6 +90,18 @@ types:
       Selection Rules:
       - Select ALL patches that match the target pattern or reference region.
       - Use category/shape and key parts as primary cues; use color/texture as supporting evidence.
+
+  Hole_Counting:
+    mode: merge
+    rules: |-
+      Indexing Rules:
+      - Indices are 0-based (starting from 0) and row-major.
+      - Return a unique, ascending list of indices.
+      - If no cells match, return an empty list.
+
+      Selection Rules:
+      - Count only holes inside the main shape of each cell.
+      - Select every cell whose big shape has exactly the requested number of separate holes.
       - Ignore minor compression noise or tiny lighting variations.
 
       Respond with JSON only, strictly following the provided schema. No extra fields or text.

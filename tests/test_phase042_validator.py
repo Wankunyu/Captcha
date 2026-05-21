@@ -79,7 +79,7 @@ def _read_rows(path: Path) -> list[dict[str, object]]:
     return rows
 
 
-def test_exact_sha256_captcha_data_match_is_rejected(
+def test_exact_sha256_captcha_data_match_is_warning_not_hard_fail(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -112,17 +112,23 @@ def test_exact_sha256_captcha_data_match_is_rejected(
         captcha_root=Path("captcha_data"),
     )
 
-    assert result["selected_count"] == 0
+    assert result["selected_count"] == 1
     report_rows = _read_rows(
         Path("expanded_captcha_data/phase04_2/phase042_validation_report.json")
     )
+    selected_rows = _read_rows(
+        Path("expanded_captcha_data/phase04_2/phase042_selected_manifest.json")
+    )
     assert report_rows[0]["candidate_id"] == "duplicate-dice-count"
-    assert report_rows[0]["validation_status"] == "rejected"
+    assert report_rows[0]["validation_status"] == "accepted"
     assert report_rows[0]["exact_captcha_data_match"] is True
-    assert "exact SHA-256 match" in str(report_rows[0]["rejection_reason"])
+    assert report_rows[0]["selected_manifest_eligible"] is True
+    assert "exact SHA-256 match warning" in str(report_rows[0]["review_warnings"])
+    assert selected_rows[0]["candidate_id"] == "duplicate-dice-count"
+    assert selected_rows[0]["exact_captcha_data_match"] is True
 
 
-def test_rejected_rows_do_not_enter_selected_manifest(
+def test_exact_sha256_rows_enter_selected_manifest_with_warning(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -155,7 +161,9 @@ def test_rejected_rows_do_not_enter_selected_manifest(
     selected_rows = _read_rows(
         Path("expanded_captcha_data/phase04_2/phase042_selected_manifest.json")
     )
-    assert selected_rows == []
+    assert [row["candidate_id"] for row in selected_rows] == ["duplicate-dice-count"]
+    assert selected_rows[0]["exact_captcha_data_match"] is True
+    assert "exact SHA-256 match warning" in str(selected_rows[0]["review_warnings"])
 
 
 def test_perceptual_near_match_is_warning_not_hard_fail(

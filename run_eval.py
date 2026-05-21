@@ -1395,6 +1395,7 @@ SUPPORTED_TYPES = {
     "Geometry_Click",
     "Image_Matching",
     "Relation_Match",
+    "Hole_Counting",
     "Patch_Select",
     "Place_Dot",
               
@@ -2033,7 +2034,7 @@ def build_tasks(
                     )
                 )
 
-            elif t == "Patch_Select":
+            elif t in ("Patch_Select", "Hole_Counting"):
                                
                 img = os.path.join(type_dir, pid)
                 if not os.path.isfile(img):
@@ -2041,7 +2042,16 @@ def build_tasks(
                     continue
 
                                      
-                targets = _get_first(entry, "target_object", "targets_object", default="the target object")
+                if t == "Hole_Counting":
+                    target_holes = entry.get("target_holes")
+                    targets = _get_first(
+                        entry,
+                        "target_object",
+                        "targets_object",
+                        default=f"tiles with exactly {target_holes} holes",
+                    )
+                else:
+                    targets = _get_first(entry, "target_object", "targets_object", default="the target object")
                 gs = entry.get("grid_size", [5, 5])
                 if not (isinstance(gs, (list, tuple)) and len(gs) == 2):
                     gs = [5, 5]
@@ -2461,7 +2471,7 @@ def evaluate_pass1(task:TaskItem, parsed:Optional[Dict[str,Any]])->bool:
         if t == "Relation_Match":
             return parsed.get("answer_type")=="classify" and int(parsed.get("index")) == int(gt["correct_index"])
         
-        if t == "Patch_Select":
+        if t in ("Patch_Select", "Hole_Counting"):
             pred = sorted(set(int(i) for i in parsed.get("indices", [])))
             gold = sorted(set(int(i) for i in gt.get("correct_patches",[])))
             return pred == gold
@@ -2613,6 +2623,10 @@ def build_json_schema(task_type:str, *, include_reasoning: bool = False)->Dict[s
                                               "index":{"type":"integer"}},
                 "required":["answer_type","index"]}, include_reasoning=include_reasoning)
     if task_type == "Patch_Select":
+        return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["multi_select"]},
+                                              "indices":{"type":"array","items":{"type":"integer"}}},
+                "required":["answer_type","indices"]}, include_reasoning=include_reasoning)
+    if task_type == "Hole_Counting":
         return _with_reasoning({"type":"object","properties":{"answer_type":{"type":"string","enum":["multi_select"]},
                                               "indices":{"type":"array","items":{"type":"integer"}}},
                 "required":["answer_type","indices"]}, include_reasoning=include_reasoning)

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.2-02-PLAN.md
-last_updated: "2026-05-21T03:35:04.837Z"
-last_activity: 2026-05-21
+stopped_at: External Phase 04.2 sources staged after 04.2-02
+last_updated: "2026-05-21T06:42:41.632Z"
+last_activity: 2026-05-21 -- Phase 04.2 external sources staged
 progress:
   total_phases: 8
   completed_phases: 5
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 Phase: 04.2 (corrected-provenance-dataset-expansion) — EXECUTING
 Plan: 3 of 7
 Status: Ready to execute
-Last activity: 2026-05-21
+Last activity: 2026-05-21 -- Phase 04.2 external sources staged
 
 Progress: [████████░░] 83%
 
@@ -173,10 +173,10 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-05-21T03:35:04.832Z
-Stopped at: Completed 04.2-02-PLAN.md
+Stopped at: External Phase 04.2 sources staged after 04.2-02
 Resume file: None
 
-**Next Step:** Execute Phase 04.2 Plan 03 (materialize the corrected evaluator slice from selected Phase 04.2 rows only). The current Plan 02 selected manifest is empty because Plan 01 GPT Image fallback candidates remain placeholders pending final image files and non-pending generation metadata.
+**Next Step:** Execute Phase 04.2 Plan 03 (materialize the corrected evaluator slice from selected Phase 04.2 rows only). The selected manifest is now populated from real external sources, with GPT Image fallback no longer needed for staged candidates.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
