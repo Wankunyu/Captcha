@@ -1,5 +1,7 @@
 import argparse
+import csv
 import hashlib
+import inspect
 import json
 import shutil
 from collections import defaultdict
@@ -9,15 +11,22 @@ from typing import Any, Iterable
 from PIL import Image
 from pydantic import ValidationError
 
+import revision_preflight
+import run_eval
 from phase042_artifacts import (
     PHASE042_GPT_IMAGE_SOURCE_KIND,
+    PHASE042_PREFLIGHT_MATRIX_SCHEMA_VERSION,
     PHASE042_REAL_EXTERNAL_SOURCE_KINDS,
     PHASE042_SELECTED_SOURCE_KINDS,
+    PHASE042_STATIC_SUMMARY_SCHEMA_VERSION,
+    Phase042PreflightMatrixRow,
     Phase042SelectedManifestRow,
+    Phase042StaticSummaryRow,
     Phase042ValidationReportRow,
     write_phase042_selected_manifest,
     write_phase042_validation_report,
 )
+from revision_artifacts import AttemptRecord, revision_run_dir
 
 
 PHASE042_SIDECAR_ROOT = Path("expanded_captcha_data/phase04_2")
@@ -29,6 +38,7 @@ PHASE042_SELECTED_MANIFEST_JSON = PHASE042_SIDECAR_ROOT / "phase042_selected_man
 PHASE042_NOVELTY_HASH_REPORT_JSON = PHASE042_SIDECAR_ROOT / "novelty_hash_report.json"
 PHASE042_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "evaluator_slice"
 PHASE042_ADAPTIVE_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "adaptive_evaluator_slice"
+PHASE042_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_2_static_supplemental"
 PHASE042_TARGET_TASK_TYPES = (
     "Dice_Count",
     "Click_Order",
@@ -76,6 +86,16 @@ PHASE042_TASK_FAMILIES = {
     "Relation_Match": "Relational Matching",
     "Hole_Counting": "Counting",
 }
+PHASE042_PAPER_FACING_PROVIDER_MODELS = [
+    "openai/gpt-5",
+    "openai/gpt-5.1_medium",
+    "openai/gpt-5.1_none",
+    "anthropic/claude-sonnet-4-5",
+    "gemini/gemini-2.5-flash",
+    "gemini/gemini-2.5-pro",
+    "fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct",
+]
+PHASE042_STATIC_TASK_TYPES = ("Symbol_Count", "Relation_Match", "Hole_Counting")
 
 
 def _stable_text(value: object) -> str:
@@ -1098,6 +1118,453 @@ def materialize_phase042_selected(
     return summary
 
 
+def _slug(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in value).strip("-")
+
+
+def _exp2_root(results_dir: Path) -> Path:
+    return results_dir / "exp2" if (results_dir / "exp2").is_dir() else results_dir
+
+
+def _discover_exp2_provider_models(results_dir: Path) -> set[str]:
+    root = _exp2_root(results_dir)
+    provider_models: set[str] = set()
+    if not root.is_dir():
+        return provider_models
+    for provider_dir in root.iterdir():
+        if not provider_dir.is_dir():
+            continue
+        for model_dir in provider_dir.iterdir():
+            if model_dir.is_dir():
+                provider_models.add(f"{provider_dir.name}/{model_dir.name}")
+    return provider_models
+
+
+def _assert_no_phase041_path_values(values: Iterable[object], *, context: str) -> None:
+    for value in values:
+        assert_no_phase041_reference(value, context=context)
+
+
+def build_phase042_paper_facing_run_matrix(
+    *,
+    results_dir: str | Path = "results",
+    materialized_dataset_root: str | Path = PHASE042_EVALUATOR_SLICE,
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE042_STATIC_SUPPLEMENTAL_RUN_ID,
+) -> list[dict[str, Any]]:
+    _assert_no_phase041_path_values(
+        [results_dir, materialized_dataset_root, output_root, run_id],
+        context="Phase 04.2 static run matrix",
+    )
+    discovered = _discover_exp2_provider_models(Path(results_dir))
+    missing = [
+        provider_model
+        for provider_model in PHASE042_PAPER_FACING_PROVIDER_MODELS
+        if provider_model not in discovered
+    ]
+    if missing:
+        raise ValueError(f"results/exp2 is missing paper-facing model rows: {missing}")
+
+    rows: list[dict[str, Any]] = []
+    for provider_model in PHASE042_PAPER_FACING_PROVIDER_MODELS:
+        provider, model = provider_model.split("/", 1)
+        row_run_id = f"{run_id}-{_slug(provider)}-{_slug(model)}"
+        rows.append(
+            {
+                "run_id": row_run_id,
+                "provider": provider,
+                "model": model,
+                "provider_model": provider_model,
+                "task_types": list(PHASE042_STATIC_TASK_TYPES),
+                "materialized_dataset_root": str(materialized_dataset_root),
+                "output_dir": str(revision_run_dir(output_root, row_run_id)),
+                "overwrite": False,
+                "resume": True,
+            }
+        )
+    return rows
+
+
+def _validate_materialized_dataset_root(dataset_root: Path, task_types: Iterable[str]) -> None:
+    if not dataset_root.is_dir():
+        raise FileNotFoundError(f"materialized dataset root does not exist: {dataset_root}")
+    for task_type in task_types:
+        ground_truth_path = dataset_root / task_type / "ground_truth.json"
+        if not ground_truth_path.is_file():
+            raise FileNotFoundError(
+                f"missing ground_truth.json for {task_type}: {ground_truth_path}"
+            )
+
+
+def _preflight_report_payload(report: object) -> dict[str, Any]:
+    if hasattr(report, "model_dump"):
+        return report.model_dump(mode="json")  # type: ignore[no-any-return]
+    if isinstance(report, dict):
+        return dict(report)
+    raise TypeError("preflight report must be a pydantic model or dict")
+
+
+def _csv_value(value: object) -> object:
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False)
+    return value
+
+
+def _write_phase042_preflight_matrix(
+    output_csv: Path,
+    output_json: Path,
+    rows: Iterable[Phase042PreflightMatrixRow | dict[str, Any]],
+) -> tuple[Path, Path]:
+    validated = [
+        row if isinstance(row, Phase042PreflightMatrixRow) else Phase042PreflightMatrixRow(**row)
+        for row in rows
+    ]
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = list(Phase042PreflightMatrixRow.model_fields)
+    with output_csv.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in validated:
+            writer.writerow(
+                {key: _csv_value(value) for key, value in row.model_dump(mode="json").items()}
+            )
+    _write_json(
+        output_json,
+        {
+            "schema_version": PHASE042_PREFLIGHT_MATRIX_SCHEMA_VERSION,
+            "rows": [row.model_dump(mode="json") for row in validated],
+        },
+    )
+    return output_csv, output_json
+
+
+def _load_phase042_preflight_matrix(path: Path) -> list[Phase042PreflightMatrixRow]:
+    if not path.is_file():
+        raise FileNotFoundError(f"preflight matrix does not exist: {path}")
+    payload = _read_json(path)
+    assert_no_phase041_reference(payload, context="Phase 04.2 preflight matrix")
+    rows = payload.get("rows") if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        raise ValueError("preflight matrix must contain a rows array")
+    return [Phase042PreflightMatrixRow.model_validate(row) for row in rows]
+
+
+def build_phase042_static_preflight_matrix(
+    *,
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+    dataset_root: str | Path = PHASE042_EVALUATOR_SLICE,
+    results_dir: str | Path = "results",
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE042_STATIC_SUPPLEMENTAL_RUN_ID,
+    prompts_file: str | Path = "prompts_optimized.yaml",
+    prompt_mode: str = "opt",
+    max_attempts: int = 1,
+    resume: bool = True,
+    overwrite: bool = False,
+    write_reports: bool = False,
+    pricing_file: str | Path | None = None,
+) -> list[Phase042PreflightMatrixRow]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+    if max_attempts != 1:
+        raise ValueError("Phase 04.2 static supplemental runs require max_attempts=1")
+    _assert_no_phase041_path_values(
+        [selected_manifest_path, dataset_root, results_dir, output_root, run_id],
+        context="Phase 04.2 static preflight",
+    )
+
+    manifest_path = Path(selected_manifest_path)
+    manifest_rows = validate_phase042_selected_manifest(
+        load_phase042_selected_manifest(manifest_path)
+    )
+    task_types = list(PHASE042_STATIC_TASK_TYPES)
+    if [row.task_type for row in manifest_rows] != sorted(PHASE042_STATIC_TASK_TYPES):
+        raise ValueError("selected manifest must be normalized to the three static categories")
+    dataset_root = Path(dataset_root)
+    _validate_materialized_dataset_root(dataset_root, task_types)
+
+    run_matrix_rows = build_phase042_paper_facing_run_matrix(
+        results_dir=results_dir,
+        materialized_dataset_root=dataset_root,
+        output_root=output_root,
+        run_id=run_id,
+    )
+    static_run_dir = revision_run_dir(output_root, run_id)
+    reports_dir = static_run_dir / "preflight_reports"
+    manifest_hash = sha256_file(manifest_path)
+
+    preflight_rows: list[Phase042PreflightMatrixRow] = []
+    for matrix_row in run_matrix_rows:
+        effective_overwrite = overwrite or bool(matrix_row["overwrite"])
+        effective_resume = False if effective_overwrite else (resume or bool(matrix_row["resume"]))
+        preflight_args = argparse.Namespace(
+            dataset_root=str(dataset_root),
+            types=task_types,
+            prompts_file=str(prompts_file),
+            few_shot_config=None,
+            prompt_prefix=None,
+            prompt_suffix=None,
+            pricing_file=str(pricing_file) if pricing_file else None,
+            output_root=str(output_root),
+            run_id=matrix_row["run_id"],
+            provider=matrix_row["provider"],
+            model=matrix_row["model"],
+            prompt_mode=prompt_mode,
+            max_per_type=None,
+            max_attempts=max_attempts,
+            overwrite=effective_overwrite,
+            resume=effective_resume,
+            write_report=False,
+        )
+        report = revision_preflight.build_report(preflight_args)
+        report_payload = _preflight_report_payload(report)
+        report_path = reports_dir / f"{_slug(str(matrix_row['provider_model']))}.json"
+        if write_reports:
+            _write_json(report_path, report_payload)
+        preflight_rows.append(
+            Phase042PreflightMatrixRow(
+                run_id=str(matrix_row["run_id"]),
+                provider=str(matrix_row["provider"]),
+                model=str(matrix_row["model"]),
+                provider_model=str(matrix_row["provider_model"]),
+                run_scope="static",
+                selected_manifest_path=str(manifest_path),
+                selected_manifest_sha256=manifest_hash,
+                materialized_dataset_root=str(dataset_root),
+                task_types=task_types,
+                prompt_config=dict(report_payload.get("prompt_config") or {}),
+                expected_request_count=int(report_payload.get("expected_request_count") or 0),
+                cost_preview=dict(report_payload.get("cost_preview") or {}),
+                output_dir=str(report_payload.get("output_dir") or matrix_row["output_dir"]),
+                preflight_report_path=str(report_path),
+                overwrite=effective_overwrite,
+                resume=effective_resume,
+            )
+        )
+
+    _write_phase042_preflight_matrix(
+        static_run_dir / "expanded_static_preflight_matrix.csv",
+        static_run_dir / "expanded_static_preflight_matrix.json",
+        preflight_rows,
+    )
+    return preflight_rows
+
+
+def _runtime_model_kwargs(provider: str, model_label: str) -> dict[str, object]:
+    if provider == "openai" and model_label.startswith("gpt-5.1_"):
+        effort = model_label.rsplit("_", 1)[1]
+        if effort == "none":
+            return {"model": "gpt-5.1", "thinking": False, "thinking_options": None}
+        return {
+            "model": "gpt-5.1",
+            "thinking": True,
+            "thinking_options": {"effort": effort},
+        }
+    return {"model": model_label, "thinking": False, "thinking_options": None}
+
+
+def _run_eval_with_supported_kwargs(kwargs: dict[str, object]) -> dict[str, Any]:
+    signature = inspect.signature(run_eval.run_eval)
+    supports_arbitrary_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+    if supports_arbitrary_kwargs:
+        return run_eval.run_eval(**kwargs)
+    supported = {key: value for key, value in kwargs.items() if key in signature.parameters}
+    return run_eval.run_eval(**supported)
+
+
+def _load_attempts(path: Path) -> list[AttemptRecord]:
+    if not path.is_file():
+        raise FileNotFoundError(f"attempt log does not exist: {path}")
+    attempts = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                attempts.append(AttemptRecord.model_validate_json(line))
+    return attempts
+
+
+def _failure_bucket(attempt: AttemptRecord) -> str | None:
+    if attempt.correct:
+        return None
+    category = (attempt.error_category or "").lower()
+    if not category:
+        return "scientific_wrong_count"
+    if (
+        category == "parse_error"
+        and not attempt.parsed_answer
+        and not attempt.tokens_in
+        and not attempt.tokens_out
+        and not attempt.cost_usd
+    ):
+        return "infrastructure_failure_count"
+    if any(token in category for token in ("infra", "provider", "network", "timeout", "rate")):
+        return "infrastructure_failure_count"
+    return "protocol_failure_count"
+
+
+def _write_phase042_static_summary(
+    output_csv: Path,
+    output_json: Path,
+    rows: Iterable[Phase042StaticSummaryRow | dict[str, Any]],
+) -> tuple[Path, Path]:
+    validated = [
+        row if isinstance(row, Phase042StaticSummaryRow) else Phase042StaticSummaryRow(**row)
+        for row in rows
+    ]
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = list(Phase042StaticSummaryRow.model_fields)
+    with output_csv.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in validated:
+            writer.writerow(
+                {key: _csv_value(value) for key, value in row.model_dump(mode="json").items()}
+            )
+    _write_json(
+        output_json,
+        {
+            "schema_version": PHASE042_STATIC_SUMMARY_SCHEMA_VERSION,
+            "rows": [row.model_dump(mode="json") for row in validated],
+        },
+    )
+    return output_csv, output_json
+
+
+def _build_phase042_static_summary_rows(
+    matrix_rows: list[Phase042PreflightMatrixRow],
+    manifest_rows: list[Phase042SelectedManifestRow],
+) -> list[Phase042StaticSummaryRow]:
+    manifest_by_task = {row.task_type: row for row in manifest_rows}
+    summary_rows: list[Phase042StaticSummaryRow] = []
+    for matrix_row in matrix_rows:
+        run_dir = Path(matrix_row.output_dir)
+        attempts = _load_attempts(run_dir / "attempts.jsonl")
+        counts_by_task: dict[str, dict[str, int]] = defaultdict(
+            lambda: {
+                "attempt_count": 0,
+                "success_count": 0,
+                "scientific_wrong_count": 0,
+                "protocol_failure_count": 0,
+                "infrastructure_failure_count": 0,
+            }
+        )
+        for attempt in attempts:
+            counts = counts_by_task[attempt.task_type]
+            counts["attempt_count"] += 1
+            counts["success_count"] += int(attempt.correct)
+            bucket = _failure_bucket(attempt)
+            if bucket:
+                counts[bucket] += 1
+
+        for task_type, counts in sorted(counts_by_task.items()):
+            manifest_row = manifest_by_task.get(task_type)
+            summary_rows.append(
+                Phase042StaticSummaryRow(
+                    run_id=matrix_row.run_id,
+                    provider=matrix_row.provider,
+                    model=matrix_row.model,
+                    provider_model=matrix_row.provider_model,
+                    task_type=task_type,
+                    task_family=manifest_row.task_family if manifest_row else "unknown",
+                    evidence_origin=(
+                        manifest_row.evidence_origin if manifest_row else "new_category"
+                    ),
+                    sample_count=manifest_row.sample_count if manifest_row else 0,
+                    attempt_count=counts["attempt_count"],
+                    success_count=counts["success_count"],
+                    scientific_wrong_count=counts["scientific_wrong_count"],
+                    protocol_failure_count=counts["protocol_failure_count"],
+                    infrastructure_failure_count=counts["infrastructure_failure_count"],
+                    pass_rate=(
+                        counts["success_count"] / counts["attempt_count"]
+                        if counts["attempt_count"]
+                        else None
+                    ),
+                    run_manifest_path=str(run_dir / "run_manifest.json"),
+                    attempt_log_path=str(run_dir / "attempts.jsonl"),
+                    summary_source_path=str(run_dir / "summary.json"),
+                    selected_manifest_path=matrix_row.selected_manifest_path,
+                    claim_use="main_body_direct_evidence",
+                )
+            )
+    return summary_rows
+
+
+def collect_phase042_static_runs(
+    *,
+    preflight_matrix_path: str | Path,
+    output_root: str | Path = "results/revision",
+    selected_manifest_path: str | Path | None = None,
+    resume: bool = True,
+    overwrite: bool = False,
+    secrets_file: str | Path = "secrets.yaml",
+    stream: bool = True,
+    timeout_sec: float = 600.0,
+    seed: int = 1234,
+) -> dict[str, object]:
+    if overwrite and resume:
+        raise ValueError("overwrite and resume are mutually exclusive")
+    _assert_no_phase041_path_values(
+        [preflight_matrix_path, output_root, selected_manifest_path or "", secrets_file],
+        context="Phase 04.2 static collection",
+    )
+    matrix_rows = _load_phase042_preflight_matrix(Path(preflight_matrix_path))
+    if not matrix_rows:
+        raise ValueError("preflight matrix must contain at least one row")
+    if any(row.run_scope != "static" for row in matrix_rows):
+        raise ValueError("collect-static requires static preflight matrix rows")
+
+    manifest_path = Path(selected_manifest_path or matrix_rows[0].selected_manifest_path)
+    manifest_rows = validate_phase042_selected_manifest(
+        load_phase042_selected_manifest(manifest_path)
+    )
+
+    run_results: list[dict[str, Any]] = []
+    for matrix_row in matrix_rows:
+        runtime_model = _runtime_model_kwargs(matrix_row.provider, matrix_row.model)
+        prompts_file = matrix_row.prompt_config.get("prompts_file") or "prompts_optimized.yaml"
+        run_kwargs: dict[str, object] = {
+            "dataset_root": matrix_row.materialized_dataset_root,
+            "types": list(matrix_row.task_types),
+            "provider": matrix_row.provider,
+            "model": runtime_model["model"],
+            "max_per_type": None,
+            "out_csv": str(Path(matrix_row.output_dir) / "results.csv"),
+            "secrets_file": str(secrets_file),
+            "stream": stream,
+            "timeout_sec": timeout_sec,
+            "seed": seed,
+            "prompts_file": str(prompts_file),
+            "prompt_mode": "opt",
+            "revision_run_id": matrix_row.run_id,
+            "revision_output_root": str(output_root),
+            "write_attempts": True,
+            "overwrite_revision_output": overwrite,
+            "resume_revision_output": resume,
+            "max_attempts": 1,
+            "thinking": runtime_model["thinking"],
+            "thinking_options": runtime_model["thinking_options"],
+        }
+        run_results.append(_run_eval_with_supported_kwargs(run_kwargs))
+
+    summary_rows = _build_phase042_static_summary_rows(matrix_rows, manifest_rows)
+    summary_dir = Path(preflight_matrix_path).parent
+    summary_csv = summary_dir / "expanded_static_summary.csv"
+    summary_json = summary_dir / "expanded_static_summary.json"
+    _write_phase042_static_summary(summary_csv, summary_json, summary_rows)
+    return {
+        "run_count": len(matrix_rows),
+        "run_result_count": len(run_results),
+        "static_summary_row_count": len(summary_rows),
+        "static_summary_csv": str(summary_csv),
+        "static_summary_json": str(summary_json),
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Phase 04.2 corrected-provenance dataset utilities."
@@ -1187,6 +1654,59 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("captcha_data"),
     )
     materialize_parser.add_argument("--overwrite", action="store_true")
+    static_preflight_parser = subparsers.add_parser(
+        "static-preflight-matrix",
+        help="Build Phase 04.2 static supplemental preflight matrix.",
+    )
+    static_preflight_parser.add_argument(
+        "--selected-manifest",
+        type=Path,
+        default=PHASE042_SELECTED_MANIFEST_JSON,
+    )
+    static_preflight_parser.add_argument(
+        "--dataset-root",
+        type=Path,
+        default=PHASE042_EVALUATOR_SLICE,
+    )
+    static_preflight_parser.add_argument("--results-dir", type=Path, default=Path("results"))
+    static_preflight_parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("results/revision"),
+    )
+    static_preflight_parser.add_argument("--run-id", default=PHASE042_STATIC_SUPPLEMENTAL_RUN_ID)
+    static_preflight_parser.add_argument(
+        "--prompts-file",
+        type=Path,
+        default=Path("prompts_optimized.yaml"),
+    )
+    static_preflight_parser.add_argument("--prompt-mode", default="opt")
+    static_preflight_parser.add_argument("--pricing-file", type=Path, default=None)
+    static_preflight_parser.add_argument("--max-attempts", type=int, default=1)
+    static_preflight_parser.add_argument("--overwrite", action="store_true")
+    static_preflight_parser.add_argument("--resume", action="store_true", default=True)
+    static_preflight_parser.add_argument("--write-reports", action="store_true")
+    collect_static_parser = subparsers.add_parser(
+        "collect-static",
+        help="Run Phase 04.2 static supplemental collection from a preflight matrix.",
+    )
+    collect_static_parser.add_argument(
+        "--preflight-matrix",
+        type=Path,
+        default=(
+            Path("results/revision")
+            / PHASE042_STATIC_SUPPLEMENTAL_RUN_ID
+            / "expanded_static_preflight_matrix.json"
+        ),
+    )
+    collect_static_parser.add_argument("--output-root", type=Path, default=Path("results/revision"))
+    collect_static_parser.add_argument("--selected-manifest", type=Path, default=None)
+    collect_static_parser.add_argument("--secrets-file", type=Path, default=Path("secrets.yaml"))
+    collect_static_parser.add_argument("--resume", action="store_true", default=True)
+    collect_static_parser.add_argument("--overwrite", action="store_true")
+    collect_static_parser.add_argument("--no-stream", action="store_true")
+    collect_static_parser.add_argument("--timeout-sec", type=float, default=600.0)
+    collect_static_parser.add_argument("--seed", type=int, default=1234)
     return parser
 
 
@@ -1219,6 +1739,49 @@ def main(argv: list[str] | None = None) -> int:
             adaptive_output_root=args.adaptive_output_root,
             original_dataset_root=args.original_dataset_root,
             overwrite=args.overwrite,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "static-preflight-matrix":
+        rows = build_phase042_static_preflight_matrix(
+            selected_manifest_path=args.selected_manifest,
+            dataset_root=args.dataset_root,
+            results_dir=args.results_dir,
+            output_root=args.output_root,
+            run_id=args.run_id,
+            prompts_file=args.prompts_file,
+            prompt_mode=args.prompt_mode,
+            max_attempts=args.max_attempts,
+            resume=args.resume,
+            overwrite=args.overwrite,
+            write_reports=args.write_reports,
+            pricing_file=args.pricing_file,
+        )
+        run_dir = revision_run_dir(args.output_root, args.run_id)
+        print(
+            json.dumps(
+                {
+                    "row_count": len(rows),
+                    "output_csv": str(run_dir / "expanded_static_preflight_matrix.csv"),
+                    "output_json": str(run_dir / "expanded_static_preflight_matrix.json"),
+                    "preflight_reports_dir": str(run_dir / "preflight_reports"),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
+    if args.command == "collect-static":
+        result = collect_phase042_static_runs(
+            preflight_matrix_path=args.preflight_matrix,
+            output_root=args.output_root,
+            selected_manifest_path=args.selected_manifest,
+            resume=args.resume,
+            overwrite=args.overwrite,
+            secrets_file=args.secrets_file,
+            stream=not args.no_stream,
+            timeout_sec=args.timeout_sec,
+            seed=args.seed,
         )
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
