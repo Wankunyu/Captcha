@@ -1,6 +1,8 @@
 import argparse
 import hashlib
 import json
+import shutil
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -25,6 +27,8 @@ PHASE042_VALIDATION_REPORT_JSON = PHASE042_SIDECAR_ROOT / "phase042_validation_r
 PHASE042_SELECTED_MANIFEST_CSV = PHASE042_SIDECAR_ROOT / "phase042_selected_manifest.csv"
 PHASE042_SELECTED_MANIFEST_JSON = PHASE042_SIDECAR_ROOT / "phase042_selected_manifest.json"
 PHASE042_NOVELTY_HASH_REPORT_JSON = PHASE042_SIDECAR_ROOT / "novelty_hash_report.json"
+PHASE042_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "evaluator_slice"
+PHASE042_ADAPTIVE_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "adaptive_evaluator_slice"
 PHASE042_TARGET_TASK_TYPES = (
     "Dice_Count",
     "Click_Order",
@@ -35,6 +39,20 @@ PHASE042_TARGET_TASK_TYPES = (
     "Hole_Counting",
 )
 PHASE042_TARGET_NEW_TASK_TYPES = {"Symbol_Count", "Relation_Match", "Hole_Counting"}
+PHASE042_ORIGINAL_HARD_TASK_TYPES = (
+    "Dice_Count",
+    "Place_Dot",
+    "Pick_Area",
+    "Click_Order",
+    "Patch_Select",
+    "Rotation_Match",
+)
+PHASE042_ADAPTIVE_TASK_TYPES = (
+    *PHASE042_ORIGINAL_HARD_TASK_TYPES,
+    "Symbol_Count",
+    "Relation_Match",
+    "Hole_Counting",
+)
 PHASE042_MIN_SAMPLES_PER_CATEGORY = 10
 PHASE042_SOURCE_PRIORITY = (
     "peer_reviewed_paper_dataset",
@@ -182,12 +200,47 @@ def _write_json(path: Path, payload: object) -> Path:
     return path
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _is_relative_to(path: Path, root: Path) -> bool:
     try:
         path.relative_to(root)
     except ValueError:
         return False
     return True
+
+
+def _iter_string_values(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        strings: list[str] = []
+        for child in value.values():
+            strings.extend(_iter_string_values(child))
+        return strings
+    if isinstance(value, list):
+        strings = []
+        for child in value:
+            strings.extend(_iter_string_values(child))
+        return strings
+    return []
+
+
+def _referenced_files(ground_truth: dict[str, object]) -> list[str]:
+    referenced: set[str] = set()
+    for puzzle_id, entry in ground_truth.items():
+        if isinstance(puzzle_id, str) and Path(puzzle_id).suffix.lower() in IMAGE_SUFFIXES:
+            referenced.add(puzzle_id)
+        for value in _iter_string_values(entry):
+            if Path(value).suffix.lower() in IMAGE_SUFFIXES:
+                referenced.add(value)
+    return sorted(referenced)
 
 
 def _iter_image_files(root: Path) -> Iterable[Path]:
@@ -684,6 +737,367 @@ def validate_phase042_candidates(
     }
 
 
+def _assert_selected_manifest_path(path: Path) -> None:
+    normalized = path.as_posix().lower()
+    if "validation_report" in normalized:
+        raise ValueError("materialization must read a selected manifest, not a validation report")
+    assert_no_phase041_reference(normalized, context="selected manifest path")
+    if path.name not in {"phase042_selected_manifest.json", "selected_manifest.json"}:
+        raise ValueError(
+            "selected manifest path must be phase042_selected_manifest.json "
+            "or selected_manifest.json"
+        )
+
+
+def load_phase042_selected_manifest(
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+) -> list[Phase042SelectedManifestRow]:
+    path = Path(selected_manifest_path)
+    _assert_selected_manifest_path(path)
+    payload = _read_json(path)
+    assert_no_phase041_reference(payload, context="selected manifest payload")
+    raw_rows = payload.get("rows") if isinstance(payload, dict) else payload
+    if not isinstance(raw_rows, list):
+        raise ValueError("selected manifest must contain a rows array")
+    return [Phase042SelectedManifestRow.model_validate(row) for row in raw_rows]
+
+
+def normalize_phase042_selected_manifest_scope(
+    rows: Iterable[Phase042SelectedManifestRow | dict[str, Any]],
+) -> tuple[list[Phase042SelectedManifestRow], int]:
+    validated = [
+        row
+        if isinstance(row, Phase042SelectedManifestRow)
+        else Phase042SelectedManifestRow.model_validate(row)
+        for row in rows
+    ]
+    corrected: list[Phase042SelectedManifestRow] = []
+    excluded_updated_ocw_increment_count = 0
+    for row in validated:
+        if row.task_type in PHASE042_TARGET_NEW_TASK_TYPES:
+            corrected.append(row)
+            continue
+        excluded_updated_ocw_increment_count += 1
+
+    validate_phase042_selected_manifest(corrected)
+    return sorted(corrected, key=lambda row: row.task_type), excluded_updated_ocw_increment_count
+
+
+def validate_phase042_selected_manifest(
+    rows: Iterable[Phase042SelectedManifestRow | dict[str, Any]],
+) -> list[Phase042SelectedManifestRow]:
+    validated = [
+        row
+        if isinstance(row, Phase042SelectedManifestRow)
+        else Phase042SelectedManifestRow.model_validate(row)
+        for row in rows
+    ]
+    by_task: dict[str, list[Phase042SelectedManifestRow]] = defaultdict(list)
+    for row in validated:
+        assert_no_phase041_reference(row.model_dump(mode="json"), context="selected manifest row")
+        if row.task_type not in PHASE042_TARGET_NEW_TASK_TYPES:
+            raise ValueError(
+                "corrected Phase 04.2 direct static selection is limited to "
+                f"{sorted(PHASE042_TARGET_NEW_TASK_TYPES)}; got {row.task_type}"
+            )
+        if row.sample_count < PHASE042_MIN_SAMPLES_PER_CATEGORY:
+            raise ValueError(
+                f"{row.task_type} sample_count must be >= "
+                f"{PHASE042_MIN_SAMPLES_PER_CATEGORY}"
+            )
+        by_task[row.task_type].append(row)
+
+    task_types = set(by_task)
+    if task_types != PHASE042_TARGET_NEW_TASK_TYPES:
+        raise ValueError(
+            "corrected Phase 04.2 selected manifest must contain exactly "
+            f"{sorted(PHASE042_TARGET_NEW_TASK_TYPES)}"
+        )
+    duplicates = {task_type: rows for task_type, rows in by_task.items() if len(rows) != 1}
+    if duplicates:
+        raise ValueError(
+            "corrected Phase 04.2 selected manifest requires one row per task type: "
+            f"{sorted(duplicates)}"
+        )
+    return sorted(validated, key=lambda row: row.task_type)
+
+
+def _safe_prepare_phase042_output_root(
+    sidecar_root: Path,
+    output_root: Path,
+    *,
+    overwrite: bool,
+) -> Path:
+    assert_no_phase041_reference(output_root.as_posix(), context="materialization output root")
+    sidecar_resolved = sidecar_root.resolve()
+    output_resolved = output_root.resolve()
+    captcha_root = Path("captcha_data").resolve()
+    if output_resolved == captcha_root or _is_relative_to(output_resolved, captcha_root):
+        raise ValueError("materialization output_root must not be inside captcha_data")
+    if output_resolved == sidecar_resolved:
+        raise ValueError("materialization output_root must not be the sidecar root")
+    if not _is_relative_to(output_resolved, sidecar_resolved):
+        raise ValueError("materialization output_root must stay under Phase 04.2 sidecar root")
+    if output_root.exists():
+        if not overwrite:
+            raise FileExistsError(f"output_root already exists: {output_root}")
+        shutil.rmtree(output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
+    return output_root
+
+
+def _resolve_phase042_source_dir(raw_path: str, sidecar_root: Path) -> Path:
+    assert_no_phase041_reference(raw_path, context="selected manifest source_path")
+    path = Path(raw_path)
+    if path.is_absolute():
+        raise ValueError("selected manifest source_path must be relative")
+    if ".." in path.parts:
+        raise ValueError("selected manifest source_path must not contain path traversal")
+    resolved = path.resolve()
+    candidates_root = (sidecar_root / "candidates").resolve()
+    if not _is_relative_to(resolved, candidates_root):
+        raise ValueError("selected manifest source_path must resolve under Phase 04.2 candidates")
+    return resolved
+
+
+def _copy_referenced_file(source_dir: Path, output_dir: Path, relative_path: str) -> None:
+    relative = Path(relative_path)
+    if relative.is_absolute():
+        raise ValueError(f"referenced dataset file must be relative: {relative_path}")
+    if ".." in relative.parts:
+        raise ValueError(
+            f"referenced dataset file must not contain path traversal: {relative_path}"
+        )
+    source_root = source_dir.resolve()
+    source_path = (source_dir / relative).resolve()
+    if not _is_relative_to(source_path, source_root):
+        raise ValueError(f"referenced dataset file escapes source path: {relative_path}")
+    if not source_path.is_file():
+        raise FileNotFoundError(str(source_path))
+    output_path = output_dir / relative
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, output_path)
+
+
+def _copy_task_ground_truth(
+    *,
+    source_dir: Path,
+    task_output_root: Path,
+) -> tuple[int, str]:
+    source_gt_path = source_dir / "ground_truth.json"
+    if not source_gt_path.is_file():
+        raise FileNotFoundError(str(source_gt_path))
+    ground_truth = _read_json(source_gt_path)
+    if not isinstance(ground_truth, dict):
+        raise ValueError(f"{source_gt_path} must contain a JSON object")
+    copied_file_count = 0
+    for relative_path in _referenced_files(ground_truth):
+        _copy_referenced_file(source_dir, task_output_root, relative_path)
+        copied_file_count += 1
+    ground_truth_path = task_output_root / "ground_truth.json"
+    task_output_root.mkdir(parents=True, exist_ok=True)
+    with ground_truth_path.open("w", encoding="utf-8") as handle:
+        json.dump(ground_truth, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    return copied_file_count, ground_truth_path.as_posix()
+
+
+def _write_task_materialization_metadata(
+    task_output_root: Path,
+    row: Phase042SelectedManifestRow,
+) -> Path:
+    metadata_path = task_output_root / "phase042_materialization_metadata.json"
+    _write_json(
+        metadata_path,
+        {
+            "schema_version": "cognition.revision.phase042.materialization_metadata.v1",
+            "selected_id": row.selected_id,
+            "candidate_id": row.candidate_id,
+            "task_type": row.task_type,
+            "source_kind": row.source_kind,
+            "source_provenance_class": row.source_provenance_class,
+            "source_citation": row.source_citation,
+            "source_license": row.source_license,
+            "source_provenance_notes": row.source_provenance_notes,
+            "sample_count": row.sample_count,
+            "selected_manifest_path": PHASE042_SELECTED_MANIFEST_JSON.as_posix(),
+        },
+    )
+    return metadata_path
+
+
+def materialize_phase042_evaluator_slice(
+    rows: Iterable[Phase042SelectedManifestRow | dict[str, Any]],
+    *,
+    sidecar_root: str | Path = PHASE042_SIDECAR_ROOT,
+    output_root: str | Path = PHASE042_EVALUATOR_SLICE,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    sidecar = Path(sidecar_root)
+    output = _safe_prepare_phase042_output_root(sidecar, Path(output_root), overwrite=overwrite)
+    corrected_rows = validate_phase042_selected_manifest(rows)
+
+    copied_file_count = 0
+    ground_truth_files: list[str] = []
+    metadata_files: list[str] = []
+    sample_count_by_task_type: dict[str, int] = {}
+    for row in corrected_rows:
+        source_dir = _resolve_phase042_source_dir(row.source_path, sidecar)
+        task_output_root = output / row.task_type
+        copied, ground_truth_path = _copy_task_ground_truth(
+            source_dir=source_dir,
+            task_output_root=task_output_root,
+        )
+        copied_file_count += copied
+        ground_truth_files.append(ground_truth_path)
+        metadata_files.append(
+            _write_task_materialization_metadata(task_output_root, row).as_posix()
+        )
+        sample_count_by_task_type[row.task_type] = row.sample_count
+
+    return {
+        "static_row_count": len(corrected_rows),
+        "static_task_type_count": len(corrected_rows),
+        "static_sample_count_by_task_type": dict(sorted(sample_count_by_task_type.items())),
+        "copied_file_count": copied_file_count,
+        "static_output_root": output.as_posix(),
+        "static_ground_truth_files": sorted(ground_truth_files),
+        "static_metadata_files": sorted(metadata_files),
+    }
+
+
+def _copy_original_hard_task(
+    *,
+    original_dataset_root: Path,
+    task_type: str,
+    adaptive_output_root: Path,
+) -> tuple[int, str, int]:
+    source_dir = (original_dataset_root / task_type).resolve()
+    root_resolved = original_dataset_root.resolve()
+    if not _is_relative_to(source_dir, root_resolved):
+        raise ValueError(f"original hard task path escapes original dataset root: {task_type}")
+    task_output_root = adaptive_output_root / task_type
+    copied_file_count, ground_truth_path = _copy_task_ground_truth(
+        source_dir=source_dir,
+        task_output_root=task_output_root,
+    )
+    ground_truth = _read_json(task_output_root / "ground_truth.json")
+    sample_count = len(ground_truth) if isinstance(ground_truth, dict) else 0
+    return copied_file_count, ground_truth_path, sample_count
+
+
+def materialize_phase042_adaptive_evaluator_slice(
+    rows: Iterable[Phase042SelectedManifestRow | dict[str, Any]],
+    *,
+    sidecar_root: str | Path = PHASE042_SIDECAR_ROOT,
+    output_root: str | Path = PHASE042_ADAPTIVE_EVALUATOR_SLICE,
+    original_dataset_root: str | Path = "captcha_data",
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    sidecar = Path(sidecar_root)
+    output = _safe_prepare_phase042_output_root(sidecar, Path(output_root), overwrite=overwrite)
+    corrected_rows = validate_phase042_selected_manifest(rows)
+    rows_by_task = {row.task_type: row for row in corrected_rows}
+
+    copied_file_count = 0
+    ground_truth_files: list[str] = []
+    sample_count_by_task_type: dict[str, int] = {}
+    original_root = Path(original_dataset_root)
+    for task_type in PHASE042_ORIGINAL_HARD_TASK_TYPES:
+        copied, ground_truth_path, sample_count = _copy_original_hard_task(
+            original_dataset_root=original_root,
+            task_type=task_type,
+            adaptive_output_root=output,
+        )
+        copied_file_count += copied
+        ground_truth_files.append(ground_truth_path)
+        sample_count_by_task_type[task_type] = sample_count
+
+    for task_type in sorted(PHASE042_TARGET_NEW_TASK_TYPES):
+        row = rows_by_task[task_type]
+        source_dir = _resolve_phase042_source_dir(row.source_path, sidecar)
+        task_output_root = output / row.task_type
+        copied, ground_truth_path = _copy_task_ground_truth(
+            source_dir=source_dir,
+            task_output_root=task_output_root,
+        )
+        copied_file_count += copied
+        ground_truth_files.append(ground_truth_path)
+        _write_task_materialization_metadata(task_output_root, row)
+        sample_count_by_task_type[task_type] = row.sample_count
+
+    task_types = tuple(sorted(path.name for path in output.iterdir() if path.is_dir()))
+    expected = tuple(sorted(PHASE042_ADAPTIVE_TASK_TYPES))
+    if task_types != expected:
+        raise ValueError(f"adaptive evaluator slice must contain exactly {expected}")
+
+    return {
+        "adaptive_task_type_count": len(PHASE042_ADAPTIVE_TASK_TYPES),
+        "adaptive_sample_count_by_task_type": dict(sorted(sample_count_by_task_type.items())),
+        "adaptive_copied_file_count": copied_file_count,
+        "adaptive_output_root": output.as_posix(),
+        "adaptive_ground_truth_files": sorted(ground_truth_files),
+    }
+
+
+def materialize_phase042_selected(
+    *,
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+    selected_manifest_csv: str | Path = PHASE042_SELECTED_MANIFEST_CSV,
+    source_download_manifest_path: str | Path = (
+        PHASE042_SIDECAR_ROOT / "source_download_manifest.json"
+    ),
+    sidecar_root: str | Path = PHASE042_SIDECAR_ROOT,
+    static_output_root: str | Path = PHASE042_EVALUATOR_SLICE,
+    adaptive_output_root: str | Path = PHASE042_ADAPTIVE_EVALUATOR_SLICE,
+    original_dataset_root: str | Path = "captcha_data",
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    selected_manifest_path = Path(selected_manifest_path)
+    selected_manifest_hash = sha256_file(selected_manifest_path)
+    rows = load_phase042_selected_manifest(selected_manifest_path)
+    corrected_rows, excluded_count = normalize_phase042_selected_manifest_scope(rows)
+    write_phase042_selected_manifest(
+        Path(selected_manifest_csv),
+        selected_manifest_path,
+        corrected_rows,
+    )
+    corrected_hash = sha256_file(selected_manifest_path)
+    static_summary = materialize_phase042_evaluator_slice(
+        corrected_rows,
+        sidecar_root=sidecar_root,
+        output_root=static_output_root,
+        overwrite=overwrite,
+    )
+    adaptive_summary = materialize_phase042_adaptive_evaluator_slice(
+        corrected_rows,
+        sidecar_root=sidecar_root,
+        output_root=adaptive_output_root,
+        original_dataset_root=original_dataset_root,
+        overwrite=overwrite,
+    )
+    source_download_manifest_path = Path(source_download_manifest_path)
+    summary = {
+        "selected_manifest_sha256": selected_manifest_hash,
+        "corrected_selected_manifest_sha256": corrected_hash,
+        "source_download_manifest_sha256": (
+            sha256_file(source_download_manifest_path)
+            if source_download_manifest_path.is_file()
+            else ""
+        ),
+        "selected_manifest_json": selected_manifest_path.as_posix(),
+        "selected_manifest_csv": Path(selected_manifest_csv).as_posix(),
+        "source_download_manifest": source_download_manifest_path.as_posix(),
+        "excluded_updated_ocw_increment_count": excluded_count,
+        **static_summary,
+        **adaptive_summary,
+    }
+    summary["copied_file_count"] = int(static_summary["copied_file_count"]) + int(
+        adaptive_summary["adaptive_copied_file_count"]
+    )
+    return summary
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Phase 04.2 corrected-provenance dataset utilities."
@@ -733,6 +1147,46 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=4,
     )
+    materialize_parser = subparsers.add_parser(
+        "materialize-selected",
+        help="Materialize corrected Phase 04.2 static and adaptive evaluator slices.",
+    )
+    materialize_parser.add_argument(
+        "--selected-manifest",
+        type=Path,
+        default=PHASE042_SELECTED_MANIFEST_JSON,
+    )
+    materialize_parser.add_argument(
+        "--selected-manifest-csv",
+        type=Path,
+        default=PHASE042_SELECTED_MANIFEST_CSV,
+    )
+    materialize_parser.add_argument(
+        "--source-download-manifest",
+        type=Path,
+        default=PHASE042_SIDECAR_ROOT / "source_download_manifest.json",
+    )
+    materialize_parser.add_argument(
+        "--sidecar-root",
+        type=Path,
+        default=PHASE042_SIDECAR_ROOT,
+    )
+    materialize_parser.add_argument(
+        "--static-output-root",
+        type=Path,
+        default=PHASE042_EVALUATOR_SLICE,
+    )
+    materialize_parser.add_argument(
+        "--adaptive-output-root",
+        type=Path,
+        default=PHASE042_ADAPTIVE_EVALUATOR_SLICE,
+    )
+    materialize_parser.add_argument(
+        "--original-dataset-root",
+        type=Path,
+        default=Path("captcha_data"),
+    )
+    materialize_parser.add_argument("--overwrite", action="store_true")
     return parser
 
 
@@ -754,6 +1208,19 @@ def main(argv: list[str] | None = None) -> int:
             "Phase 04.2 validation complete: "
             f"{result['selected_count']} selected, {result['rejected_count']} rejected"
         )
+        return 0
+    if args.command == "materialize-selected":
+        result = materialize_phase042_selected(
+            selected_manifest_path=args.selected_manifest,
+            selected_manifest_csv=args.selected_manifest_csv,
+            source_download_manifest_path=args.source_download_manifest,
+            sidecar_root=args.sidecar_root,
+            static_output_root=args.static_output_root,
+            adaptive_output_root=args.adaptive_output_root,
+            original_dataset_root=args.original_dataset_root,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
     parser.error(f"unknown command: {args.command}")
     return 2
