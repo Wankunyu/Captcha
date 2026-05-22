@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_for_next_phase
 stopped_at: Phase 04.2 completed; Phase 5 defense methodology and HCI scope next
-last_updated: "2026-05-22T07:44:40.000Z"
-last_activity: 2026-05-22 -- Phase 04.2 Plan 07 corrected paper outputs completed
+last_updated: "2026-05-22T14:48:35.000Z"
+last_activity: 2026-05-22 -- Completed quick task 260522-udm Dice_Count/Rotation_Match adaptive k=3 filtered rerun
 progress:
   total_phases: 8
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 Phase: 5 (Defense Methodology and HCI Scope) — READY TO PLAN
 Plan: TBD
 Status: Phase 04.2 corrected-provenance dataset expansion is complete
-Last activity: 2026-05-22 -- Phase 04.2 Plan 07 corrected paper outputs completed
+Last activity: 2026-05-22 -- Completed quick task 260522-udm Dice_Count/Rotation_Match adaptive k=3 filtered rerun
 
 Progress: [██████████] 100% through Phase 04.2
 
@@ -163,6 +163,7 @@ None yet.
 | 260515-v59 | Update revision roadmap from Shepherding.docx | 2026-05-16 | docs-only | [.planning/quick/260515-v59-update-revision-roadmap-from-shepherding/](./quick/260515-v59-update-revision-roadmap-from-shepherding/) |
 | 260519-al4 | Align Phase 2 adaptive comparison cutoff semantics with the paper-facing 40% threshold and Phase 3 sensitivity framing | 2026-05-18 | 5638e17 | [.planning/quick/260519-al4-align-phase-2-adaptive-comparison-cutoff/](./quick/260519-al4-align-phase-2-adaptive-comparison-cutoff/) |
 | 260522-ezj | Replace unsupported Fireworks Qwen row with OpenRouter qwen/qwen3-vl-235b-a22b-instruct for Phase 04.2 supplemental experiments | 2026-05-22 | deferred | [.planning/quick/260522-ezj-replace-unsupported-fireworks-qwen-row-w/](./quick/260522-ezj-replace-unsupported-fireworks-qwen-row-w/) |
+| 260522-udm | Rerun Dice_Count and Rotation_Match adaptive attacker experiments with k=3, excluding samples solved on the first attempt in the previous run, across five rounds | 2026-05-22 | pending | [.planning/quick/260522-udm-rerun-dice-count-and-rotation-match-adap/](./quick/260522-udm-rerun-dice-count-and-rotation-match-adap/) |
 
 ## Deferred Items
 
