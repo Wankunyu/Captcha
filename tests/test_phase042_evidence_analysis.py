@@ -107,7 +107,12 @@ def _static_row(
     }
 
 
-def _adaptive_round_row(task_type: str, round_index: int, success_at_3: bool, success_at_5: bool) -> dict[str, object]:
+def _adaptive_round_row(
+    task_type: str,
+    round_index: int,
+    success_at_3: bool,
+    success_at_5: bool,
+) -> dict[str, object]:
     return {
         "run_id": f"phase04_2_adaptive_gpt5_medium-round{round_index:02d}",
         "provider": "openai",
@@ -185,7 +190,10 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
                 {
                     "candidate_id": "phase042-ocw-dice-count-latest-additions",
                     "task_type": "Dice_Count",
-                    "source_path": "expanded_captcha_data/phase04_2/candidates/OpenCaptchaWorld_Dice_Count_latest_additions",
+                    "source_path": (
+                        "expanded_captcha_data/phase04_2/candidates/"
+                        "OpenCaptchaWorld_Dice_Count_latest_additions"
+                    ),
                     "dataset_increase_percent_vs_local_legacy": 81.82,
                 },
                 {"candidate_id": "phase042-nextgen-hole-counting", "task_type": "Hole_Counting"},
@@ -208,12 +216,22 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
                     scientific_wrong_count=0,
                     infrastructure_failure_count=2,
                 ),
-                _static_row(LEGACY_QWEN_PROVIDER_MODEL, "Symbol_Count", 0.0, infrastructure_failure_count=10),
+                _static_row(
+                    LEGACY_QWEN_PROVIDER_MODEL,
+                    "Symbol_Count",
+                    0.0,
+                    infrastructure_failure_count=10,
+                ),
             ],
         },
     )
     openrouter_static = _write_json(
-        tmp_path / "results/revision/phase04_2_static_openrouter_qwen_infra_remediation_20260522/expanded_static_summary.json",
+        tmp_path
+        / (
+            "results/revision/"
+            "phase04_2_static_openrouter_qwen_infra_remediation_20260522/"
+            "expanded_static_summary.json"
+        ),
         {
             "schema_version": "cognition.revision.phase042.static_summary.v1",
             "rows": [
@@ -222,7 +240,12 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
         },
     )
     openai_static = _write_json(
-        tmp_path / "results/revision/phase04_2_static_openai_infra_remediation_20260522/expanded_static_summary.json",
+        tmp_path
+        / (
+            "results/revision/"
+            "phase04_2_static_openai_infra_remediation_20260522/"
+            "expanded_static_summary.json"
+        ),
         {
             "schema_version": "cognition.revision.phase042.static_summary.v1",
             "rows": [
@@ -242,7 +265,11 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
                 )
             )
     adaptive_summary = _write_json(
-        tmp_path / "results/revision/phase04_2_adaptive_gpt5_medium_20260522/expanded_adaptive_summary.json",
+        tmp_path
+        / (
+            "results/revision/phase04_2_adaptive_gpt5_medium_20260522/"
+            "expanded_adaptive_summary.json"
+        ),
         {
             "schema_version": "cognition.revision.phase042.adaptive_summary.v1",
             "rows": adaptive_rows,
@@ -264,7 +291,11 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
         + "\n",
         encoding="utf-8",
     )
-    qwen_exp2 = results_dir / "exp2/fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct/results.csv"
+    qwen_exp2 = (
+        results_dir
+        / "exp2/fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct"
+        / "results.csv"
+    )
     qwen_exp2.parent.mkdir(parents=True, exist_ok=True)
     qwen_exp2.write_text(
         "provider,model,type,n,pass_at_1\nfireworks,qwen,Symbol_Count,10,0.2\n",
@@ -371,8 +402,14 @@ def test_analysis_reports_agreement_and_divergence(tmp_path: Path) -> None:
         source_download_manifest_path=paths["source_download_manifest"],
     )
     assert "40% reporting heuristic" in report
-    assert "updated local OpenCaptchaWorld hard-type incremental rows were staged but excluded" in report
-    assert "no Dice_Count/Click_Order/Patch_Select/Geometry_Click dataset-increase percentages" in report
+    assert (
+        "updated local OpenCaptchaWorld hard-type incremental rows were staged but excluded"
+        in report
+    )
+    assert (
+        "no Dice_Count/Click_Order/Patch_Select/Geometry_Click dataset-increase percentages"
+        in report
+    )
 
 
 def test_analysis_preserves_gpt_image_caveats(tmp_path: Path) -> None:
@@ -398,4 +435,7 @@ def test_analysis_preserves_gpt_image_caveats(tmp_path: Path) -> None:
     }
     assert all(row["real_external_evidence"] is False for row in symbol_rows)
     assert all("GPT Image" in row["provenance_caveat"] for row in symbol_rows)
-    assert all(row["source_provenance_class"] == "gpt_image_generated_fallback" for row in symbol_rows)
+    assert all(
+        row["source_provenance_class"] == "gpt_image_generated_fallback"
+        for row in symbol_rows
+    )
