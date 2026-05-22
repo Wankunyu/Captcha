@@ -20,3 +20,4 @@ secrets.local.yaml
 .env.*
 results/revision/
 expanded_captcha_data/phase04_2/adaptive_k3_dice_rotation_rerun_slice_20260522/
+expanded_captcha_data/phase04_2/adaptive_k3_rotation_only_rerun2_slice_20260522/

@@ -504,6 +504,12 @@ def build_parser() -> argparse.ArgumentParser:
             "and Rotation_Match, excluding prior first-attempt successes."
         )
     )
+    parser.add_argument(
+        "--task-types",
+        nargs="+",
+        choices=sorted(TASK_FAMILIES),
+        default=list(TASK_TYPES),
+    )
     parser.add_argument("--run-id", default=RUN_ID)
     parser.add_argument("--source-dataset-root", type=Path, default=SOURCE_DATASET_ROOT)
     parser.add_argument("--output-dataset-root", type=Path, default=FILTERED_DATASET_ROOT)
@@ -522,6 +528,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    global TASK_TYPES
+    TASK_TYPES = tuple(args.task_types)
     if args.round_count != 5:
         raise ValueError("This rerun is defined for exactly five rounds.")
     if args.overwrite and args.resume:
