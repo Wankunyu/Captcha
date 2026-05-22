@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 04.2 Plan 05 adaptive and static remediation completed; Plan 06 evidence analysis is next
-last_updated: "2026-05-22T05:05:00.000Z"
-last_activity: 2026-05-22 -- Phase 04.2 static/adaptive supplemental experiments and infra-only remediations completed
+stopped_at: Phase 04.2 Plan 06 evidence analysis completed; Plan 07 paper outputs next
+last_updated: "2026-05-22T07:34:28.000Z"
+last_activity: 2026-05-22 -- Phase 04.2 Plan 06 evidence analysis completed
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 30
-  completed_plans: 28
-  percent: 93
+  completed_plans: 29
+  percent: 97
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.2 (corrected-provenance-dataset-expansion) — EXECUTING
-Plan: 6 of 7
-Status: Ready to execute evidence analysis
-Last activity: 2026-05-22 - Completed Phase 04.2 static/adaptive supplemental experiments, including OpenRouter Qwen and OpenAI infra-only remediations
+Plan: 7 of 7
+Status: Evidence analysis complete; ready to regenerate corrected paper outputs
+Last activity: 2026-05-22 -- Phase 04.2 Plan 06 evidence analysis completed
 
-Progress: [█████████░] 93%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 26
+- Total plans completed: 29
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -49,7 +49,7 @@ Progress: [█████████░] 93%
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
 | 04.1 | 6 | 175min recorded | - |
-| 04.2 | 5/7 | 59min recorded + multi-session paid runs | - |
+| 04.2 | 6/7 | 67min recorded + multi-session paid runs | - |
 
 **Recent Trend:**
 
@@ -152,7 +152,7 @@ None yet.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
 - [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
-- [Phase 04.2]: Corrected static/adaptive supplemental experiments are complete through Plan 05. Plan 06 must generate corrected evidence analysis, failure-class, confidence, and divergence reports; Plan 07 must regenerate paper outputs with invalid Phase 04.1 marker gates.
+- [Phase 04.2]: Corrected static/adaptive supplemental experiments and Plan 06 evidence analysis are complete. Plan 07 must regenerate paper outputs with invalid Phase 04.1 marker gates.
 - [Phase 5]: Defense methodology should wait for Phase 04.2 corrected paper-eligible expanded evidence and preserve CaptchaWorld and population-level deployment limits.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -177,14 +177,14 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-22T05:05:00.000Z
-Stopped at: Phase 04.2 Plan 05 completed; Plan 06 evidence analysis is next
-Resume file: None
+Last session: 2026-05-22T07:34:28.000Z
+Stopped at: Phase 04.2 Plan 06 completed; Plan 07 paper outputs is next
+Resume file: .planning/HANDOFF.json and .planning/phases/04.2-corrected-provenance-dataset-expansion/.continue-here.md
 
-**Next Step:** Execute Phase 04.2 Plan 06 using the corrected static remediation summaries and GPT-5 medium adaptive summary. Relevant inputs include `results/revision/phase04_2_static_openrouter_qwen_infra_remediation_20260522/expanded_static_summary.json`, `results/revision/phase04_2_static_openai_infra_remediation_20260522/expanded_static_summary.json`, and `results/revision/phase04_2_adaptive_gpt5_medium_20260522/expanded_adaptive_summary.json`.
+**Next Step:** Execute Phase 04.2 Plan 07 using `results/revision/phase04_2_evidence_analysis/phase04_2_evidence_analysis.json` plus the corrected selected/source manifests and final static/adaptive summaries.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
 **Completed Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — provenance correction carved into Phase 04.2
 
-**Active Phase:** 04.2 (Corrected Provenance Dataset Expansion) — 5/7 plans complete — 2026-05-22T05:05:00.000Z
+**Active Phase:** 04.2 (Corrected Provenance Dataset Expansion) — 6/7 plans complete — 2026-05-22T07:34:28.000Z
