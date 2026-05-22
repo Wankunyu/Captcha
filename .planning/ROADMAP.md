@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Dataset Scope, Statistical Confidence, and Limitations** - Produce dataset-scope, statistical-confidence, retry-calibration, infrastructure-error, and limitations artifacts. Completed 2026-05-19.
 - [x] **Phase 4: SOTA Solver and Larger Benchmark Strengthening** - Add fair comparison hooks for Halligan, Oedipus, specialized CAPTCHA solvers, and compatible larger external benchmark subsets. Completed 2026-05-19.
 - [x] **Phase 04.1: Expanded Dataset and Supplemental Experiments** (INSERTED) - Expand `captcha_data` or compatible offline dataset subsets, run supplemental experiments, and update paper claims/tables with directly evaluated expanded-dataset evidence. Completed 2026-05-20; corrected-provenance follow-up moved to Phase 04.2.
-- [ ] **Phase 04.2: Corrected Provenance Dataset Expansion** (INSERTED) - Rebuild the expanded sidecar under the corrected provenance and novelty definition, using samples newly introduced relative to current `captcha_data/`, then rerun supplemental static/adaptive evidence and paper outputs.
+- [ ] **Phase 04.2: Corrected Provenance Dataset Expansion** (INSERTED) - Rebuild the expanded sidecar under the corrected provenance and novelty definition, using samples newly introduced relative to current `captcha_data/`, then rerun supplemental static/adaptive evidence and paper outputs. Static and adaptive supplemental experiments completed through Plan 05 on 2026-05-22; evidence analysis and paper output regeneration remain.
 - [ ] **Phase 5: Defense Methodology and HCI Scope** - Convert measured structural hardness evidence into an actionable practitioner methodology with explicit human-clarity and HCI limitations.
 - [ ] **Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment** - Tie reviewer requests, disclosure details, artifact availability, figures/tables, and manuscript claims to regenerated, redacted, shareable artifacts.
 
@@ -115,31 +115,31 @@ Plans:
 - [x] 04.1-05-PLAN.md - Gate and run the Adaptive Attacker Exp3-style supplemental matrix under Phase 2 threat-model controls.
 - [x] 04.1-06-PLAN.md - Generate expanded-dataset analysis, paper table rows, divergence notes, and claim-boundary outputs.
 
-**Correction 2026-05-20:** The expanded sidecar definition is restricted to paper-eligible provenance: real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded generation provenance. The current locally scripted `Symbol_Count` and `Relation_Match` prototype rows are not paper-eligible expanded sidecar evidence until replaced or regenerated under this provenance definition; downstream static/adaptive/paper outputs must be rerun after replacement.
+**Correction 2026-05-20:** The expanded sidecar definition is restricted to paper-eligible provenance: real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded generation provenance. The current locally scripted `Symbol_Count` and `Relation_Match` prototype rows are not paper-eligible expanded sidecar evidence until replaced or regenerated under this provenance definition; Phase 04.2 now adds `Hole_Counting` as the third corrected new category, and downstream static/adaptive/paper outputs must be rerun after replacement.
 
 ### Phase 04.2: Corrected Provenance Dataset Expansion (INSERTED)
 
 **Goal:** Researchers can rebuild the Phase 04.1 expanded sidecar under the corrected provenance and novelty definition and regenerate supplemental evidence from paper-eligible rows only.
 **Requirements**: EXPAND-01, EXPAND-02, EXPAND-03, EXPAND-04, EXPAND-05, EXPAND-06, EXPAND-07, EXPAND-08
 **Depends on:** Phase 04.1
-**Reviewer alignment**: Ensures expanded-dataset evidence is based on samples newly introduced relative to the current local `captcha_data/`: real CAPTCHA samples from paper/open-source datasets or GPT Image generated Open CaptchaWorld-style samples with recorded provenance, instead of locally scripted prototype fixtures or old `captcha_data/` copies.
+**Reviewer alignment**: Ensures expanded-dataset evidence is based on the three newly introduced external categories (`Symbol_Count`, `Relation_Match`, `Hole_Counting`) with compliant provenance, instead of locally scripted prototype fixtures, old `captcha_data/` copies, or updated local OpenCaptchaWorld hard-type incremental rows.
 **Success Criteria** (what must be TRUE):
   1. The sidecar manifest records `source_kind`, `source_citation`, `source_license`, and `source_provenance_notes` for every evaluated row.
   2. Every evaluated expanded row is new relative to current `captcha_data/`; copied or subsampled old `captcha_data/` instances are rejected as expansion evidence.
-  3. `Dice_Count`, `Click_Order`, `Patch_Select`, and `Geometry_Click` are supplemented with genuinely new external or GPT Image generated samples rather than reused local `captcha_data/` rows.
-  4. `Symbol_Count` and `Relation_Match` are replaced by real paper/open-source CAPTCHA samples or regenerated by GPT Image with recorded Open CaptchaWorld-style provenance.
+  3. Updated local OpenCaptchaWorld hard-type incremental rows are excluded from corrected direct expanded-dataset evidence; original hard tasks remain available only for adaptive stress-test context.
+  4. `Symbol_Count`, `Relation_Match`, and `Hole_Counting` are backed by real paper/open-source CAPTCHA samples or regenerated by GPT Image with recorded Open CaptchaWorld-style provenance if real samples are unavailable.
   5. Manifest validation rejects non-paper-eligible synthetic fixtures and old-`captcha_data/` reuse before provider runs.
-  6. Static supplemental preflight and collection are rerun over the corrected sidecar.
-  7. Adaptive supplemental preflight and collection are rerun over the corrected sidecar.
+  6. Static supplemental preflight and collection are rerun over the complete three-category corrected sidecar for the full paper-facing model matrix.
+  7. Adaptive supplemental preflight and collection are rerun over the six original hard task types plus the three new external categories, with five memory-isolated rounds, `attempt_budget_k=5`, and derived `Success@3` intermediate outcomes.
   8. Paper outputs are regenerated and mark only provenance- and novelty-compliant rows as direct expanded-dataset evidence.
 **Plans:** 7 plans
 
 Plans:
 - [x] 04.2-01-PLAN.md - Create corrected source triage, candidate staging, and GPT Image fallback prompt pack.
 - [x] 04.2-02-PLAN.md - Implement Phase 04.2 provenance, novelty, selected-manifest, and validation-report gates.
-- [ ] 04.2-03-PLAN.md - Materialize the corrected evaluator slice from selected Phase 04.2 rows only.
-- [ ] 04.2-04-PLAN.md - Preflight and run the full seven-row paper-facing static supplemental matrix.
-- [ ] 04.2-05-PLAN.md - Preflight and run all corrected adaptive-eligible rows after adaptive cost confirmation.
+- [x] 04.2-03-PLAN.md - Materialize the corrected evaluator slice from selected Phase 04.2 rows only.
+- [x] 04.2-04-PLAN.md - Preflight and run the full seven-row paper-facing static supplemental matrix.
+- [x] 04.2-05-PLAN.md - Preflight and run the hard/boundary-hard adaptive scope for five memory-isolated rounds after adaptive cost confirmation.
 - [ ] 04.2-06-PLAN.md - Generate corrected evidence analysis, failure-class, confidence, and divergence reports.
 - [ ] 04.2-07-PLAN.md - Regenerate corrected paper outputs with invalid Phase 04.1 marker gates.
 
@@ -185,7 +185,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 04.2 -> 5 -> 6
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 4/4 | Complete | 2026-05-19 |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 3/3 | Complete | 2026-05-19 |
 | 04.1. Expanded Dataset and Supplemental Experiments | 6/6 | Complete with provenance follow-up | 2026-05-20 |
-| 04.2. Corrected Provenance Dataset Expansion | 2/7 | In Progress | 2026-05-21 |
+| 04.2. Corrected Provenance Dataset Expansion | 5/7 | In Progress | 2026-05-22 |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |
 | 6. Ethics, Artifact Availability, and Paper Claim Alignment | 0/TBD | Not started | - |
 

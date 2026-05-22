@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: External Phase 04.2 sources staged after 04.2-02
-last_updated: "2026-05-21T06:42:41.632Z"
-last_activity: 2026-05-21 -- Phase 04.2 external sources staged
+stopped_at: Phase 04.2 Plan 05 adaptive and static remediation completed; Plan 06 evidence analysis is next
+last_updated: "2026-05-22T05:05:00.000Z"
+last_activity: 2026-05-22 -- Phase 04.2 static/adaptive supplemental experiments and infra-only remediations completed
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 30
-  completed_plans: 25
-  percent: 83
+  completed_plans: 28
+  percent: 93
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-16)
 ## Current Position
 
 Phase: 04.2 (corrected-provenance-dataset-expansion) — EXECUTING
-Plan: 3 of 7
-Status: Ready to execute
-Last activity: 2026-05-21 -- Phase 04.2 external sources staged
+Plan: 6 of 7
+Status: Ready to execute evidence analysis
+Last activity: 2026-05-22 - Completed Phase 04.2 static/adaptive supplemental experiments, including OpenRouter Qwen and OpenAI infra-only remediations
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 25
+- Total plans completed: 26
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -49,7 +49,7 @@ Progress: [████████░░] 83%
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
 | 04.1 | 6 | 175min recorded | - |
-| 04.2 | 2/7 | 24min recorded | - |
+| 04.2 | 5/7 | 59min recorded + multi-session paid runs | - |
 
 **Recent Trend:**
 
@@ -74,6 +74,7 @@ Progress: [████████░░] 83%
 | Phase 04.1 P06 | 12min | 2 tasks | 3 source/test files + ignored revision artifacts |
 | Phase 04.2 P01 | 15min | 2 tasks | 6 files |
 | Phase 04.2 P02 | 9min | 3 tasks | 9 files |
+| Phase 04.2 P03 | 35min | 2 tasks | 795 files |
 
 ## Accumulated Context
 
@@ -128,14 +129,16 @@ Recent decisions affecting current work:
 - Relation_Match uses the existing classify answer shape and mirrors reference-plus-options loading.
 - The two new Phase 04.1 categories are treated as sidecar-only dataset types rather than requiring directories under captcha_data/.
 - Phase 04.1 new-category rows now require at least 10 samples per category before provider evidence generation.
-- Adaptive supplemental runs use Exp3-style settings over the expanded sidecar slice: prompt mode `opt`, attempt budget 6, without-replacement sampling, binary pass/fail feedback, explicit policy-memory notes, and first-success-or-budget stopping.
+- Phase 04.1 adaptive supplemental runs used Exp3-style settings over the expanded sidecar slice: prompt mode `opt`, attempt budget 6, without-replacement sampling, binary pass/fail feedback, explicit policy-memory notes, and first-success-or-budget stopping.
 - Gemini response schemas strip unsupported `additionalProperties` before API submission so reflection memory remains active for Gemini adaptive runs.
 - Phase 04.1 paper outputs preserve divergence from original Exp2 cutoff direction, separate direct expanded evidence from contextual SOTA rows, and expose scientific/protocol/infrastructure failure counts.
 - Corrected Phase 04.2 sidecar definition: paper-eligible expanded sidecar rows must be newly introduced relative to the current local `captcha_data/` corpus and must be real CAPTCHA samples from peer-reviewed paper datasets, real CAPTCHA samples from open-source CAPTCHA datasets, or GPT Image generated Open CaptchaWorld-style samples with recorded provenance.
 - The current `Dice_Count`, `Click_Order`, `Patch_Select`, and `Geometry_Click` Phase 04.1 rows were copied/subsampled from old `captcha_data/`, so they are not meaningful expansion evidence under Phase 04.2.
-- The current locally scripted `Symbol_Count` and `Relation_Match` rows are prototype fixtures, not paper-eligible direct expanded sidecar evidence until replaced or regenerated under the corrected provenance definition.
-- Phase 04.2 OpenCaptchaWorld latest additions are selected by cleaned-ground-truth key novelty, not by image hash novelty; if a puzzle id is absent from the local cleaned `ground_truth.json`, it is treated as previously unused even when the same image bytes already exist under `captcha_data`.
-- Exact SHA-256 matches against current `captcha_data` are retained as validation review warnings for Phase 04.2 selected rows rather than hard failures when the ground-truth key is newly introduced.
+- The current locally scripted `Symbol_Count` and `Relation_Match` rows are prototype fixtures, not paper-eligible direct expanded sidecar evidence until replaced or regenerated under the corrected provenance definition; `Hole_Counting` is the third corrected new category.
+- Phase 04.2 no longer uses updated local OpenCaptchaWorld hard-type incremental rows as corrected direct expanded-dataset evidence; corrected static evidence is limited to the three new external categories `Symbol_Count`, `Relation_Match`, and `Hole_Counting`.
+- Phase 04.2 adaptive evidence will run only the six original hard task types (`Dice_Count`, `Place_Dot`, `Pick_Area`, `Click_Order`, `Patch_Select`, `Rotation_Match`) plus the three new external categories, because recognition-oriented tasks would mostly create ceiling effects under adaptive feedback.
+- Phase 04.2 adaptive evidence uses five memory-isolated rounds with prompt mode `opt`, `attempt_budget_k=5`, without-replacement sampling, binary pass/fail feedback, explicit policy-memory notes, first-success-or-budget stopping, and derived `Success@3` outcomes from the first three attempts.
+- Exact SHA-256 matches against current `captcha_data` are retained as validation review warnings only for staged records; selected direct expanded evidence should not depend on updated local OpenCaptchaWorld hard-type increments.
 - Perceptual near matches are review warnings only and do not block selected rows.
 - Plan 01 GPT Image fallback placeholders remain rejected until final image files and non-pending generation metadata exist.
 
@@ -149,7 +152,7 @@ None yet.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
 - [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
-- [Phase 04.2]: Replace all Phase 04.1 rows that are copied/subsampled from old `captcha_data/` and replace current scripted `Symbol_Count`/`Relation_Match` prototype rows with real paper/open-source CAPTCHA samples or GPT Image generated Open CaptchaWorld-style samples with recorded provenance, then rerun static/adaptive/paper outputs.
+- [Phase 04.2]: Corrected static/adaptive supplemental experiments are complete through Plan 05. Plan 06 must generate corrected evidence analysis, failure-class, confidence, and divergence reports; Plan 07 must regenerate paper outputs with invalid Phase 04.1 marker gates.
 - [Phase 5]: Defense methodology should wait for Phase 04.2 corrected paper-eligible expanded evidence and preserve CaptchaWorld and population-level deployment limits.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
@@ -159,6 +162,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260515-v59 | Update revision roadmap from Shepherding.docx | 2026-05-16 | docs-only | [.planning/quick/260515-v59-update-revision-roadmap-from-shepherding/](./quick/260515-v59-update-revision-roadmap-from-shepherding/) |
 | 260519-al4 | Align Phase 2 adaptive comparison cutoff semantics with the paper-facing 40% threshold and Phase 3 sensitivity framing | 2026-05-18 | 5638e17 | [.planning/quick/260519-al4-align-phase-2-adaptive-comparison-cutoff/](./quick/260519-al4-align-phase-2-adaptive-comparison-cutoff/) |
+| 260522-ezj | Replace unsupported Fireworks Qwen row with OpenRouter qwen/qwen3-vl-235b-a22b-instruct for Phase 04.2 supplemental experiments | 2026-05-22 | deferred | [.planning/quick/260522-ezj-replace-unsupported-fireworks-qwen-row-w/](./quick/260522-ezj-replace-unsupported-fireworks-qwen-row-w/) |
 
 ## Deferred Items
 
@@ -173,14 +177,14 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-21T03:35:04.832Z
-Stopped at: External Phase 04.2 sources staged after 04.2-02
+Last session: 2026-05-22T05:05:00.000Z
+Stopped at: Phase 04.2 Plan 05 completed; Plan 06 evidence analysis is next
 Resume file: None
 
-**Next Step:** Execute Phase 04.2 Plan 03 (materialize the corrected evaluator slice from selected Phase 04.2 rows only). The selected manifest is now populated from real external sources, with GPT Image fallback no longer needed for staged candidates.
+**Next Step:** Execute Phase 04.2 Plan 06 using the corrected static remediation summaries and GPT-5 medium adaptive summary. Relevant inputs include `results/revision/phase04_2_static_openrouter_qwen_infra_remediation_20260522/expanded_static_summary.json`, `results/revision/phase04_2_static_openai_infra_remediation_20260522/expanded_static_summary.json`, and `results/revision/phase04_2_adaptive_gpt5_medium_20260522/expanded_adaptive_summary.json`.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
 **Completed Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — provenance correction carved into Phase 04.2
 
-**Planned Phase:** 04.2 (Corrected Provenance Dataset Expansion) — 7 plans — 2026-05-21T03:06:28.453Z
+**Active Phase:** 04.2 (Corrected Provenance Dataset Expansion) — 5/7 plans complete — 2026-05-22T05:05:00.000Z
