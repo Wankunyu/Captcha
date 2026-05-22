@@ -622,27 +622,51 @@ class Phase042PaperEvidenceRow(BaseModel):
     schema_version: str = PHASE042_PAPER_EVIDENCE_SCHEMA_VERSION
     run_id: str
     evidence_row_id: str
+    evidence_mode: str = ""
     provider: str
     model: str
     provider_model: str
     task_type: str
     task_family: str
     evidence_origin: str
+    source_kind: str = ""
+    source_provenance_class: str = ""
+    source_provenance_notes: str = ""
+    provenance_caveat: str = ""
+    real_external_evidence: bool = False
     sample_count: int = Field(ge=0)
+    attempt_count: int = Field(default=0, ge=0)
+    success_count: int = Field(default=0, ge=0)
     original_rate: float | None = Field(default=None, ge=0, le=1)
     corrected_static_rate: float | None = Field(default=None, ge=0, le=1)
     corrected_adaptive_rate: float | None = Field(default=None, ge=0, le=1)
+    adaptive_success_at_3: float | None = Field(default=None, ge=0, le=1)
+    adaptive_success_at_5: float | None = Field(default=None, ge=0, le=1)
+    bernoulli_success_at_3: float | None = Field(default=None, ge=0, le=1)
+    bernoulli_success_at_5: float | None = Field(default=None, ge=0, le=1)
+    round_count: int = Field(default=0, ge=0)
+    attempt_budget_k: int = Field(default=0, ge=0)
+    intermediate_budget_k: int = Field(default=0, ge=0)
+    memory_isolation: str = ""
+    ci_low: float | None = Field(default=None, ge=0, le=1)
+    ci_high: float | None = Field(default=None, ge=0, le=1)
+    ci_method: str = ""
+    ci_note: str = ""
     agreement_status: str
+    diverges_from_original: bool = False
     divergence_reason: str
     scientific_wrong_count: int = Field(default=0, ge=0)
     protocol_failure_count: int = Field(default=0, ge=0)
     infrastructure_failure_count: int = Field(default=0, ge=0)
     claim_boundary_note: str
+    claim_effect: str = "neutral_or_inconclusive"
     direct_evidence: bool
+    adaptive_hard_scope_evidence: bool = False
     contextual_sota_only: bool
     claim_use: str
     source_artifact_path: str
     selected_manifest_path: str
+    adaptive_scope_rationale: str = ""
 
     @field_validator("schema_version")
     @classmethod
@@ -668,6 +692,11 @@ class Phase042PaperEvidenceRow(BaseModel):
     def validate_claim_use(cls, value: str) -> str:
         return _validate_allowed(value, ALLOWED_CLAIM_USES, "claim_use")
 
+    @field_validator("claim_effect")
+    @classmethod
+    def validate_claim_effect(cls, value: str) -> str:
+        return _validate_allowed(value, ALLOWED_CLAIM_EFFECTS, "claim_effect")
+
     @model_validator(mode="after")
     def validate_paper_contract(self) -> "Phase042PaperEvidenceRow":
         _guard_phase042_downstream_row(self, "paper evidence row")
@@ -677,6 +706,10 @@ class Phase042PaperEvidenceRow(BaseModel):
                 "divergence_reason",
                 "agreement_status is diverges_from_original",
             )
+        if self.diverges_from_original != (
+            self.agreement_status == "diverges_from_original"
+        ):
+            raise ValueError("diverges_from_original must match agreement_status")
         if self.contextual_sota_only:
             if self.direct_evidence:
                 raise ValueError(

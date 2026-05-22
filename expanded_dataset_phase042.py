@@ -21,12 +21,14 @@ from phase042_artifacts import (
     PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     PHASE042_EVIDENCE_ANALYSIS_SCHEMA_VERSION,
     PHASE042_GPT_IMAGE_SOURCE_KIND,
+    PHASE042_PAPER_EVIDENCE_SCHEMA_VERSION,
     PHASE042_PREFLIGHT_MATRIX_SCHEMA_VERSION,
     PHASE042_REAL_EXTERNAL_SOURCE_KINDS,
     PHASE042_SELECTED_SOURCE_KINDS,
     PHASE042_STATIC_SUMMARY_SCHEMA_VERSION,
     Phase042AdaptiveSummaryRow,
     Phase042EvidenceAnalysisRow,
+    Phase042PaperEvidenceRow,
     Phase042PreflightMatrixRow,
     Phase042SelectedManifestRow,
     Phase042StaticSummaryRow,
@@ -52,6 +54,7 @@ PHASE042_ADAPTIVE_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "adaptive_evaluator_
 PHASE042_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_2_static_supplemental"
 PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID = "phase04_2_adaptive_supplemental"
 PHASE042_EVIDENCE_ANALYSIS_RUN_ID = "phase04_2_evidence_analysis"
+PHASE042_PAPER_OUTPUTS_RUN_ID = "phase04_2_paper_outputs"
 PHASE042_PUBLIC_PRICING_FILE = Path("pricing.phase04_2.yaml")
 PHASE042_TARGET_TASK_TYPES = (
     "Dice_Count",
@@ -141,8 +144,22 @@ PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH = (
     Path("results/revision/phase04_2_adaptive_gpt5_medium_20260522")
     / "expanded_adaptive_summary.json"
 )
+PHASE042_FINAL_EVIDENCE_ANALYSIS_PATH = (
+    Path("results/revision")
+    / PHASE042_EVIDENCE_ANALYSIS_RUN_ID
+    / "phase04_2_evidence_analysis.json"
+)
 PHASE042_ANALYSIS_CUTOFF = 0.40
 PHASE042_MEMORY_ISOLATION_LABEL = "five_memory_isolated_rounds"
+PHASE042_PAPER_INVALID_MARKERS = (
+    "phase04_1",
+    "synthetic_fixture",
+    "Copied from existing local captcha_data",
+    "Scripted local prototype",
+    "phase04_1-symbol-count",
+    "phase04_1-relation-match",
+)
+PHASE042_PAPER_SCAN_SUFFIXES = {".csv", ".json", ".md", ".tex", ".latex", ".txt"}
 
 
 def _stable_text(value: object) -> str:
@@ -2903,6 +2920,450 @@ def write_phase042_evidence_analysis(
     }
 
 
+def _load_phase042_evidence_analysis_rows_for_paper(
+    path: str | Path,
+) -> list[Phase042EvidenceAnalysisRow]:
+    evidence_path = Path(path)
+    assert_no_phase041_reference(
+        evidence_path.as_posix(),
+        context="paper-output evidence analysis path",
+    )
+    rows = _payload_rows(evidence_path, label="Phase 04.2 evidence analysis")
+    return [Phase042EvidenceAnalysisRow(**row) for row in rows]
+
+
+def build_phase042_paper_evidence_rows(
+    evidence_rows: Iterable[Phase042EvidenceAnalysisRow | dict[str, Any]],
+    *,
+    run_id: str = PHASE042_PAPER_OUTPUTS_RUN_ID,
+    source_artifact_path: str = "",
+) -> list[Phase042PaperEvidenceRow]:
+    validated = [
+        row if isinstance(row, Phase042EvidenceAnalysisRow) else Phase042EvidenceAnalysisRow(**row)
+        for row in evidence_rows
+    ]
+    paper_rows: list[Phase042PaperEvidenceRow] = []
+    for row in validated:
+        direct_evidence = (
+            row.evidence_mode == "static" and row.task_type in PHASE042_STATIC_TASK_TYPES
+        )
+        adaptive_hard_scope = row.evidence_mode == "adaptive"
+        claim_use = (
+            "main_body_direct_evidence"
+            if direct_evidence
+            and row.real_external_evidence
+            and row.claim_effect != "neutral_or_inconclusive"
+            else "main_body_caveated"
+        )
+        paper_rows.append(
+            Phase042PaperEvidenceRow(
+                run_id=run_id,
+                evidence_row_id=row.analysis_id,
+                evidence_mode=row.evidence_mode,
+                provider=row.provider,
+                model=row.model,
+                provider_model=row.provider_model,
+                task_type=row.task_type,
+                task_family=row.task_family,
+                evidence_origin=row.evidence_origin,
+                source_kind=row.source_kind,
+                source_provenance_class=row.source_provenance_class,
+                source_provenance_notes=row.source_provenance_notes,
+                provenance_caveat=row.provenance_caveat,
+                real_external_evidence=row.real_external_evidence,
+                sample_count=row.sample_count,
+                attempt_count=row.attempt_count,
+                success_count=row.success_count,
+                original_rate=row.original_rate,
+                corrected_static_rate=row.corrected_static_rate,
+                corrected_adaptive_rate=row.corrected_adaptive_rate,
+                adaptive_success_at_3=row.adaptive_success_at_3,
+                adaptive_success_at_5=row.adaptive_success_at_5,
+                bernoulli_success_at_3=row.bernoulli_success_at_3,
+                bernoulli_success_at_5=row.bernoulli_success_at_5,
+                round_count=row.adaptive_round_count,
+                attempt_budget_k=(
+                    PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K if adaptive_hard_scope else 0
+                ),
+                intermediate_budget_k=(
+                    PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K if adaptive_hard_scope else 0
+                ),
+                memory_isolation=row.memory_isolation,
+                ci_low=row.ci_low,
+                ci_high=row.ci_high,
+                ci_method=row.ci_method,
+                ci_note=row.ci_note,
+                agreement_status=row.agreement_status,
+                diverges_from_original=row.diverges_from_original,
+                divergence_reason=row.divergence_reason,
+                scientific_wrong_count=row.scientific_wrong_count,
+                protocol_failure_count=row.protocol_failure_count,
+                infrastructure_failure_count=row.infrastructure_failure_count,
+                claim_boundary_note=row.claim_boundary_note,
+                claim_effect=row.claim_effect,
+                direct_evidence=direct_evidence,
+                adaptive_hard_scope_evidence=adaptive_hard_scope,
+                contextual_sota_only=False,
+                claim_use=claim_use,
+                source_artifact_path=source_artifact_path or row.source_artifact_path,
+                selected_manifest_path=row.selected_manifest_path,
+                adaptive_scope_rationale=row.adaptive_scope_rationale,
+            )
+        )
+    assert_no_phase041_reference(
+        [row.model_dump(mode="json") for row in paper_rows],
+        context="paper evidence rows",
+    )
+    return paper_rows
+
+
+def _gpt_fallback_statement(manifest_rows: list[Phase042SelectedManifestRow]) -> str:
+    gpt_rows = [row for row in manifest_rows if row.source_kind == PHASE042_GPT_IMAGE_SOURCE_KIND]
+    if not gpt_rows:
+        return "no GPT Image fallback instances were used"
+    return (
+        f"{len(gpt_rows)} GPT Image fallback task categories were used and remain "
+        "provenance-caveated as not real external dataset evidence"
+    )
+
+
+def render_phase042_claim_boundary_notes(
+    paper_rows: Iterable[Phase042PaperEvidenceRow | dict[str, Any]],
+    *,
+    manifest_rows: Iterable[Phase042SelectedManifestRow | dict[str, Any]],
+) -> str:
+    rows = [
+        row if isinstance(row, Phase042PaperEvidenceRow) else Phase042PaperEvidenceRow(**row)
+        for row in paper_rows
+    ]
+    selected = [
+        row if isinstance(row, Phase042SelectedManifestRow) else Phase042SelectedManifestRow(**row)
+        for row in manifest_rows
+    ]
+    direct_count = sum(1 for row in rows if row.direct_evidence)
+    adaptive_count = sum(1 for row in rows if row.adaptive_hard_scope_evidence)
+    contextual_count = sum(1 for row in rows if row.contextual_sota_only)
+    real_external_count = sum(
+        1 for row in selected if row.source_kind in PHASE042_REAL_EXTERNAL_SOURCE_KINDS
+    )
+    gpt_statement = _gpt_fallback_statement(selected)
+    lines = [
+        "# Phase 04.2 Corrected Claim Boundary Notes",
+        "",
+        "## Corrected expanded-dataset evidence",
+        (
+            f"Direct evidence rows: {direct_count}. These rows are corrected "
+            "expanded-dataset evidence for the three new categories only."
+        ),
+        f"real external samples: {real_external_count} selected task categories.",
+        f"GPT Image fallback status: {gpt_statement}.",
+        "",
+        "## Evidence flags",
+        f"adaptive_hard_scope_evidence rows: {adaptive_count}.",
+        f"contextual_sota_only rows: {contextual_count}.",
+        "",
+        "## Scope limits",
+        "These outputs do not provide a population-level deployment estimate.",
+        (
+            "The updated local OpenCaptchaWorld hard-type incremental rows were staged "
+            "but excluded from corrected direct expanded evidence, so no hard-type "
+            "dataset-increase percentage claims are made."
+        ),
+        "",
+        "## Claim boundary rows",
+    ]
+    for row in rows:
+        lines.append(
+            f"- {row.provider_model} / {row.task_type} / {row.evidence_mode}: "
+            f"{row.claim_effect}; claim_boundary_note={row.claim_boundary_note}"
+        )
+    text = "\n".join(lines) + "\n"
+    assert_no_phase041_reference(text, context="paper claim boundary notes")
+    return text
+
+
+def render_phase042_source_provenance_notes(
+    manifest_rows: Iterable[Phase042SelectedManifestRow | dict[str, Any]],
+    *,
+    source_download_manifest_path: str | Path,
+) -> str:
+    selected = [
+        row if isinstance(row, Phase042SelectedManifestRow) else Phase042SelectedManifestRow(**row)
+        for row in manifest_rows
+    ]
+    source_payload = _read_json(Path(source_download_manifest_path))
+    source_rows = source_payload.get("rows") if isinstance(source_payload, dict) else []
+    staged_ocw = sorted(
+        {
+            str(row.get("task_type"))
+            for row in source_rows
+            if isinstance(row, dict)
+            and row.get("dataset_increase_percent_vs_local_legacy") is not None
+        }
+    )
+    lines = [
+        "# Phase 04.2 Source Provenance Notes",
+        "",
+        "## Three new categories",
+        "| task_type | source_kind | source_provenance_class | evidence class |",
+        "|---|---|---|---|",
+    ]
+    for row in selected:
+        evidence_class = (
+            "real external samples"
+            if row.source_kind in PHASE042_REAL_EXTERNAL_SOURCE_KINDS
+            else "GPT Image fallback, not real external dataset evidence"
+        )
+        lines.append(
+            f"| {row.task_type} | {row.source_kind} | "
+            f"{row.source_provenance_class} | {evidence_class} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Excluded staged hard-type increments",
+            (
+                "Updated local OpenCaptchaWorld hard-type incremental rows were staged "
+                "but excluded from corrected direct expanded evidence."
+            ),
+            f"Excluded staged task types: {', '.join(staged_ocw) or 'none'}.",
+            "No hard-type dataset-increase percentage claims are generated here.",
+            "",
+        ]
+    )
+    text = "\n".join(lines)
+    assert_no_phase041_reference(text, context="paper source provenance notes")
+    return text
+
+
+def render_phase042_adaptive_scope_notes(
+    paper_rows: Iterable[Phase042PaperEvidenceRow | dict[str, Any]],
+) -> str:
+    rows = [
+        row if isinstance(row, Phase042PaperEvidenceRow) else Phase042PaperEvidenceRow(**row)
+        for row in paper_rows
+    ]
+    adaptive_rows = [row for row in rows if row.adaptive_hard_scope_evidence]
+    lines = [
+        "# Phase 04.2 Adaptive Hard-Scope Notes",
+        "",
+        PHASE042_ADAPTIVE_SCOPE_RATIONALE,
+        "",
+        (
+            "Adaptive rows are five memory-isolated rounds with attempt_budget_k=5 "
+            "and intermediate_budget_k=3."
+        ),
+        "",
+        (
+            "| task_type | provider_model | adaptive_success_at_3 | "
+            "adaptive_success_at_5 | round_count | memory_isolation | "
+            "adaptive_hard_scope_evidence | contextual_sota_only |"
+        ),
+        "|---|---|---:|---:|---:|---|---|---|",
+    ]
+    for row in adaptive_rows:
+        lines.append(
+            f"| {row.task_type} | {row.provider_model} | {row.adaptive_success_at_3} | "
+            f"{row.adaptive_success_at_5} | {row.round_count} | {row.memory_isolation} | "
+            f"{row.adaptive_hard_scope_evidence} | {row.contextual_sota_only} |"
+        )
+    text = "\n".join(lines) + "\n"
+    assert_no_phase041_reference(text, context="paper adaptive scope notes")
+    return text
+
+
+def _render_phase042_divergence_notes(
+    paper_rows: Iterable[Phase042PaperEvidenceRow],
+) -> str:
+    rows = list(paper_rows)
+    divergent = [row for row in rows if row.diverges_from_original]
+    lines = [
+        "# Phase 04.2 Corrected Divergence Notes",
+        "",
+        "Divergence uses the 40% reporting heuristic only as a reporting comparison.",
+        "",
+    ]
+    if not divergent:
+        lines.append("No corrected paper rows diverged from original Exp2 direction.")
+    for row in divergent:
+        lines.append(
+            f"- {row.provider_model} / {row.task_type}: {row.divergence_reason}"
+        )
+    text = "\n".join(lines) + "\n"
+    assert_no_phase041_reference(text, context="paper divergence notes")
+    return text
+
+
+def _render_phase042_latex_rows(paper_rows: Iterable[Phase042PaperEvidenceRow]) -> str:
+    lines = [
+        "% phase04_2 corrected expanded-dataset evidence rows",
+        (
+            "% task_type & provider_model & direct_evidence & "
+            "adaptive_hard_scope_evidence & claim_effect \\\\"
+        ),
+    ]
+    for row in paper_rows:
+        lines.append(
+            f"{row.task_type} & {row.provider_model} & {row.direct_evidence} & "
+            f"{row.adaptive_hard_scope_evidence} & {row.claim_effect} \\\\"
+        )
+    text = "\n".join(lines) + "\n"
+    assert_no_phase041_reference(text, context="paper latex rows")
+    return text
+
+
+def _render_phase042_shepherd_response_snippet(
+    paper_rows: Iterable[Phase042PaperEvidenceRow],
+    *,
+    manifest_rows: Iterable[Phase042SelectedManifestRow],
+) -> str:
+    rows = list(paper_rows)
+    selected = list(manifest_rows)
+    static_tasks = sorted({row.task_type for row in rows if row.direct_evidence})
+    adaptive_tasks = sorted({row.task_type for row in rows if row.adaptive_hard_scope_evidence})
+    lines = [
+        (
+            "phase04_2 corrected expanded-dataset evidence now uses provenance- "
+            "and novelty-compliant rows only."
+        ),
+        f"Direct corrected categories: {', '.join(static_tasks)}.",
+        f"Adaptive hard-scope categories: {', '.join(adaptive_tasks)}.",
+        f"GPT Image fallback status: {_gpt_fallback_statement(selected)}.",
+        (
+            "The selected direct rows use real external samples where source_kind is "
+            "peer_reviewed_paper_dataset or open_source_dataset."
+        ),
+        (
+            "Updated local OpenCaptchaWorld hard-type incremental rows were staged but "
+            "excluded from corrected direct expanded evidence."
+        ),
+    ]
+    text = "\n".join(lines) + "\n"
+    assert_no_phase041_reference(text, context="shepherd response snippet")
+    return text
+
+
+def assert_no_invalid_phase041_rows(paths: str | Path | Iterable[str | Path]) -> None:
+    if isinstance(paths, str | Path):
+        candidates = [Path(paths)]
+    else:
+        candidates = [Path(path) for path in paths]
+
+    files: list[Path] = []
+    for candidate in candidates:
+        if candidate.is_dir():
+            files.extend(
+                path
+                for path in candidate.rglob("*")
+                if path.is_file() and path.suffix in PHASE042_PAPER_SCAN_SUFFIXES
+            )
+        elif candidate.is_file() and candidate.suffix in PHASE042_PAPER_SCAN_SUFFIXES:
+            files.append(candidate)
+
+    violations: list[str] = []
+    for path in sorted(files):
+        text = path.read_text(encoding="utf-8")
+        lowered = text.lower()
+        for marker in PHASE042_PAPER_INVALID_MARKERS:
+            if marker.lower() in lowered:
+                violations.append(path.as_posix())
+                break
+    if violations:
+        raise ValueError(
+            "invalid marker found in generated Phase 04.2 paper outputs: "
+            + ", ".join(sorted(set(violations)))
+        )
+
+
+def write_phase042_paper_outputs(
+    *,
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+    source_download_manifest_path: str | Path = (
+        PHASE042_SIDECAR_ROOT / "source_download_manifest.json"
+    ),
+    evidence_analysis_path: str | Path = PHASE042_FINAL_EVIDENCE_ANALYSIS_PATH,
+    static_summary_paths: Iterable[str | Path] = PHASE042_FINAL_STATIC_SUMMARY_PATHS,
+    adaptive_summary_path: str | Path = PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH,
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE042_PAPER_OUTPUTS_RUN_ID,
+) -> dict[str, object]:
+    assert_no_phase041_reference(run_id, context="paper outputs run_id")
+    manifest_rows = validate_phase042_selected_manifest(
+        load_phase042_selected_manifest(selected_manifest_path)
+    )
+    # Read summaries as an input gate; paper rows are derived from evidence analysis.
+    _load_phase042_static_summary_rows(static_summary_paths)
+    _load_phase042_adaptive_summary_rows_for_analysis(adaptive_summary_path)
+    evidence_rows = _load_phase042_evidence_analysis_rows_for_paper(evidence_analysis_path)
+    paper_rows = build_phase042_paper_evidence_rows(
+        evidence_rows,
+        run_id=run_id,
+        source_artifact_path=Path(evidence_analysis_path).as_posix(),
+    )
+    run_dir = revision_run_dir(output_root, run_id)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    rows_csv = run_dir / "corrected_expanded_paper_rows.csv"
+    rows_json = run_dir / "corrected_expanded_paper_rows.json"
+    write_csv(rows_csv, Phase042PaperEvidenceRow.model_fields, paper_rows)
+    write_json(rows_json, PHASE042_PAPER_EVIDENCE_SCHEMA_VERSION, paper_rows)
+
+    output_texts = {
+        run_dir / "corrected_claim_boundary_notes.md": render_phase042_claim_boundary_notes(
+            paper_rows,
+            manifest_rows=manifest_rows,
+        ),
+        run_dir / "corrected_divergence_notes.md": _render_phase042_divergence_notes(
+            paper_rows
+        ),
+        run_dir / "corrected_source_provenance_notes.md": render_phase042_source_provenance_notes(
+            manifest_rows,
+            source_download_manifest_path=source_download_manifest_path,
+        ),
+        run_dir / "corrected_adaptive_scope_notes.md": render_phase042_adaptive_scope_notes(
+            paper_rows
+        ),
+        run_dir / "corrected_expanded_paper_rows.tex": _render_phase042_latex_rows(
+            paper_rows
+        ),
+        (
+            run_dir / "corrected_shepherd_response_snippet.txt"
+        ): _render_phase042_shepherd_response_snippet(
+            paper_rows,
+            manifest_rows=manifest_rows,
+        ),
+    }
+    for path, text in output_texts.items():
+        path.write_text(text, encoding="utf-8")
+
+    assert_no_invalid_phase041_rows(run_dir)
+    scan_path = run_dir / "invalid_marker_scan.json"
+    _write_json(
+        scan_path,
+        {
+            "schema_version": "cognition.revision.phase042.paper_invalid_marker_scan.v1",
+            "status": "passed",
+            "scanned_file_count": len(
+                [
+                    path
+                    for path in run_dir.rglob("*")
+                    if path.is_file() and path.suffix in PHASE042_PAPER_SCAN_SUFFIXES
+                ]
+            ),
+        },
+    )
+    assert_no_invalid_phase041_rows(run_dir)
+    return {
+        "paper_row_count": len(paper_rows),
+        "output_csv": str(rows_csv),
+        "output_json": str(rows_json),
+        "claim_boundary_notes": str(run_dir / "corrected_claim_boundary_notes.md"),
+        "source_provenance_notes": str(run_dir / "corrected_source_provenance_notes.md"),
+        "adaptive_scope_notes": str(run_dir / "corrected_adaptive_scope_notes.md"),
+        "invalid_marker_scan": str(scan_path),
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Phase 04.2 corrected-provenance dataset utilities."
@@ -3157,6 +3618,46 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("results/revision"),
     )
     evidence_parser.add_argument("--run-id", default=PHASE042_EVIDENCE_ANALYSIS_RUN_ID)
+    paper_parser = subparsers.add_parser(
+        "paper-outputs",
+        help="Generate corrected Phase 04.2 paper-ready rows and notes.",
+    )
+    paper_parser.add_argument(
+        "--selected-manifest",
+        type=Path,
+        default=PHASE042_SELECTED_MANIFEST_JSON,
+    )
+    paper_parser.add_argument(
+        "--source-download-manifest",
+        type=Path,
+        default=PHASE042_SIDECAR_ROOT / "source_download_manifest.json",
+    )
+    paper_parser.add_argument(
+        "--evidence-analysis",
+        type=Path,
+        default=PHASE042_FINAL_EVIDENCE_ANALYSIS_PATH,
+    )
+    paper_parser.add_argument(
+        "--static-summary",
+        type=Path,
+        action="append",
+        default=None,
+        help=(
+            "Static summary path. May be repeated. If omitted, the final static "
+            "summary/remediation set is used as an input gate."
+        ),
+    )
+    paper_parser.add_argument(
+        "--adaptive-summary",
+        type=Path,
+        default=PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH,
+    )
+    paper_parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("results/revision"),
+    )
+    paper_parser.add_argument("--run-id", default=PHASE042_PAPER_OUTPUTS_RUN_ID)
     return parser
 
 
@@ -3288,6 +3789,18 @@ def main(argv: list[str] | None = None) -> int:
             static_summary_paths=args.static_summary or PHASE042_FINAL_STATIC_SUMMARY_PATHS,
             adaptive_summary_path=args.adaptive_summary,
             results_dir=args.results_dir,
+            output_root=args.output_root,
+            run_id=args.run_id,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "paper-outputs":
+        result = write_phase042_paper_outputs(
+            selected_manifest_path=args.selected_manifest,
+            source_download_manifest_path=args.source_download_manifest,
+            evidence_analysis_path=args.evidence_analysis,
+            static_summary_paths=args.static_summary or PHASE042_FINAL_STATIC_SUMMARY_PATHS,
+            adaptive_summary_path=args.adaptive_summary,
             output_root=args.output_root,
             run_id=args.run_id,
         )
