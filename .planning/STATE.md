@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 04.2 Plan 06 evidence analysis completed; Plan 07 paper outputs next
-last_updated: "2026-05-22T07:34:28.000Z"
-last_activity: 2026-05-22 -- Phase 04.2 Plan 06 evidence analysis completed
+status: ready_for_next_phase
+stopped_at: Phase 04.2 completed; Phase 5 defense methodology and HCI scope next
+last_updated: "2026-05-22T07:44:40.000Z"
+last_activity: 2026-05-22 -- Phase 04.2 Plan 07 corrected paper outputs completed
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 30
-  completed_plans: 29
-  percent: 97
+  completed_plans: 30
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16)
 
 **Core value:** Produce credible, reproducible revision evidence that directly strengthens the paper's claims about structural CAPTCHA robustness against multimodal LLM attackers.
-**Current focus:** Phase 04.2 — corrected-provenance-dataset-expansion
+**Current focus:** Phase 5 — Defense Methodology and HCI Scope
 
 ## Current Position
 
-Phase: 04.2 (corrected-provenance-dataset-expansion) — EXECUTING
-Plan: 7 of 7
-Status: Evidence analysis complete; ready to regenerate corrected paper outputs
-Last activity: 2026-05-22 -- Phase 04.2 Plan 06 evidence analysis completed
+Phase: 5 (Defense Methodology and HCI Scope) — READY TO PLAN
+Plan: TBD
+Status: Phase 04.2 corrected-provenance dataset expansion is complete
+Last activity: 2026-05-22 -- Phase 04.2 Plan 07 corrected paper outputs completed
 
-Progress: [██████████] 97%
+Progress: [██████████] 100% through Phase 04.2
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: N/A
 - Total execution time: 0.0 hours
 
@@ -49,7 +49,7 @@ Progress: [██████████] 97%
 | 03 | 4 | - | - |
 | 04 | 3 | - | - |
 | 04.1 | 6 | 175min recorded | - |
-| 04.2 | 6/7 | 67min recorded + multi-session paid runs | - |
+| 04.2 | 7/7 | 77min recorded + multi-session paid runs | - |
 
 **Recent Trend:**
 
@@ -152,8 +152,8 @@ None yet.
 - [Resolved in Phase 2]: Adaptive schemas, preflight, offline loop, comparison builder, and offline end-to-end validation are complete; optional paid smoke remains separate and budget-gated.
 - [Resolved in Phase 3]: Dataset-scope, confidence-interval, threshold-sensitivity, retry-calibration, infrastructure-vs-scientific failure, limitations-summary, artifact-index, and offline README artifacts are complete.
 - [Phase 4]: External solver and larger-dataset comparisons require comparability labels to avoid apples-to-oranges claims.
-- [Phase 04.2]: Corrected static/adaptive supplemental experiments and Plan 06 evidence analysis are complete. Plan 07 must regenerate paper outputs with invalid Phase 04.1 marker gates.
-- [Phase 5]: Defense methodology should wait for Phase 04.2 corrected paper-eligible expanded evidence and preserve CaptchaWorld and population-level deployment limits.
+- [Resolved in Phase 04.2]: Corrected static/adaptive supplemental experiments, evidence analysis, and invalid-marker-gated paper outputs are complete.
+- [Phase 5]: Defense methodology can now use corrected Phase 04.2 evidence while preserving CaptchaWorld and population-level deployment limits.
 - [Phase 6]: Ethics/disclosure details and artifact availability need scripted traceability so final claims do not exceed generated evidence.
 
 ### Quick Tasks Completed
@@ -177,14 +177,16 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-22T07:34:28.000Z
-Stopped at: Phase 04.2 Plan 06 completed; Plan 07 paper outputs is next
-Resume file: .planning/HANDOFF.json and .planning/phases/04.2-corrected-provenance-dataset-expansion/.continue-here.md
+Last session: 2026-05-22T07:44:40.000Z
+Stopped at: Phase 04.2 completed; Phase 5 is next
+Resume file: none
 
-**Next Step:** Execute Phase 04.2 Plan 07 using `results/revision/phase04_2_evidence_analysis/phase04_2_evidence_analysis.json` plus the corrected selected/source manifests and final static/adaptive summaries.
+**Next Step:** Start Phase 5 planning for Defense Methodology and HCI Scope.
 
 **Completed Phase:** 04 (SOTA Solver and Larger Benchmark Strengthening) — 3 plans — 2026-05-19
 
 **Completed Phase:** 04.1 (Expanded Dataset and Supplemental Experiments) — provenance correction carved into Phase 04.2
 
-**Active Phase:** 04.2 (Corrected Provenance Dataset Expansion) — 6/7 plans complete — 2026-05-22T07:34:28.000Z
+**Completed Phase:** 04.2 (Corrected Provenance Dataset Expansion) — 7/7 plans — 2026-05-22
+
+**Active Phase:** 5 (Defense Methodology and HCI Scope) — ready to plan — 2026-05-22T07:44:40.000Z

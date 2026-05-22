@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Dataset Scope, Statistical Confidence, and Limitations** - Produce dataset-scope, statistical-confidence, retry-calibration, infrastructure-error, and limitations artifacts. Completed 2026-05-19.
 - [x] **Phase 4: SOTA Solver and Larger Benchmark Strengthening** - Add fair comparison hooks for Halligan, Oedipus, specialized CAPTCHA solvers, and compatible larger external benchmark subsets. Completed 2026-05-19.
 - [x] **Phase 04.1: Expanded Dataset and Supplemental Experiments** (INSERTED) - Expand `captcha_data` or compatible offline dataset subsets, run supplemental experiments, and update paper claims/tables with directly evaluated expanded-dataset evidence. Completed 2026-05-20; corrected-provenance follow-up moved to Phase 04.2.
-- [ ] **Phase 04.2: Corrected Provenance Dataset Expansion** (INSERTED) - Rebuild the expanded sidecar under the corrected provenance and novelty definition, using samples newly introduced relative to current `captcha_data/`, then rerun supplemental static/adaptive evidence and paper outputs. Static/adaptive supplemental experiments and corrected evidence analysis completed through Plan 06 on 2026-05-22; paper output regeneration remains.
+- [x] **Phase 04.2: Corrected Provenance Dataset Expansion** (INSERTED) - Rebuild the expanded sidecar under the corrected provenance and novelty definition, using samples newly introduced relative to current `captcha_data/`, then rerun supplemental static/adaptive evidence and paper outputs. Completed 2026-05-22.
 - [ ] **Phase 5: Defense Methodology and HCI Scope** - Convert measured structural hardness evidence into an actionable practitioner methodology with explicit human-clarity and HCI limitations.
 - [ ] **Phase 6: Ethics, Artifact Availability, and Paper Claim Alignment** - Tie reviewer requests, disclosure details, artifact availability, figures/tables, and manuscript claims to regenerated, redacted, shareable artifacts.
 
@@ -141,7 +141,7 @@ Plans:
 - [x] 04.2-04-PLAN.md - Preflight and run the full seven-row paper-facing static supplemental matrix.
 - [x] 04.2-05-PLAN.md - Preflight and run the hard/boundary-hard adaptive scope for five memory-isolated rounds after adaptive cost confirmation.
 - [x] 04.2-06-PLAN.md - Generate corrected evidence analysis, failure-class, confidence, and divergence reports.
-- [ ] 04.2-07-PLAN.md - Regenerate corrected paper outputs with invalid Phase 04.1 marker gates.
+- [x] 04.2-07-PLAN.md - Regenerate corrected paper outputs with invalid Phase 04.1 marker gates.
 
 ### Phase 5: Defense Methodology and HCI Scope
 **Goal**: Researchers can generate an actionable defense methodology grounded in measured structural hardness evidence while clearly scoping human-clarity and formal HCI claims.
@@ -185,7 +185,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 04.2 -> 5 -> 6
 | 3. Dataset Scope, Statistical Confidence, and Limitations | 4/4 | Complete | 2026-05-19 |
 | 4. SOTA Solver and Larger Benchmark Strengthening | 3/3 | Complete | 2026-05-19 |
 | 04.1. Expanded Dataset and Supplemental Experiments | 6/6 | Complete with provenance follow-up | 2026-05-20 |
-| 04.2. Corrected Provenance Dataset Expansion | 6/7 | In Progress | 2026-05-22 |
+| 04.2. Corrected Provenance Dataset Expansion | 7/7 | Complete | 2026-05-22 |
 | 5. Defense Methodology and HCI Scope | 0/TBD | Not started | - |
 | 6. Ethics, Artifact Availability, and Paper Claim Alignment | 0/TBD | Not started | - |
 
