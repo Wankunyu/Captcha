@@ -72,6 +72,11 @@ ALLOWED_AGREEMENT_STATUSES = {
     "diverges_from_original",
     "inconclusive",
 }
+ALLOWED_CLAIM_EFFECTS = {
+    "supports_structural_hardness",
+    "weakens_structural_hardness",
+    "neutral_or_inconclusive",
+}
 ALLOWED_CLAIM_USES = {
     "main_body_direct_evidence",
     "main_body_caveated",
@@ -530,20 +535,49 @@ class Phase042EvidenceAnalysisRow(BaseModel):
 
     schema_version: str = PHASE042_EVIDENCE_ANALYSIS_SCHEMA_VERSION
     analysis_id: str
+    run_id: str = ""
+    evidence_mode: str = ""
+    provider: str = ""
+    model: str = ""
     task_type: str
     task_family: str
     provider_model: str
+    evidence_origin: str = ""
     sample_count: int = Field(ge=0)
+    attempt_count: int = Field(default=0, ge=0)
+    success_count: int = Field(default=0, ge=0)
+    source_kind: str = ""
+    source_provenance_class: str = ""
+    source_citation: str = ""
+    source_license: str = ""
+    source_provenance_notes: str = ""
+    provenance_caveat: str = ""
+    direct_evidence: bool = True
+    real_external_evidence: bool = False
     original_rate: float | None = Field(default=None, ge=0, le=1)
     corrected_static_rate: float | None = Field(default=None, ge=0, le=1)
     corrected_adaptive_rate: float | None = Field(default=None, ge=0, le=1)
+    adaptive_success_at_3: float | None = Field(default=None, ge=0, le=1)
+    adaptive_success_at_5: float | None = Field(default=None, ge=0, le=1)
+    bernoulli_success_at_3: float | None = Field(default=None, ge=0, le=1)
+    bernoulli_success_at_5: float | None = Field(default=None, ge=0, le=1)
+    adaptive_round_count: int = Field(default=0, ge=0)
+    memory_isolation: str = ""
+    ci_low: float | None = Field(default=None, ge=0, le=1)
+    ci_high: float | None = Field(default=None, ge=0, le=1)
+    ci_method: str = ""
+    ci_note: str = ""
     agreement_status: str
+    diverges_from_original: bool = False
     divergence_reason: str
     scientific_wrong_count: int = Field(ge=0)
     protocol_failure_count: int = Field(ge=0)
     infrastructure_failure_count: int = Field(ge=0)
     selected_manifest_path: str
     claim_boundary_note: str
+    claim_effect: str = "neutral_or_inconclusive"
+    adaptive_scope_rationale: str = ""
+    source_artifact_path: str = ""
 
     @field_validator("schema_version")
     @classmethod
@@ -559,6 +593,11 @@ class Phase042EvidenceAnalysisRow(BaseModel):
     def validate_agreement_status(cls, value: str) -> str:
         return _validate_allowed(value, ALLOWED_AGREEMENT_STATUSES, "agreement_status")
 
+    @field_validator("claim_effect")
+    @classmethod
+    def validate_claim_effect(cls, value: str) -> str:
+        return _validate_allowed(value, ALLOWED_CLAIM_EFFECTS, "claim_effect")
+
     @model_validator(mode="after")
     def validate_analysis_contract(self) -> "Phase042EvidenceAnalysisRow":
         _guard_phase042_downstream_row(self, "evidence analysis row")
@@ -567,6 +606,12 @@ class Phase042EvidenceAnalysisRow(BaseModel):
                 self.divergence_reason,
                 "divergence_reason",
                 "agreement_status is diverges_from_original",
+            )
+        if self.diverges_from_original != (
+            self.agreement_status == "diverges_from_original"
+        ):
+            raise ValueError(
+                "diverges_from_original must match agreement_status"
             )
         return self
 

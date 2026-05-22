@@ -19,20 +19,25 @@ import run_eval
 from adaptive_artifacts import FEEDBACK_MODE, MEMORY_MODE, SAMPLING_MODE, STOPPING_RULE
 from phase042_artifacts import (
     PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
+    PHASE042_EVIDENCE_ANALYSIS_SCHEMA_VERSION,
     PHASE042_GPT_IMAGE_SOURCE_KIND,
     PHASE042_PREFLIGHT_MATRIX_SCHEMA_VERSION,
     PHASE042_REAL_EXTERNAL_SOURCE_KINDS,
     PHASE042_SELECTED_SOURCE_KINDS,
     PHASE042_STATIC_SUMMARY_SCHEMA_VERSION,
     Phase042AdaptiveSummaryRow,
+    Phase042EvidenceAnalysisRow,
     Phase042PreflightMatrixRow,
     Phase042SelectedManifestRow,
     Phase042StaticSummaryRow,
     Phase042ValidationReportRow,
+    write_csv,
+    write_json,
     write_phase042_selected_manifest,
     write_phase042_validation_report,
 )
 from revision_artifacts import AttemptRecord, revision_run_dir
+from statistical_confidence import wilson_interval
 
 
 PHASE042_SIDECAR_ROOT = Path("expanded_captcha_data/phase04_2")
@@ -46,6 +51,7 @@ PHASE042_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "evaluator_slice"
 PHASE042_ADAPTIVE_EVALUATOR_SLICE = PHASE042_SIDECAR_ROOT / "adaptive_evaluator_slice"
 PHASE042_STATIC_SUPPLEMENTAL_RUN_ID = "phase04_2_static_supplemental"
 PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID = "phase04_2_adaptive_supplemental"
+PHASE042_EVIDENCE_ANALYSIS_RUN_ID = "phase04_2_evidence_analysis"
 PHASE042_PUBLIC_PRICING_FILE = Path("pricing.phase04_2.yaml")
 PHASE042_TARGET_TASK_TYPES = (
     "Dice_Count",
@@ -101,17 +107,42 @@ PHASE042_PAPER_FACING_PROVIDER_MODELS = [
     "anthropic/claude-sonnet-4-5",
     "gemini/gemini-2.5-flash",
     "gemini/gemini-2.5-pro",
-    "fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct",
+    "openrouter/qwen_qwen3-vl-235b-a22b-instruct",
 ]
+PHASE042_LEGACY_FIREWORKS_QWEN_PROVIDER_MODEL = (
+    "fireworks/accounts_fireworks_models_qwen3-vl-235b-a22b-instruct"
+)
+PHASE042_OPENROUTER_QWEN_PROVIDER_MODEL = (
+    "openrouter/qwen_qwen3-vl-235b-a22b-instruct"
+)
+PHASE042_OPENROUTER_QWEN_MODEL_LABEL = "qwen_qwen3-vl-235b-a22b-instruct"
+PHASE042_OPENROUTER_QWEN_RUNTIME_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"
 PHASE042_STATIC_TASK_TYPES = ("Symbol_Count", "Relation_Match", "Hole_Counting")
 PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K = 5
 PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K = 3
 PHASE042_ADAPTIVE_ROUND_COUNT = 5
 PHASE042_ADAPTIVE_SCOPE_RATIONALE = (
-    "Hard/boundary-hard scope only: six original hard task types plus the three "
-    "new external categories; recognition-oriented tasks are excluded to avoid "
-    "ceiling-effect evidence with limited additional insight."
+    "Since most recognition-oriented tasks are already solved reliably under the "
+    "non-adaptive setting, adaptive feedback would mainly introduce ceiling effects "
+    "and provide limited additional insight. We therefore focus on the hard and "
+    "boundary-hard task types, where adaptive memory has the greatest potential to "
+    "change the security conclusion. This is the Phase 04.2 ceiling-effect rationale."
 )
+PHASE042_FINAL_STATIC_SUMMARY_PATHS = (
+    Path("results/revision/phase04_2_static_supplemental/expanded_static_summary.json"),
+    Path(
+        "results/revision/phase04_2_static_openrouter_qwen_infra_remediation_20260522"
+    )
+    / "expanded_static_summary.json",
+    Path("results/revision/phase04_2_static_openai_infra_remediation_20260522")
+    / "expanded_static_summary.json",
+)
+PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH = (
+    Path("results/revision/phase04_2_adaptive_gpt5_medium_20260522")
+    / "expanded_adaptive_summary.json"
+)
+PHASE042_ANALYSIS_CUTOFF = 0.40
+PHASE042_MEMORY_ISOLATION_LABEL = "five_memory_isolated_rounds"
 
 
 def _stable_text(value: object) -> str:
@@ -1153,6 +1184,8 @@ def _discover_exp2_provider_models(results_dir: Path) -> set[str]:
         for model_dir in provider_dir.iterdir():
             if model_dir.is_dir():
                 provider_models.add(f"{provider_dir.name}/{model_dir.name}")
+    if PHASE042_LEGACY_FIREWORKS_QWEN_PROVIDER_MODEL in provider_models:
+        provider_models.add(PHASE042_OPENROUTER_QWEN_PROVIDER_MODEL)
     return provider_models
 
 
@@ -1238,10 +1271,29 @@ def _phase042_model_key_candidates(provider: str, model: str) -> list[str]:
     candidates = [model]
     if provider == "openai" and model.startswith("gpt-5.1_"):
         candidates.append("gpt-5.1")
+    if provider == "openai" and model.startswith("gpt-5_"):
+        candidates.append("gpt-5")
     if provider == "fireworks":
         candidates.append(model.replace("_", "/"))
+    if provider == "openrouter" and model == PHASE042_OPENROUTER_QWEN_MODEL_LABEL:
+        candidates.append(PHASE042_OPENROUTER_QWEN_RUNTIME_MODEL)
     candidates.extend(candidate.lower() for candidate in list(candidates))
     return list(dict.fromkeys(candidates))
+
+
+def _phase042_token_summary_candidates(
+    provider: str,
+    model: str,
+) -> list[tuple[str, str]]:
+    candidates = [(provider, model)]
+    if provider == "openrouter" and model == PHASE042_OPENROUTER_QWEN_MODEL_LABEL:
+        candidates.append(
+            (
+                "fireworks",
+                "accounts_fireworks_models_qwen3-vl-235b-a22b-instruct",
+            )
+        )
+    return candidates
 
 
 def _phase042_model_pricing(
@@ -1265,11 +1317,17 @@ def _phase042_exp2_token_summary_path(
     model: str,
 ) -> Path | None:
     exp2_root = _exp2_root(Path(results_dir))
-    model_root = exp2_root / provider / model
-    if not model_root.is_dir():
-        return None
-    summaries = sorted(model_root.glob("*token_summary.json"))
-    return summaries[0] if summaries else None
+    for candidate_provider, candidate_model in _phase042_token_summary_candidates(
+        provider,
+        model,
+    ):
+        model_root = exp2_root / candidate_provider / candidate_model
+        if not model_root.is_dir():
+            continue
+        summaries = sorted(model_root.glob("*token_summary.json"))
+        if summaries:
+            return summaries[0]
+    return None
 
 
 def _phase042_overall_token_averages(token_summary_path: Path) -> dict[str, float | int]:
@@ -1520,6 +1578,15 @@ def build_phase042_static_preflight_matrix(
 
 
 def _runtime_model_kwargs(provider: str, model_label: str) -> dict[str, object]:
+    if provider == "openai" and model_label.startswith("gpt-5_"):
+        effort = model_label.rsplit("_", 1)[1]
+        if effort == "none":
+            return {"model": "gpt-5", "thinking": False, "thinking_options": None}
+        return {
+            "model": "gpt-5",
+            "thinking": True,
+            "thinking_options": {"effort": effort},
+        }
     if provider == "openai" and model_label.startswith("gpt-5.1_"):
         effort = model_label.rsplit("_", 1)[1]
         if effort == "none":
@@ -1533,6 +1600,12 @@ def _runtime_model_kwargs(provider: str, model_label: str) -> dict[str, object]:
         model_name = model_label.removeprefix("accounts_fireworks_models_")
         return {
             "model": f"accounts/fireworks/models/{model_name}",
+            "thinking": False,
+            "thinking_options": None,
+        }
+    if provider == "openrouter" and model_label == PHASE042_OPENROUTER_QWEN_MODEL_LABEL:
+        return {
+            "model": PHASE042_OPENROUTER_QWEN_RUNTIME_MODEL,
             "thinking": False,
             "thinking_options": None,
         }
@@ -2151,6 +2224,685 @@ def collect_phase042_adaptive_runs(
     }
 
 
+def _payload_rows(path: Path, *, label: str) -> list[dict[str, Any]]:
+    if not path.is_file():
+        raise FileNotFoundError(f"{label} does not exist: {path}")
+    payload = _read_json(path)
+    rows = payload.get("rows") if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        raise ValueError(f"{label} must contain a rows array: {path}")
+    assert_no_phase041_reference(rows, context=label)
+    return [dict(row) for row in rows if isinstance(row, dict)]
+
+
+def _load_phase042_static_summary_rows(paths: Iterable[str | Path]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path_like in paths:
+        path = Path(path_like)
+        assert_no_phase041_reference(path.as_posix(), context="static summary path")
+        for row in _payload_rows(path, label="Phase 04.2 static summary"):
+            enriched = dict(row)
+            enriched["_source_artifact_path"] = path.as_posix()
+            rows.append(enriched)
+    return rows
+
+
+def _load_phase042_adaptive_summary_rows_for_analysis(path: str | Path) -> list[dict[str, Any]]:
+    summary_path = Path(path)
+    assert_no_phase041_reference(summary_path.as_posix(), context="adaptive summary path")
+    return [
+        {**row, "_source_artifact_path": summary_path.as_posix()}
+        for row in _payload_rows(summary_path, label="Phase 04.2 adaptive summary")
+    ]
+
+
+def _load_phase042_original_exp2_rates(results_dir: str | Path) -> dict[tuple[str, str], float]:
+    root = Path(results_dir)
+    exp2_root = root / "exp2" if (root / "exp2").is_dir() else root
+    rates: dict[tuple[str, str], float] = {}
+    for results_path in sorted(exp2_root.glob("*/*/results.csv")):
+        provider = results_path.parent.parent.name
+        model = results_path.parent.name
+        provider_model = f"{provider}/{model}"
+        with results_path.open("r", encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                task_type = row.get("type") or row.get("task_type")
+                raw_rate = row.get("pass_at_1") or row.get("pass_rate")
+                if not task_type or raw_rate in (None, ""):
+                    continue
+                rates[(provider_model, task_type)] = float(raw_rate)
+
+    for (provider_model, task_type), rate in list(rates.items()):
+        if provider_model == PHASE042_LEGACY_FIREWORKS_QWEN_PROVIDER_MODEL:
+            rates[(PHASE042_OPENROUTER_QWEN_PROVIDER_MODEL, task_type)] = rate
+        if provider_model == "openai/gpt-5":
+            rates[("openai/gpt-5_medium", task_type)] = rate
+    return rates
+
+
+def _rate_side(rate: float | None) -> str | None:
+    if rate is None:
+        return None
+    return "high" if rate >= PHASE042_ANALYSIS_CUTOFF else "low"
+
+
+def _phase042_agreement_status(
+    original_rate: float | None,
+    corrected_rate: float | None,
+) -> tuple[str, bool, str]:
+    original_side = _rate_side(original_rate)
+    corrected_side = _rate_side(corrected_rate)
+    if original_side is None or corrected_side is None:
+        return "inconclusive", False, "Original or corrected rate is unavailable."
+    if original_side != corrected_side:
+        return (
+            "diverges_from_original",
+            True,
+            "Corrected Phase 04.2 evidence crosses the 40% reporting heuristic "
+            "in the opposite direction from the original Exp2 rate.",
+        )
+    return "supports_original", False, ""
+
+
+def _bernoulli_success_at_k(original_rate: float | None, k: int) -> float | None:
+    if original_rate is None:
+        return None
+    return 1.0 - (1.0 - float(original_rate)) ** k
+
+
+def _float_or_none(value: object) -> float | None:
+    if value in (None, ""):
+        return None
+    return float(value)
+
+
+def _int_value(value: object) -> int:
+    return int(value or 0)
+
+
+def _is_infrastructure_only(row: dict[str, Any]) -> bool:
+    attempts = _int_value(row.get("attempt_count"))
+    return (
+        attempts > 0
+        and _int_value(row.get("success_count")) == 0
+        and _int_value(row.get("scientific_wrong_count")) == 0
+        and _int_value(row.get("protocol_failure_count")) == 0
+        and _int_value(row.get("infrastructure_failure_count")) >= attempts
+    )
+
+
+def _merge_infra_remediation_row(
+    existing: dict[str, Any],
+    remediation: dict[str, Any],
+) -> dict[str, Any]:
+    existing_infra = _int_value(existing.get("infrastructure_failure_count"))
+    if existing_infra <= 0:
+        return remediation
+
+    existing_attempts = _int_value(existing.get("attempt_count"))
+    remediation_attempts = _int_value(remediation.get("attempt_count"))
+    merged = dict(existing)
+    merged["attempt_count"] = max(0, existing_attempts - existing_infra) + remediation_attempts
+    merged["success_count"] = _int_value(existing.get("success_count")) + _int_value(
+        remediation.get("success_count")
+    )
+    merged["scientific_wrong_count"] = _int_value(
+        existing.get("scientific_wrong_count")
+    ) + _int_value(remediation.get("scientific_wrong_count"))
+    merged["protocol_failure_count"] = _int_value(
+        existing.get("protocol_failure_count")
+    ) + _int_value(remediation.get("protocol_failure_count"))
+    merged["infrastructure_failure_count"] = max(0, existing_infra - remediation_attempts)
+    merged["pass_rate"] = (
+        merged["success_count"] / merged["attempt_count"]
+        if merged["attempt_count"]
+        else None
+    )
+    merged["_source_artifact_path"] = ";".join(
+        value
+        for value in [
+            str(existing.get("_source_artifact_path") or ""),
+            str(remediation.get("_source_artifact_path") or ""),
+        ]
+        if value
+    )
+    return merged
+
+
+def _merge_phase042_static_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in rows:
+        provider_model = str(row.get("provider_model") or "")
+        if provider_model == PHASE042_LEGACY_FIREWORKS_QWEN_PROVIDER_MODEL:
+            continue
+        task_type = str(row.get("task_type") or "")
+        if task_type not in PHASE042_STATIC_TASK_TYPES:
+            continue
+        key = (provider_model, task_type)
+        if key in merged:
+            merged[key] = _merge_infra_remediation_row(merged[key], row)
+        else:
+            merged[key] = dict(row)
+    return [merged[key] for key in sorted(merged)]
+
+
+def _confidence_fields(
+    *,
+    success_count: int,
+    denominator: int,
+    denominator_label: str,
+    meaningful: bool = True,
+) -> dict[str, object]:
+    if denominator <= 0 or not meaningful:
+        return {
+            "ci_low": None,
+            "ci_high": None,
+            "ci_method": "",
+            "ci_note": f"Confidence interval unavailable: {denominator_label} is not meaningful.",
+        }
+    ci_low, ci_high = wilson_interval(success_count, denominator)
+    return {
+        "ci_low": ci_low,
+        "ci_high": ci_high,
+        "ci_method": "wilson_95",
+        "ci_note": f"Wilson interval over {denominator_label}.",
+    }
+
+
+def _manifest_source_fields(
+    manifest_by_task: dict[str, Phase042SelectedManifestRow],
+    task_type: str,
+) -> dict[str, object]:
+    manifest_row = manifest_by_task.get(task_type)
+    if manifest_row is None:
+        return {
+            "source_kind": "original_captchaworld_hard_scope",
+            "source_provenance_class": "original_hard_task_context",
+            "source_citation": "",
+            "source_license": "",
+            "source_provenance_notes": (
+                "Original hard-task adaptive scope; not corrected direct expanded "
+                "static sidecar evidence."
+            ),
+            "provenance_caveat": (
+                "Original hard-task adaptive context, reported separately from "
+                "corrected three-category expanded static evidence."
+            ),
+            "real_external_evidence": False,
+        }
+    is_gpt = manifest_row.source_kind == PHASE042_GPT_IMAGE_SOURCE_KIND
+    return {
+        "source_kind": manifest_row.source_kind,
+        "source_provenance_class": manifest_row.source_provenance_class,
+        "source_citation": manifest_row.source_citation,
+        "source_license": manifest_row.source_license,
+        "source_provenance_notes": manifest_row.source_provenance_notes,
+        "provenance_caveat": (
+            "GPT Image fallback evidence is generated Open CaptchaWorld-style "
+            "material and must not be described as real external dataset evidence."
+            if is_gpt
+            else ""
+        ),
+        "real_external_evidence": manifest_row.source_kind in PHASE042_REAL_EXTERNAL_SOURCE_KINDS,
+    }
+
+
+def _claim_effect(
+    *,
+    observed_rate: float | None,
+    scientific_wrong_count: int,
+    infrastructure_only: bool,
+    source_kind: str,
+) -> str:
+    if observed_rate is None or infrastructure_only:
+        return "neutral_or_inconclusive"
+    if source_kind == PHASE042_GPT_IMAGE_SOURCE_KIND:
+        return "neutral_or_inconclusive"
+    if observed_rate >= PHASE042_ANALYSIS_CUTOFF:
+        return "weakens_structural_hardness"
+    if scientific_wrong_count > 0:
+        return "supports_structural_hardness"
+    return "neutral_or_inconclusive"
+
+
+def _claim_boundary_note(
+    *,
+    evidence_mode: str,
+    claim_effect: str,
+    source_kind: str,
+    infrastructure_failure_count: int,
+) -> str:
+    base = (
+        "Corrected Phase 04.2 evidence uses the 40% reporting heuristic only "
+        "for claim-boundary reporting, not as a universal CAPTCHA security boundary."
+    )
+    if source_kind == PHASE042_GPT_IMAGE_SOURCE_KIND:
+        return (
+            f"{base} GPT Image fallback rows remain provenance-caveated and are "
+            "not real external dataset evidence."
+        )
+    if infrastructure_failure_count:
+        return (
+            f"{base} Infrastructure failures are visible and are not counted as "
+            "structural-hardness evidence."
+        )
+    if evidence_mode == "adaptive":
+        return (
+            f"{base} Adaptive rows are five memory-isolated hard-scope rounds, "
+            "not precise probability estimates."
+        )
+    if claim_effect == "weakens_structural_hardness":
+        return f"{base} This row weakens or constrains the structural-hardness claim."
+    if claim_effect == "supports_structural_hardness":
+        return f"{base} This row supports the structural-hardness claim within scope."
+    return f"{base} This row is neutral or inconclusive for structural-hardness claims."
+
+
+def derive_phase042_adaptive_round_rates(
+    adaptive_rows: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in adaptive_rows:
+        task_type = str(row.get("task_type") or "")
+        if task_type not in PHASE042_ADAPTIVE_TASK_TYPES:
+            raise ValueError(f"adaptive evidence task is out of Phase 04.2 scope: {task_type}")
+        grouped[(str(row.get("provider_model") or ""), task_type)].append(dict(row))
+
+    derived: list[dict[str, Any]] = []
+    for (provider_model, task_type), rows in sorted(grouped.items()):
+        round_ids = {
+            str(row.get("round_id") or row.get("round_index") or index)
+            for index, row in enumerate(rows, start=1)
+        }
+        round_count = len(round_ids)
+        success_at_3_count = sum(1 for row in rows if bool(row.get("success_at_3")))
+        success_at_5_count = sum(1 for row in rows if bool(row.get("success_at_5")))
+        first = rows[0]
+        derived.append(
+            {
+                "provider": str(first.get("provider") or ""),
+                "model": str(first.get("model") or ""),
+                "provider_model": provider_model,
+                "task_type": task_type,
+                "task_family": str(
+                    first.get("task_family") or PHASE042_TASK_FAMILIES.get(task_type, "unknown")
+                ),
+                "evidence_origin": str(first.get("evidence_origin") or "supplemented_category"),
+                "sample_count": _int_value(first.get("sample_count")),
+                "attempt_count": sum(_int_value(row.get("attempt_budget_k")) for row in rows),
+                "success_count": success_at_5_count,
+                "adaptive_success_at_3": (
+                    success_at_3_count / round_count if round_count else None
+                ),
+                "adaptive_success_at_5": (
+                    success_at_5_count / round_count if round_count else None
+                ),
+                "adaptive_round_count": round_count,
+                "memory_isolation": (
+                    PHASE042_MEMORY_ISOLATION_LABEL
+                    if round_count == PHASE042_ADAPTIVE_ROUND_COUNT
+                    else f"{round_count}_memory_isolated_rounds"
+                ),
+                "scientific_wrong_count": sum(
+                    _int_value(row.get("scientific_wrong_count")) for row in rows
+                ),
+                "protocol_failure_count": sum(
+                    _int_value(row.get("protocol_failure_count")) for row in rows
+                ),
+                "infrastructure_failure_count": sum(
+                    _int_value(row.get("infrastructure_failure_count")) for row in rows
+                ),
+                "selected_manifest_path": str(first.get("selected_manifest_path") or ""),
+                "source_artifact_path": ";".join(
+                    sorted(
+                        {
+                            str(row.get("_source_artifact_path") or "")
+                            for row in rows
+                            if row.get("_source_artifact_path")
+                        }
+                    )
+                ),
+            }
+        )
+    return derived
+
+
+def _phase042_static_analysis_row(
+    row: dict[str, Any],
+    *,
+    manifest_by_task: dict[str, Phase042SelectedManifestRow],
+    original_rates: dict[tuple[str, str], float],
+    run_id: str,
+) -> Phase042EvidenceAnalysisRow:
+    provider_model = str(row.get("provider_model") or "")
+    task_type = str(row.get("task_type") or "")
+    provider = str(row.get("provider") or provider_model.split("/", 1)[0])
+    model = str(row.get("model") or provider_model.split("/", 1)[-1])
+    original_rate = original_rates.get((provider_model, task_type))
+    corrected_rate = _float_or_none(row.get("pass_rate"))
+    agreement_status, diverges, divergence_reason = _phase042_agreement_status(
+        original_rate,
+        corrected_rate,
+    )
+    attempts = _int_value(row.get("attempt_count"))
+    successes = _int_value(row.get("success_count"))
+    scientific_wrong_count = _int_value(row.get("scientific_wrong_count"))
+    infrastructure_only = _is_infrastructure_only(row)
+    source_fields = _manifest_source_fields(manifest_by_task, task_type)
+    claim_effect = _claim_effect(
+        observed_rate=corrected_rate,
+        scientific_wrong_count=scientific_wrong_count,
+        infrastructure_only=infrastructure_only,
+        source_kind=str(source_fields["source_kind"]),
+    )
+    ci = _confidence_fields(
+        success_count=successes,
+        denominator=attempts,
+        denominator_label="corrected static attempts",
+        meaningful=not infrastructure_only,
+    )
+    return Phase042EvidenceAnalysisRow(
+        analysis_id=f"{run_id}-{_slug(provider_model)}-{_slug(task_type)}-static",
+        run_id=run_id,
+        evidence_mode="static",
+        provider=provider,
+        model=model,
+        provider_model=provider_model,
+        task_type=task_type,
+        task_family=str(row.get("task_family") or PHASE042_TASK_FAMILIES.get(task_type, "")),
+        evidence_origin=str(row.get("evidence_origin") or "new_category"),
+        sample_count=_int_value(row.get("sample_count")),
+        attempt_count=attempts,
+        success_count=successes,
+        original_rate=original_rate,
+        corrected_static_rate=corrected_rate,
+        corrected_adaptive_rate=None,
+        adaptive_success_at_3=None,
+        adaptive_success_at_5=None,
+        bernoulli_success_at_3=_bernoulli_success_at_k(original_rate, 3),
+        bernoulli_success_at_5=_bernoulli_success_at_k(original_rate, 5),
+        adaptive_round_count=0,
+        memory_isolation="",
+        agreement_status=agreement_status,
+        diverges_from_original=diverges,
+        divergence_reason=divergence_reason,
+        scientific_wrong_count=scientific_wrong_count,
+        protocol_failure_count=_int_value(row.get("protocol_failure_count")),
+        infrastructure_failure_count=_int_value(row.get("infrastructure_failure_count")),
+        selected_manifest_path=str(row.get("selected_manifest_path") or ""),
+        claim_boundary_note=_claim_boundary_note(
+            evidence_mode="static",
+            claim_effect=claim_effect,
+            source_kind=str(source_fields["source_kind"]),
+            infrastructure_failure_count=_int_value(row.get("infrastructure_failure_count")),
+        ),
+        claim_effect=claim_effect,
+        adaptive_scope_rationale="",
+        source_artifact_path=str(row.get("_source_artifact_path") or ""),
+        direct_evidence=True,
+        **source_fields,
+        **ci,
+    )
+
+
+def _phase042_adaptive_analysis_row(
+    row: dict[str, Any],
+    *,
+    manifest_by_task: dict[str, Phase042SelectedManifestRow],
+    original_rates: dict[tuple[str, str], float],
+    run_id: str,
+) -> Phase042EvidenceAnalysisRow:
+    provider_model = str(row.get("provider_model") or "")
+    task_type = str(row.get("task_type") or "")
+    original_rate = original_rates.get((provider_model, task_type))
+    adaptive_success_at_5 = _float_or_none(row.get("adaptive_success_at_5"))
+    agreement_status, diverges, divergence_reason = _phase042_agreement_status(
+        original_rate,
+        adaptive_success_at_5,
+    )
+    source_fields = _manifest_source_fields(manifest_by_task, task_type)
+    scientific_wrong_count = _int_value(row.get("scientific_wrong_count"))
+    claim_effect = _claim_effect(
+        observed_rate=adaptive_success_at_5,
+        scientific_wrong_count=scientific_wrong_count,
+        infrastructure_only=False,
+        source_kind=str(source_fields["source_kind"]),
+    )
+    round_count = _int_value(row.get("adaptive_round_count"))
+    success_count = _int_value(row.get("success_count"))
+    ci = _confidence_fields(
+        success_count=success_count,
+        denominator=round_count,
+        denominator_label="five memory-isolated adaptive rounds",
+        meaningful=round_count > 0,
+    )
+    ci["ci_note"] = (
+        f"{ci['ci_note']} Treat as an observed round-level interval, not a "
+        "precise single-session probability estimate."
+    )
+    return Phase042EvidenceAnalysisRow(
+        analysis_id=f"{run_id}-{_slug(provider_model)}-{_slug(task_type)}-adaptive",
+        run_id=run_id,
+        evidence_mode="adaptive",
+        provider=str(row.get("provider") or ""),
+        model=str(row.get("model") or ""),
+        provider_model=provider_model,
+        task_type=task_type,
+        task_family=str(row.get("task_family") or PHASE042_TASK_FAMILIES.get(task_type, "")),
+        evidence_origin=str(row.get("evidence_origin") or "supplemented_category"),
+        sample_count=_int_value(row.get("sample_count")),
+        attempt_count=_int_value(row.get("attempt_count")),
+        success_count=success_count,
+        original_rate=original_rate,
+        corrected_static_rate=None,
+        corrected_adaptive_rate=adaptive_success_at_5,
+        adaptive_success_at_3=_float_or_none(row.get("adaptive_success_at_3")),
+        adaptive_success_at_5=adaptive_success_at_5,
+        bernoulli_success_at_3=_bernoulli_success_at_k(original_rate, 3),
+        bernoulli_success_at_5=_bernoulli_success_at_k(original_rate, 5),
+        adaptive_round_count=round_count,
+        memory_isolation=str(row.get("memory_isolation") or ""),
+        agreement_status=agreement_status,
+        diverges_from_original=diverges,
+        divergence_reason=divergence_reason,
+        scientific_wrong_count=scientific_wrong_count,
+        protocol_failure_count=_int_value(row.get("protocol_failure_count")),
+        infrastructure_failure_count=_int_value(row.get("infrastructure_failure_count")),
+        selected_manifest_path=str(row.get("selected_manifest_path") or ""),
+        claim_boundary_note=_claim_boundary_note(
+            evidence_mode="adaptive",
+            claim_effect=claim_effect,
+            source_kind=str(source_fields["source_kind"]),
+            infrastructure_failure_count=_int_value(row.get("infrastructure_failure_count")),
+        ),
+        claim_effect=claim_effect,
+        adaptive_scope_rationale=PHASE042_ADAPTIVE_SCOPE_RATIONALE,
+        source_artifact_path=str(row.get("source_artifact_path") or ""),
+        direct_evidence=True,
+        **source_fields,
+        **ci,
+    )
+
+
+def build_phase042_evidence_analysis_rows(
+    *,
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+    source_download_manifest_path: str | Path = (
+        PHASE042_SIDECAR_ROOT / "source_download_manifest.json"
+    ),
+    static_summary_paths: Iterable[str | Path] = PHASE042_FINAL_STATIC_SUMMARY_PATHS,
+    adaptive_summary_path: str | Path = PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH,
+    results_dir: str | Path = "results",
+    run_id: str = PHASE042_EVIDENCE_ANALYSIS_RUN_ID,
+) -> list[Phase042EvidenceAnalysisRow]:
+    assert_no_phase041_reference(run_id, context="evidence analysis run_id")
+    selected_manifest = Path(selected_manifest_path)
+    source_download_manifest = Path(source_download_manifest_path)
+    assert_no_phase041_reference(
+        selected_manifest.as_posix(),
+        context="evidence analysis selected manifest path",
+    )
+    assert_no_phase041_reference(
+        source_download_manifest.as_posix(),
+        context="evidence analysis source download manifest path",
+    )
+    manifest_rows = validate_phase042_selected_manifest(
+        load_phase042_selected_manifest(selected_manifest)
+    )
+    manifest_by_task = {row.task_type: row for row in manifest_rows}
+    static_rows = _merge_phase042_static_rows(
+        _load_phase042_static_summary_rows(static_summary_paths)
+    )
+    adaptive_rows = derive_phase042_adaptive_round_rates(
+        _load_phase042_adaptive_summary_rows_for_analysis(adaptive_summary_path)
+    )
+    original_rates = _load_phase042_original_exp2_rates(results_dir)
+
+    analysis_rows = [
+        _phase042_static_analysis_row(
+            row,
+            manifest_by_task=manifest_by_task,
+            original_rates=original_rates,
+            run_id=run_id,
+        )
+        for row in static_rows
+    ]
+    analysis_rows.extend(
+        _phase042_adaptive_analysis_row(
+            row,
+            manifest_by_task=manifest_by_task,
+            original_rates=original_rates,
+            run_id=run_id,
+        )
+        for row in adaptive_rows
+    )
+    assert_no_phase041_reference(
+        [row.model_dump(mode="json") for row in analysis_rows],
+        context="evidence analysis rows",
+    )
+    return analysis_rows
+
+
+def render_phase042_divergence_report(
+    rows: Iterable[Phase042EvidenceAnalysisRow | dict[str, Any]],
+    *,
+    source_download_manifest_path: str | Path = (
+        PHASE042_SIDECAR_ROOT / "source_download_manifest.json"
+    ),
+) -> str:
+    validated = [
+        row if isinstance(row, Phase042EvidenceAnalysisRow) else Phase042EvidenceAnalysisRow(**row)
+        for row in rows
+    ]
+    source_payload = _read_json(Path(source_download_manifest_path))
+    source_rows = source_payload.get("rows") if isinstance(source_payload, dict) else []
+    staged_ocw_tasks = sorted(
+        {
+            str(row.get("task_type"))
+            for row in source_rows
+            if isinstance(row, dict)
+            and row.get("dataset_increase_percent_vs_local_legacy") is not None
+        }
+    )
+    divergence_rows = [row for row in validated if row.diverges_from_original]
+    effect_counts = defaultdict(int)
+    for row in validated:
+        effect_counts[row.claim_effect] += 1
+    lines = [
+        "# Phase 04.2 Corrected Evidence Analysis Divergence Report",
+        "",
+        "## Cutoff Semantics",
+        "The 40% reporting heuristic is used only to compare original and corrected "
+        "evidence directions; it is not a universal CAPTCHA security boundary.",
+        "",
+        "## Agreement and Divergence",
+        f"Rows analyzed: {len(validated)}.",
+        f"Divergent rows: {len(divergence_rows)}.",
+        "Claim effects: "
+        + ", ".join(f"{key}={value}" for key, value in sorted(effect_counts.items())),
+        "",
+    ]
+    if divergence_rows:
+        for row in divergence_rows:
+            lines.append(
+                f"- {row.provider_model} / {row.task_type} ({row.evidence_mode}): "
+                f"{row.divergence_reason} claim_effect={row.claim_effect}."
+            )
+    else:
+        lines.append("- No corrected rows diverged from original Exp2 direction.")
+    lines.extend(
+        [
+            "",
+            "## Corrected Provenance Boundary",
+            "Corrected direct static evidence is limited to Symbol_Count, "
+            "Relation_Match, and Hole_Counting.",
+            (
+                "The updated local OpenCaptchaWorld hard-type incremental rows were "
+                "staged but excluded from corrected direct expanded evidence; "
+                "therefore no Dice_Count/Click_Order/Patch_Select/Geometry_Click "
+                "dataset-increase percentages are claimed in Phase 04.2."
+            ),
+            f"Staged OCW increment task types inspected: {', '.join(staged_ocw_tasks) or 'none'}.",
+            "",
+            "## Adaptive Scope",
+            PHASE042_ADAPTIVE_SCOPE_RATIONALE,
+            "Adaptive rows report observed Success@3 and Success@5 over five "
+            "memory-isolated rounds alongside Exp2-derived Bernoulli baselines for "
+            "k=3 and k=5.",
+            "",
+        ]
+    )
+    report = "\n".join(lines)
+    assert_no_phase041_reference(report, context="evidence analysis divergence report")
+    return report
+
+
+def write_phase042_evidence_analysis(
+    *,
+    selected_manifest_path: str | Path = PHASE042_SELECTED_MANIFEST_JSON,
+    source_download_manifest_path: str | Path = (
+        PHASE042_SIDECAR_ROOT / "source_download_manifest.json"
+    ),
+    static_summary_paths: Iterable[str | Path] = PHASE042_FINAL_STATIC_SUMMARY_PATHS,
+    adaptive_summary_path: str | Path = PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH,
+    results_dir: str | Path = "results",
+    output_root: str | Path = "results/revision",
+    run_id: str = PHASE042_EVIDENCE_ANALYSIS_RUN_ID,
+) -> dict[str, object]:
+    rows = build_phase042_evidence_analysis_rows(
+        selected_manifest_path=selected_manifest_path,
+        source_download_manifest_path=source_download_manifest_path,
+        static_summary_paths=static_summary_paths,
+        adaptive_summary_path=adaptive_summary_path,
+        results_dir=results_dir,
+        run_id=run_id,
+    )
+    run_dir = revision_run_dir(output_root, run_id)
+    csv_path = run_dir / "phase04_2_evidence_analysis.csv"
+    json_path = run_dir / "phase04_2_evidence_analysis.json"
+    report_path = run_dir / "phase04_2_divergence_report.md"
+    write_csv(csv_path, Phase042EvidenceAnalysisRow.model_fields, rows)
+    write_json(json_path, PHASE042_EVIDENCE_ANALYSIS_SCHEMA_VERSION, rows)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        render_phase042_divergence_report(
+            rows,
+            source_download_manifest_path=source_download_manifest_path,
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "row_count": len(rows),
+        "output_csv": str(csv_path),
+        "output_json": str(json_path),
+        "divergence_report": str(report_path),
+        "claim_effect_counts": {
+            effect: sum(1 for row in rows if row.claim_effect == effect)
+            for effect in sorted({row.claim_effect for row in rows})
+        },
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Phase 04.2 corrected-provenance dataset utilities."
@@ -2368,6 +3120,43 @@ def build_parser() -> argparse.ArgumentParser:
     collect_adaptive_parser.add_argument("--overwrite", action="store_true")
     collect_adaptive_parser.add_argument("--no-stream", action="store_true")
     collect_adaptive_parser.add_argument("--timeout-sec", type=float, default=600.0)
+    evidence_parser = subparsers.add_parser(
+        "evidence-analysis",
+        help="Generate corrected Phase 04.2 evidence analysis and divergence reports.",
+    )
+    evidence_parser.add_argument(
+        "--selected-manifest",
+        type=Path,
+        default=PHASE042_SELECTED_MANIFEST_JSON,
+    )
+    evidence_parser.add_argument(
+        "--source-download-manifest",
+        type=Path,
+        default=PHASE042_SIDECAR_ROOT / "source_download_manifest.json",
+    )
+    evidence_parser.add_argument(
+        "--static-summary",
+        type=Path,
+        action="append",
+        default=None,
+        help=(
+            "Static summary path. May be repeated. If omitted, the base Phase 04.2 "
+            "static summary plus final OpenRouter/OpenAI remediation summaries are used."
+        ),
+    )
+    evidence_parser.add_argument(
+        "--adaptive-summary",
+        type=Path,
+        default=PHASE042_FINAL_ADAPTIVE_SUMMARY_PATH,
+        help="Corrected GPT-5 medium adaptive summary path.",
+    )
+    evidence_parser.add_argument("--results-dir", type=Path, default=Path("results"))
+    evidence_parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("results/revision"),
+    )
+    evidence_parser.add_argument("--run-id", default=PHASE042_EVIDENCE_ANALYSIS_RUN_ID)
     return parser
 
 
@@ -2489,6 +3278,18 @@ def main(argv: list[str] | None = None) -> int:
             secrets_file=args.secrets_file,
             stream=not args.no_stream,
             timeout_sec=args.timeout_sec,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "evidence-analysis":
+        result = write_phase042_evidence_analysis(
+            selected_manifest_path=args.selected_manifest,
+            source_download_manifest_path=args.source_download_manifest,
+            static_summary_paths=args.static_summary or PHASE042_FINAL_STATIC_SUMMARY_PATHS,
+            adaptive_summary_path=args.adaptive_summary,
+            results_dir=args.results_dir,
+            output_root=args.output_root,
+            run_id=args.run_id,
         )
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
