@@ -141,7 +141,7 @@ def _fake_preflight_report(args) -> PreflightReport:
 
 
 def test_preflight_matrix_never_constructs_providers(tmp_path, monkeypatch) -> None:
-    sentinel_credential = "REDACTED_OPENAI_API_KEY"
+    sentinel_credential = "phase041-static-secret-sentinel"
     _, dataset_root, manifest_path = _write_phase041_sidecar(tmp_path)
     results_dir = _write_exp2_rows(tmp_path)
     output_root = tmp_path / "results" / "revision"
@@ -229,7 +229,7 @@ def test_collect_static_invokes_revision_run_contract_and_writes_summary(
     tmp_path,
     monkeypatch,
 ) -> None:
-    sentinel_credential = "REDACTED_OPENAI_API_KEY"
+    sentinel_credential = "phase041-static-secret-sentinel"
     _, dataset_root, manifest_path = _write_phase041_sidecar(tmp_path)
     output_root = tmp_path / "results" / "revision"
     matrix_path = output_root / "phase04_1_static_supplemental" / "expanded_preflight_matrix.json"
