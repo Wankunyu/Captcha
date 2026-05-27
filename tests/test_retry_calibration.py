@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
-from retry_calibration import (
+from cognition.exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
+from cognition.retry_calibration import (
     build_retry_calibration_family_rows,
     build_retry_calibration_rows,
     load_adaptive_outcomes,

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from expanded_dataset_phase042 import (
+from cognition.expanded_dataset_phase042 import (
     build_captcha_data_hash_index,
     sha256_image,
     validate_phase042_candidates,

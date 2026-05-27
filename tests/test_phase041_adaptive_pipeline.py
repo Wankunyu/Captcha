@@ -3,23 +3,23 @@ from pathlib import Path
 
 import pytest
 
-import adaptive_attacker
-import adaptive_preflight
-import run_eval
-from adaptive_preflight import (
+from cognition import adaptive_attacker
+from cognition import adaptive_preflight
+from cognition import run_eval
+from cognition.adaptive_preflight import (
     AdaptivePreflightCostPreview,
     AdaptivePreflightReport,
     AdaptivePreflightTaskSummary,
 )
-from expanded_dataset import (
-    PAPER_FACING_PROVIDER_MODELS,
+from cognition.expanded_dataset import (
+    REPORTED_PROVIDER_MODELS,
     PHASE041_EVALUATOR_SLICE,
     PHASE041_NEW_TASK_MIN_SAMPLE_COUNT,
     PHASE041_SIDECAR_ROOT,
     build_adaptive_preflight_matrix,
     collect_adaptive_supplemental_runs,
 )
-from phase041_artifacts import (
+from cognition.phase041_artifacts import (
     EXPANDED_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     ExpandedPreflightMatrixRow,
     write_expanded_preflight_matrix,
@@ -57,7 +57,8 @@ def _manifest_row(task_type: str, **overrides: object) -> dict[str, object]:
         "source_citation": "Open CaptchaWorld-compatible test fixture",
         "source_license": "test fixture license",
         "source_provenance_notes": (
-            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation; "
+            "new to current captcha_data."
         ),
         "materialized_path": str(PHASE041_EVALUATOR_SLICE / task_type),
         "evidence_origin": "new_category" if is_new else "supplemented_category",
@@ -108,7 +109,7 @@ def _write_phase041_sidecar(tmp_path: Path, **row_overrides: object) -> tuple[Pa
 
 def _write_exp2_rows(tmp_path: Path) -> Path:
     results_dir = tmp_path / "results"
-    for provider_model in PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
         _write_json(results_dir / "exp2" / provider / model / "results.json", [])
     return results_dir
@@ -214,7 +215,7 @@ def test_adaptive_preflight_matrix_keeps_phase2_semantics_and_no_provider(
         write_reports=True,
     )
 
-    assert [row.provider_model for row in rows] == PAPER_FACING_PROVIDER_MODELS
+    assert [row.provider_model for row in rows] == REPORTED_PROVIDER_MODELS
     assert len(calls) == 7
     first = rows[0]
     assert first.task_types == TASK_TYPES
@@ -242,7 +243,7 @@ def _adaptive_preflight_rows(
 ) -> list[ExpandedPreflightMatrixRow]:
     output_root = tmp_path / "results" / "revision"
     rows = []
-    for provider_model in PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
         run_id = f"phase04_1_adaptive_supplemental-{provider}-{model.replace('/', '-')}"
         rows.append(

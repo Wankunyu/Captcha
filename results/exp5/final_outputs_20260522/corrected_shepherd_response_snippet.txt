@@ -1,0 +1,6 @@
+Exp5 corrected expanded-dataset evidence now uses provenance- and novelty-compliant rows only.
+Direct corrected categories: Hole_Counting, Relation_Match, Symbol_Count.
+Adaptive hard-scope categories: Click_Order, Dice_Count, Hole_Counting, Patch_Select, Pick_Area, Place_Dot, Relation_Match, Rotation_Match, Symbol_Count.
+GPT Image fallback status: no GPT Image fallback instances were used.
+The selected direct rows use real external samples where source_kind is peer_reviewed_paper_dataset or open_source_dataset.
+No staged OpenCaptchaWorld hard-type increment rows are retained in the final Phase 04.2 evidence artifacts.

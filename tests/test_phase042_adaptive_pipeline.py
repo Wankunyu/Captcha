@@ -3,31 +3,40 @@ from pathlib import Path
 
 import pytest
 
-import adaptive_attacker
-import adaptive_preflight
-from adaptive_preflight import (
+from cognition import adaptive_attacker
+from cognition import adaptive_preflight
+from cognition.adaptive_preflight import (
     AdaptivePreflightCostPreview,
     AdaptivePreflightReport,
     AdaptivePreflightTaskSummary,
 )
-from expanded_dataset_phase042 import (
+from cognition.expanded_dataset_phase042 import (
     PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K,
     PHASE042_ADAPTIVE_EVALUATOR_SLICE,
     PHASE042_ADAPTIVE_INTERMEDIATE_BUDGET_K,
     PHASE042_ADAPTIVE_ROUND_COUNT,
     PHASE042_ADAPTIVE_SUPPLEMENTAL_RUN_ID,
     PHASE042_ADAPTIVE_TASK_TYPES,
-    PHASE042_PAPER_FACING_PROVIDER_MODELS,
+    PHASE042_REPORTED_PROVIDER_MODELS,
+    _runtime_model_kwargs,
     build_phase042_adaptive_preflight_matrix,
     collect_phase042_adaptive_runs,
 )
-from phase042_artifacts import PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION
+from cognition.phase042_artifacts import PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION
 
 
 def _write_json(path: Path, payload: object) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def test_runtime_model_kwargs_supports_gpt5_medium_reasoning_label() -> None:
+    assert _runtime_model_kwargs("openai", "gpt-5_medium") == {
+        "model": "gpt-5",
+        "thinking": True,
+        "thinking_options": {"effort": "medium"},
+    }
 
 
 def _selected_row(task_type: str, sample_count: int = 10) -> dict[str, object]:
@@ -92,7 +101,7 @@ def _write_phase042_adaptive_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
             },
         )
     results_dir = tmp_path / "results"
-    for provider_model in PHASE042_PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in PHASE042_REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
         _write_json(results_dir / "exp2" / provider / model / "results.json", [])
     return selected_manifest, dataset_root, results_dir
@@ -151,7 +160,7 @@ def _fake_adaptive_report(args) -> AdaptivePreflightReport:
 
 def _build_preflight(tmp_path: Path, monkeypatch) -> tuple[Path, list[object], Path]:
     selected_manifest, dataset_root, results_dir = _write_phase042_adaptive_fixture(tmp_path)
-    output_root = tmp_path / "results/revision"
+    output_root = tmp_path / "results/local_runs"
     monkeypatch.setattr(adaptive_preflight, "build_report", _fake_adaptive_report)
     rows = build_phase042_adaptive_preflight_matrix(
         selected_manifest_path=selected_manifest,
@@ -174,7 +183,7 @@ def test_adaptive_preflight_uses_six_hard_tasks_plus_three_new_categories(
 ) -> None:
     _matrix_path, rows, _selected_manifest = _build_preflight(tmp_path, monkeypatch)
 
-    assert len(rows) == len(PHASE042_PAPER_FACING_PROVIDER_MODELS) * PHASE042_ADAPTIVE_ROUND_COUNT
+    assert len(rows) == len(PHASE042_REPORTED_PROVIDER_MODELS) * PHASE042_ADAPTIVE_ROUND_COUNT
     assert {tuple(row.task_types) for row in rows} == {PHASE042_ADAPTIVE_TASK_TYPES}
     assert "Image_Recognition" not in rows[0].task_types
     assert "Geometry_Click" not in rows[0].task_types
@@ -214,7 +223,7 @@ def test_collect_adaptive_requires_confirmation(tmp_path: Path, monkeypatch) -> 
     with pytest.raises(ValueError, match="confirmed-adaptive-cost"):
         collect_phase042_adaptive_runs(
             preflight_matrix_path=matrix_path,
-            output_root=tmp_path / "results/revision",
+            output_root=tmp_path / "results/local_runs",
             selected_manifest_path=selected_manifest,
         )
 
@@ -224,7 +233,7 @@ def test_adaptive_summary_derives_success_at_3_and_success_at_5(
     monkeypatch,
 ) -> None:
     matrix_path, _rows, selected_manifest = _build_preflight(tmp_path, monkeypatch)
-    output_root = tmp_path / "results/revision"
+    output_root = tmp_path / "results/local_runs"
     calls = []
 
     def fake_run_adaptive_experiment(**kwargs):
@@ -293,13 +302,13 @@ def test_adaptive_summary_derives_success_at_3_and_success_at_5(
         confirmed_adaptive_cost=True,
     )
 
-    assert summary["run_count"] == len(PHASE042_PAPER_FACING_PROVIDER_MODELS) * 5
+    assert summary["run_count"] == len(PHASE042_REPORTED_PROVIDER_MODELS) * 5
     assert len(calls) == summary["run_count"]
     assert len({call["run_id"] for call in calls}) == len(calls)
     assert len({call["seed"] for call in calls}) == len(calls)
     assert calls[0]["attempt_budget_k"] == PHASE042_ADAPTIVE_ATTEMPT_BUDGET_K
-    fireworks_call = next(call for call in calls if call["provider"] == "fireworks")
-    assert fireworks_call["model"] == "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
+    openrouter_call = next(call for call in calls if call["provider"] == "openrouter")
+    assert openrouter_call["model"] == "qwen/qwen3-vl-235b-a22b-instruct"
     medium_call = next(call for call in calls if call["run_id"].endswith("gpt-5.1_medium"))
     assert medium_call["model"] == "gpt-5.1"
     assert medium_call["thinking_options"] == {"effort": "medium"}
@@ -329,7 +338,7 @@ def test_adaptive_pipeline_rejects_phase041_inputs(tmp_path: Path, monkeypatch) 
             selected_manifest_path=Path("expanded_captcha_data/phase04_1/manifest.json"),
             dataset_root=dataset_root,
             results_dir=results_dir,
-            output_root=tmp_path / "results/revision",
+            output_root=tmp_path / "results/local_runs",
         )
 
     with pytest.raises(ValueError, match="Phase 04.1"):
@@ -337,6 +346,6 @@ def test_adaptive_pipeline_rejects_phase041_inputs(tmp_path: Path, monkeypatch) 
             selected_manifest_path=selected_manifest,
             dataset_root=dataset_root,
             results_dir=results_dir,
-            output_root=tmp_path / "results/revision",
+            output_root=tmp_path / "results/local_runs",
             run_id="phase04_1_adaptive_supplemental",
         )

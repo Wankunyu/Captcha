@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from expanded_dataset_phase042 import (
+from cognition.expanded_dataset_phase042 import (
     PHASE042_ADAPTIVE_TASK_TYPES,
     PHASE042_OPENROUTER_QWEN_PROVIDER_MODEL,
     PHASE042_STATIC_TASK_TYPES,
@@ -97,9 +97,9 @@ def _static_row(
         "protocol_failure_count": protocol_failure_count,
         "infrastructure_failure_count": infrastructure_failure_count,
         "pass_rate": pass_rate,
-        "run_manifest_path": "results/revision/phase04_2_static/run_manifest.json",
-        "attempt_log_path": "results/revision/phase04_2_static/attempts.jsonl",
-        "summary_source_path": "results/revision/phase04_2_static/summary.json",
+        "run_manifest_path": "results/local_runs/phase04_2_static/run_manifest.json",
+        "attempt_log_path": "results/local_runs/phase04_2_static/attempts.jsonl",
+        "summary_source_path": "results/local_runs/phase04_2_static/summary.json",
         "selected_manifest_path": (
             "expanded_captcha_data/phase04_2/phase042_selected_manifest.json"
         ),
@@ -142,9 +142,13 @@ def _adaptive_round_row(
         "feedback_mode": "binary-pass-fail",
         "memory_mode": "explicit-policy-notes",
         "stopping_rule": "first-success-or-budget",
-        "run_manifest_path": "results/revision/phase04_2_adaptive/run_manifest.json",
-        "adaptive_attempt_log_path": "results/revision/phase04_2_adaptive/adaptive_attempts.jsonl",
-        "adaptive_summary_source_path": "results/revision/phase04_2_adaptive/adaptive_summary.json",
+        "run_manifest_path": "results/local_runs/phase04_2_adaptive/run_manifest.json",
+        "adaptive_attempt_log_path": (
+            "results/local_runs/phase04_2_adaptive/adaptive_attempts.jsonl"
+        ),
+        "adaptive_summary_source_path": (
+            "results/local_runs/phase04_2_adaptive/adaptive_summary.json"
+        ),
         "selected_manifest_path": (
             "expanded_captcha_data/phase04_2/phase042_selected_manifest.json"
         ),
@@ -201,7 +205,7 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
         },
     )
     base_static = _write_json(
-        tmp_path / "results/revision/phase04_2_static_supplemental/expanded_static_summary.json",
+        tmp_path / "results/local_runs/phase04_2_static_supplemental/expanded_static_summary.json",
         {
             "schema_version": "cognition.revision.phase042.static_summary.v1",
             "rows": [
@@ -228,7 +232,7 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
     openrouter_static = _write_json(
         tmp_path
         / (
-            "results/revision/"
+            "results/local_runs/"
             "phase04_2_static_openrouter_qwen_infra_remediation_20260522/"
             "expanded_static_summary.json"
         ),
@@ -242,7 +246,7 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
     openai_static = _write_json(
         tmp_path
         / (
-            "results/revision/"
+            "results/local_runs/"
             "phase04_2_static_openai_infra_remediation_20260522/"
             "expanded_static_summary.json"
         ),
@@ -267,7 +271,7 @@ def _write_common_inputs(tmp_path: Path, *, gpt_symbol: bool = False) -> dict[st
     adaptive_summary = _write_json(
         tmp_path
         / (
-            "results/revision/phase04_2_adaptive_gpt5_medium_20260522/"
+            "results/local_runs/phase04_2_adaptive_gpt5_medium_20260522/"
             "expanded_adaptive_summary.json"
         ),
         {
@@ -325,7 +329,7 @@ def test_analysis_reports_agreement_and_divergence(tmp_path: Path) -> None:
         ],
         adaptive_summary_path=paths["adaptive_summary"],
         results_dir=paths["results_dir"],
-        run_id="phase04_2_evidence_analysis",
+        run_id="exp5_evidence_analysis",
     )
     records = [row.model_dump(mode="json") for row in rows]
     required = {
@@ -421,7 +425,7 @@ def test_analysis_preserves_gpt_image_caveats(tmp_path: Path) -> None:
         static_summary_paths=[paths["base_static"], paths["openrouter_static"]],
         adaptive_summary_path=paths["adaptive_summary"],
         results_dir=paths["results_dir"],
-        run_id="phase04_2_evidence_analysis",
+        run_id="exp5_evidence_analysis",
     )
     symbol_rows = [
         row.model_dump(mode="json")

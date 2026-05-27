@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from expanded_dataset import (
+from cognition.expanded_dataset import (
     PHASE041_EVALUATOR_SLICE,
     PHASE041_NEW_TASK_TYPES,
     PHASE041_NEW_TASK_MIN_SAMPLE_COUNT,
@@ -16,7 +16,7 @@ from expanded_dataset import (
 )
 
 
-PAPER_FACING_PROVIDER_MODELS = [
+REPORTED_PROVIDER_MODELS = [
     "openai/gpt-5",
     "openai/gpt-5.1_medium",
     "openai/gpt-5.1_none",
@@ -57,7 +57,8 @@ def _manifest_row(task_type: str, **overrides: object) -> dict[str, object]:
         "source_citation": "Open CaptchaWorld-compatible test fixture",
         "source_license": "test fixture license",
         "source_provenance_notes": (
-            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation; "
+            "new to current captcha_data."
         ),
         "materialized_path": str(PHASE041_EVALUATOR_SLICE / task_type),
         "evidence_origin": "new_category" if is_new else "supplemented_category",
@@ -265,7 +266,7 @@ def test_materialize_evaluator_slice_rejects_missing_referenced_files(tmp_path) 
 
 def test_build_paper_facing_run_matrix_uses_existing_exp2_models(tmp_path) -> None:
     exp2_root = tmp_path / "results" / "exp2"
-    for provider_model in [*PAPER_FACING_PROVIDER_MODELS, "openai/gpt-5-chat-latest"]:
+    for provider_model in [*REPORTED_PROVIDER_MODELS, "openai/gpt-5-chat-latest"]:
         provider, model = provider_model.split("/", 1)
         _write_json(exp2_root / provider / model / "results.csv", [])
 
@@ -276,7 +277,7 @@ def test_build_paper_facing_run_matrix_uses_existing_exp2_models(tmp_path) -> No
         run_id_prefix="phase04_1_static",
     )
 
-    assert [row.provider_model for row in rows] == PAPER_FACING_PROVIDER_MODELS
+    assert [row.provider_model for row in rows] == REPORTED_PROVIDER_MODELS
     assert all(row.paper_facing_model_row for row in rows)
     assert all(row.run_scope == "static" for row in rows)
     assert all(

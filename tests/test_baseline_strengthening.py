@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from baseline_strengthening import (
+from cognition.baseline_strengthening import (
     build_baseline_comparison_rows,
     build_external_import_validation_rows,
     build_paper_baseline_rows,
@@ -14,7 +14,7 @@ from baseline_strengthening import (
     render_baseline_notes,
     validate_coverage_rows,
 )
-from phase4_artifacts import (
+from cognition.phase4_artifacts import (
     BASELINE_COMPARISON_SCHEMA_VERSION,
     BASELINE_COVERAGE_SCHEMA_VERSION,
     EXTERNAL_IMPORT_VALIDATION_SCHEMA_VERSION,
@@ -340,10 +340,10 @@ def test_build_table_preserves_non_comparable_literature_rows(tmp_path) -> None:
         import_rows,
         run_id="table-test",
     )
-    paper_rows = build_paper_baseline_rows(comparison_rows, run_id="table-test")
+    final_rows = build_paper_baseline_rows(comparison_rows, run_id="table-test")
 
     oedipus_comparison = next(row for row in comparison_rows if row.system_name == "Oedipus")
-    oedipus_paper = next(row for row in paper_rows if row.system_name == "Oedipus")
+    oedipus_paper = next(row for row in final_rows if row.system_name == "Oedipus")
 
     assert oedipus_comparison.primary_status == "literature-only"
     assert oedipus_comparison.reported_metric_name == "success_rate"
@@ -399,9 +399,9 @@ def test_notes_summarize_status_and_comparability_counts(tmp_path) -> None:
         import_rows,
         run_id="notes-test",
     )
-    paper_rows = build_paper_baseline_rows(comparison_rows, run_id="notes-test")
+    final_rows = build_paper_baseline_rows(comparison_rows, run_id="notes-test")
 
-    notes = render_baseline_notes(paper_rows, import_rows)
+    notes = render_baseline_notes(final_rows, import_rows)
 
     for heading in (
         "## Status Counts",
@@ -482,7 +482,7 @@ def test_full_phase4_cli_chain_with_halligan_smoke_fixture(tmp_path, capsys) -> 
         Path(table_summary["paper_table_json"]).read_text(encoding="utf-8")
     )
     assert paper_payload["schema_version"] == PAPER_BASELINE_TABLE_SCHEMA_VERSION
-    first_paper_row = paper_payload["rows"][0]
+    first_final_row = paper_payload["rows"][0]
     for field in (
         "system_class",
         "primary_status",
@@ -491,7 +491,7 @@ def test_full_phase4_cli_chain_with_halligan_smoke_fixture(tmp_path, capsys) -> 
         "reported_metric_display",
         "normalized_success_rate",
     ):
-        assert field in first_paper_row
+        assert field in first_final_row
 
     comparison_payload = json.loads(
         Path(table_summary["comparison_json"]).read_text(encoding="utf-8")

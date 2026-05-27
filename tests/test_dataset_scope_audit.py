@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dataset_scope_audit import (
+from cognition.dataset_scope_audit import (
     HOLD_BUTTON_REASON,
     SLIDE_PUZZLE_REASON,
     build_dataset_scope_rows,
@@ -13,7 +13,7 @@ from dataset_scope_audit import (
     main,
     write_dataset_scope_audit,
 )
-from phase3_artifacts import DATASET_SCOPE_SCHEMA_VERSION
+from cognition.phase3_artifacts import DATASET_SCOPE_SCHEMA_VERSION
 
 
 def _write_json(path: Path, payload: object) -> None:

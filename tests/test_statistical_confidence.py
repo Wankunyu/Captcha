@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 import pandas as pd
 
-from phase3_artifacts import (
+from cognition.phase3_artifacts import (
     PASS_RATE_CONFIDENCE_SCHEMA_VERSION,
     THRESHOLD_SENSITIVITY_SCHEMA_VERSION,
 )
-from statistical_confidence import (
+from cognition.statistical_confidence import (
     CUTOFF_NOTE,
     build_pass_rate_confidence_rows,
     build_threshold_sensitivity_rows,
@@ -302,7 +302,7 @@ def test_threshold_label_rules_and_cutoff_note_text() -> None:
         "security tier."
     )
     disallowed_margin_text = "+" + "/- 5%"
-    assert disallowed_margin_text not in Path("statistical_confidence.py").read_text(
+    assert disallowed_margin_text not in Path("cognition/statistical_confidence.py").read_text(
         encoding="utf-8"
     )
 

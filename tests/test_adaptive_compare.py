@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from adaptive_compare import (
+from cognition.adaptive_compare import (
     CUTOFF_NOTE,
     build_parser,
     build_comparison_rows,
@@ -14,7 +14,7 @@ from adaptive_compare import (
     main,
     write_comparison,
 )
-from exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
+from cognition.exp2_to_exp3_predict import predict_A_from_exp2, predict_q_from_exp2
 
 
 def _write_csv(path: Path, rows: list[dict[str, object]]) -> None:

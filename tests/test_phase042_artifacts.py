@@ -3,10 +3,10 @@ from collections.abc import Callable
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from phase042_artifacts import (
+from cognition.phase042_artifacts import (
     PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     PHASE042_EVIDENCE_ANALYSIS_SCHEMA_VERSION,
-    PHASE042_PAPER_EVIDENCE_SCHEMA_VERSION,
+    PHASE042_FINAL_EVIDENCE_SCHEMA_VERSION,
     PHASE042_PREFLIGHT_MATRIX_SCHEMA_VERSION,
     PHASE042_SELECTED_MANIFEST_SCHEMA_VERSION,
     PHASE042_SELECTED_SOURCE_KINDS,
@@ -14,7 +14,7 @@ from phase042_artifacts import (
     PHASE042_VALIDATION_REPORT_SCHEMA_VERSION,
     Phase042AdaptiveSummaryRow,
     Phase042EvidenceAnalysisRow,
-    Phase042PaperEvidenceRow,
+    Phase042FinalEvidenceRow,
     Phase042PreflightMatrixRow,
     Phase042SelectedManifestRow,
     Phase042StaticSummaryRow,
@@ -125,9 +125,9 @@ def _preflight_row(**overrides: object) -> Phase042PreflightMatrixRow:
         "prompt_config": {"prompts_file": "prompts_optimized.yaml"},
         "expected_request_count": 1,
         "cost_preview": {"unavailable_reason": "pricing metadata not provided"},
-        "output_dir": "results/revision/phase04_2_static_supplemental",
+        "output_dir": "results/local_runs/phase04_2_static_supplemental",
         "preflight_report_path": (
-            "results/revision/phase04_2_static_supplemental/preflight.json"
+            "results/local_runs/phase04_2_static_supplemental/preflight.json"
         ),
         "overwrite": False,
         "resume": True,
@@ -152,9 +152,9 @@ def _static_summary_row(**overrides: object) -> Phase042StaticSummaryRow:
         "protocol_failure_count": 0,
         "infrastructure_failure_count": 0,
         "pass_rate": 0.0,
-        "run_manifest_path": "results/revision/phase04_2_static/run_manifest.json",
-        "attempt_log_path": "results/revision/phase04_2_static/attempts.jsonl",
-        "summary_source_path": "results/revision/phase04_2_static/summary.csv",
+        "run_manifest_path": "results/local_runs/phase04_2_static/run_manifest.json",
+        "attempt_log_path": "results/local_runs/phase04_2_static/attempts.jsonl",
+        "summary_source_path": "results/local_runs/phase04_2_static/summary.csv",
         "selected_manifest_path": (
             "expanded_captcha_data/phase04_2/phase042_selected_manifest.json"
         ),
@@ -184,12 +184,12 @@ def _adaptive_summary_row(**overrides: object) -> Phase042AdaptiveSummaryRow:
         "feedback_mode": "binary-pass-fail",
         "memory_mode": "explicit-policy-notes",
         "stopping_rule": "first-success-or-budget",
-        "run_manifest_path": "results/revision/phase04_2_adaptive/manifest.json",
+        "run_manifest_path": "results/local_runs/phase04_2_adaptive/manifest.json",
         "adaptive_attempt_log_path": (
-            "results/revision/phase04_2_adaptive/adaptive_attempts.jsonl"
+            "results/local_runs/phase04_2_adaptive/adaptive_attempts.jsonl"
         ),
         "adaptive_summary_source_path": (
-            "results/revision/phase04_2_adaptive/adaptive_summary.csv"
+            "results/local_runs/phase04_2_adaptive/adaptive_summary.csv"
         ),
         "selected_manifest_path": (
             "expanded_captcha_data/phase04_2/phase042_selected_manifest.json"
@@ -224,9 +224,9 @@ def _evidence_analysis_row(**overrides: object) -> Phase042EvidenceAnalysisRow:
     return Phase042EvidenceAnalysisRow(**values)
 
 
-def _paper_evidence_row(**overrides: object) -> Phase042PaperEvidenceRow:
+def _final_evidence_row(**overrides: object) -> Phase042FinalEvidenceRow:
     values: dict[str, object] = {
-        "run_id": "phase04_2_paper_outputs",
+        "run_id": "exp5_final_outputs_20260522",
         "evidence_row_id": "dice-count-openai-gpt5",
         "provider": "openai",
         "model": "gpt-5",
@@ -247,13 +247,13 @@ def _paper_evidence_row(**overrides: object) -> Phase042PaperEvidenceRow:
         "direct_evidence": True,
         "contextual_sota_only": False,
         "claim_use": "main_body_direct_evidence",
-        "source_artifact_path": "results/revision/phase04_2_paper_outputs/evidence.csv",
+        "source_artifact_path": "results/exp5/final_outputs_20260522/evidence.csv",
         "selected_manifest_path": (
             "expanded_captcha_data/phase04_2/phase042_selected_manifest.json"
         ),
     }
     values.update(overrides)
-    return Phase042PaperEvidenceRow(**values)
+    return Phase042FinalEvidenceRow(**values)
 
 
 def test_phase042_schema_versions_are_exact() -> None:
@@ -282,8 +282,8 @@ def test_phase042_schema_versions_are_exact() -> None:
         == "cognition.revision.phase042.evidence_analysis.v1"
     )
     assert (
-        PHASE042_PAPER_EVIDENCE_SCHEMA_VERSION
-        == "cognition.revision.phase042.paper_evidence.v1"
+        PHASE042_FINAL_EVIDENCE_SCHEMA_VERSION
+        == "cognition.revision.phase042.final_evidence.v1"
     )
 
 
@@ -361,7 +361,7 @@ def test_phase042_models_forbid_extra_fields() -> None:
         (Phase042StaticSummaryRow, _static_summary_row),
         (Phase042AdaptiveSummaryRow, _adaptive_summary_row),
         (Phase042EvidenceAnalysisRow, _evidence_analysis_row),
-        (Phase042PaperEvidenceRow, _paper_evidence_row),
+        (Phase042FinalEvidenceRow, _final_evidence_row),
     ]
     for model, builder in builders:
         assert model.model_config["extra"] == "forbid"

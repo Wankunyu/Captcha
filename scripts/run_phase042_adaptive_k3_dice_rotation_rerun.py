@@ -13,13 +13,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # The script is invoked by path from the repo root, so make root imports explicit.
-import adaptive_attacker  # noqa: E402
-from adaptive_artifacts import FEEDBACK_MODE, MEMORY_MODE, SAMPLING_MODE, STOPPING_RULE  # noqa: E402
-from phase042_artifacts import (  # noqa: E402
+from cognition import adaptive_attacker  # noqa: E402
+from cognition.adaptive_artifacts import FEEDBACK_MODE, MEMORY_MODE, SAMPLING_MODE, STOPPING_RULE  # noqa: E402
+from cognition.phase042_artifacts import (  # noqa: E402
     PHASE042_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     Phase042AdaptiveSummaryRow,
 )
-from revision_artifacts import revision_run_dir, sha256_file  # noqa: E402
+from cognition.revision_artifacts import revision_run_dir, sha256_file  # noqa: E402
 
 
 TASK_TYPES = ("Dice_Count", "Rotation_Match")
@@ -30,10 +30,10 @@ FILTERED_DATASET_ROOT = Path(
     "expanded_captcha_data/phase04_2/adaptive_k3_dice_rotation_rerun_slice_20260522"
 )
 PREVIOUS_ATTEMPTS_GLOB = (
-    "results/revision/"
+    "results/local_runs/"
     "phase04_2_adaptive_gpt5_medium_20260522-round*/adaptive_attempts.jsonl"
 )
-RESULTS_ROOT = Path("results/revision")
+RESULTS_ROOT = Path("results/local_runs")
 PROMPTS_FILE = Path("prompts_optimized.yaml")
 IMAGE_SUFFIXES = {".bmp", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
 

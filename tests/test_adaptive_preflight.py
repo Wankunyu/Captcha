@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from adaptive_preflight import (
+from cognition.adaptive_preflight import (
     ADAPTIVE_PREFLIGHT_SCHEMA_VERSION,
     AdaptivePreflightCostPreview,
     AdaptivePreflightReport,
@@ -13,7 +13,7 @@ from adaptive_preflight import (
     build_parser,
     main,
 )
-from revision_artifacts import sha256_file, sha256_text
+from cognition.revision_artifacts import sha256_file, sha256_text
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -128,7 +128,7 @@ def test_schema_constant_and_models_expose_adaptive_semantics() -> None:
         expected_request_count_max=1,
         prompt_config={},
         cost_preview=cost_preview,
-        output_dir="results/revision/adaptive-run",
+        output_dir="results/local_runs/adaptive-run",
         output_paths={"adaptive_preflight_report": "adaptive_preflight_report.json"},
         tasks=[task],
     )
@@ -190,7 +190,7 @@ def test_cli_prints_report_and_writes_only_when_requested(tmp_path, capsys) -> N
 
 
 def test_preflight_does_not_construct_provider(tmp_path, monkeypatch, capsys) -> None:
-    import run_eval
+    from cognition import run_eval
 
     def fail(*args, **kwargs):
         raise AssertionError("adaptive preflight must not construct providers")

@@ -3,25 +3,25 @@ from pathlib import Path
 
 import pytest
 
-import revision_preflight
-import run_eval
-from expanded_dataset import (
-    PAPER_FACING_PROVIDER_MODELS,
+from cognition import revision_preflight
+from cognition import run_eval
+from cognition.expanded_dataset import (
+    REPORTED_PROVIDER_MODELS,
     PHASE041_EVALUATOR_SLICE,
     PHASE041_NEW_TASK_MIN_SAMPLE_COUNT,
     PHASE041_SIDECAR_ROOT,
     build_static_preflight_matrix,
     collect_static_supplemental_runs,
 )
-from phase041_artifacts import (
+from cognition.phase041_artifacts import (
     EXPANDED_STATIC_SUMMARY_SCHEMA_VERSION,
     ExpandedPreflightMatrixRow,
     write_expanded_preflight_matrix,
 )
-from revision_preflight import PreflightCostPreview, PreflightReport, PreflightTaskSummary
+from cognition.revision_preflight import PreflightCostPreview, PreflightReport, PreflightTaskSummary
 
 
-PAPER_FACING_PROVIDER_MODELS_LITERAL = [
+REPORTED_PROVIDER_MODELS_LITERAL = [
     "openai/gpt-5",
     "openai/gpt-5.1_medium",
     "openai/gpt-5.1_none",
@@ -55,7 +55,8 @@ def _manifest_row(task_type: str) -> dict[str, object]:
         "source_citation": "Open CaptchaWorld-compatible test fixture",
         "source_license": "test fixture license",
         "source_provenance_notes": (
-            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation; "
+            "new to current captcha_data."
         ),
         "materialized_path": str(PHASE041_EVALUATOR_SLICE / task_type),
         "evidence_origin": "new_category" if is_new else "supplemented_category",
@@ -95,8 +96,8 @@ def _write_phase041_sidecar(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 def _write_exp2_rows(tmp_path: Path) -> Path:
     results_dir = tmp_path / "results"
-    assert PAPER_FACING_PROVIDER_MODELS_LITERAL == PAPER_FACING_PROVIDER_MODELS
-    for provider_model in PAPER_FACING_PROVIDER_MODELS_LITERAL:
+    assert REPORTED_PROVIDER_MODELS_LITERAL == REPORTED_PROVIDER_MODELS
+    for provider_model in REPORTED_PROVIDER_MODELS_LITERAL:
         provider, model = provider_model.split("/", 1)
         _write_json(results_dir / "exp2" / provider / model / "results.json", [])
     return results_dir
@@ -169,8 +170,8 @@ def test_preflight_matrix_never_constructs_providers(tmp_path, monkeypatch) -> N
         write_reports=True,
     )
 
-    assert [row.provider_model for row in rows] == PAPER_FACING_PROVIDER_MODELS
-    assert [f"{call.provider}/{call.model}" for call in calls] == PAPER_FACING_PROVIDER_MODELS
+    assert [row.provider_model for row in rows] == REPORTED_PROVIDER_MODELS
+    assert [f"{call.provider}/{call.model}" for call in calls] == REPORTED_PROVIDER_MODELS
     reports_dir = output_root / "phase04_1_static_supplemental" / "preflight_reports"
     assert len(list(reports_dir.glob("*.json"))) == 7
     first = rows[0]
@@ -192,7 +193,7 @@ def _preflight_rows(
 ) -> list[ExpandedPreflightMatrixRow]:
     output_root = tmp_path / "results" / "revision"
     rows = []
-    for provider_model in PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
         run_id = f"phase04_1_static_supplemental-{provider}-{model.replace('/', '-')}"
         rows.append(

@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from revision_artifacts import (
+from cognition.revision_artifacts import (
     RUN_MANIFEST_SCHEMA_VERSION,
     AttemptRecord,
     PromptConfig,
@@ -138,9 +138,11 @@ def test_writer_rejects_duplicate_attempt_ids(tmp_path) -> None:
 
 def test_collect_code_revision_marks_untracked_source_dirty(tmp_path, monkeypatch) -> None:
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
-    tracked = tmp_path / "revision_artifacts.py"
+    cognition_dir = tmp_path / "cognition"
+    cognition_dir.mkdir()
+    tracked = cognition_dir / "revision_artifacts.py"
     tracked.write_text("tracked = True\n", encoding="utf-8")
-    subprocess.run(["git", "add", "revision_artifacts.py"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "cognition/revision_artifacts.py"], cwd=tmp_path, check=True)
     subprocess.run(
         ["git", "commit", "-m", "init"],
         cwd=tmp_path,
@@ -153,7 +155,7 @@ def test_collect_code_revision_marks_untracked_source_dirty(tmp_path, monkeypatc
             "GIT_COMMITTER_EMAIL": "test@example.com",
         },
     )
-    (tmp_path / "revision_preflight.py").write_text("untracked = True\n", encoding="utf-8")
+    (cognition_dir / "revision_preflight.py").write_text("untracked = True\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
     assert collect_code_revision()["dirty"] is True

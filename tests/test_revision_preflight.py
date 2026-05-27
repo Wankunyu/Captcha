@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from revision_artifacts import sha256_file
-from revision_preflight import main
+from cognition.revision_artifacts import sha256_file
+from cognition.revision_preflight import main
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -98,7 +98,7 @@ def test_preflight_rejects_unsafe_run_id(tmp_path) -> None:
 
 
 def test_preflight_never_calls_provider_factory(tmp_path, monkeypatch, capsys) -> None:
-    import run_eval
+    from cognition import run_eval
 
     def fail(*args, **kwargs):
         raise AssertionError("preflight must not construct providers")

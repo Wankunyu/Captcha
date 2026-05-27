@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-import run_eval
-from revision_artifacts import RevisionArtifactWriter, sha256_file
+from cognition import run_eval
+from cognition.revision_artifacts import RevisionArtifactWriter, sha256_file
 
 
 class FakeProvider:

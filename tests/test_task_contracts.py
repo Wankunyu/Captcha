@@ -3,9 +3,9 @@ from pathlib import Path
 
 import yaml
 
-from revision_preflight import DATASET_DIR_ALIASES, TASK_ALIASES
-from run_eval import SUPPORTED_TYPES, build_json_schema, build_tasks
-from visualize_results import CAPTCHAVisualizer
+from cognition.revision_preflight import DATASET_DIR_ALIASES, TASK_ALIASES
+from cognition.run_eval import SUPPORTED_TYPES, build_json_schema, build_tasks
+from cognition.visualize_results import CAPTCHAVisualizer
 
 
 IGNORED_NOT_USED_KEYS = {"Hold_Button(Not Used)", "Slide_Puzzle(Not Used)"}

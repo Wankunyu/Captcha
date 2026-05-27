@@ -6,35 +6,35 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from phase041_artifacts import (
+from cognition.phase041_artifacts import (
     ALLOWED_EVIDENCE_ORIGINS,
     ALLOWED_SLICE_TYPES,
     ALLOWED_SOURCE_KINDS,
     EXPANDED_ADAPTIVE_SUMMARY_SCHEMA_VERSION,
     EXPANDED_CLAIM_BOUNDARY_SCHEMA_VERSION,
     EXPANDED_DATASET_MANIFEST_SCHEMA_VERSION,
-    EXPANDED_PAPER_EVIDENCE_SCHEMA_VERSION,
+    EXPANDED_FINAL_EVIDENCE_SCHEMA_VERSION,
     EXPANDED_PREFLIGHT_MATRIX_SCHEMA_VERSION,
     EXPANDED_RUN_MATRIX_SCHEMA_VERSION,
     EXPANDED_STATIC_SUMMARY_SCHEMA_VERSION,
     ExpandedAdaptiveSummaryRow,
     ExpandedClaimBoundaryNoteRow,
     ExpandedDatasetManifestRow,
-    ExpandedPaperEvidenceRow,
+    ExpandedFinalEvidenceRow,
     ExpandedPreflightMatrixRow,
     ExpandedRunMatrixRow,
     ExpandedStaticSummaryRow,
     write_expanded_adaptive_summary,
     write_expanded_claim_boundaries,
     write_expanded_dataset_manifest,
-    write_expanded_paper_evidence,
+    write_expanded_final_evidence,
     write_expanded_preflight_matrix,
     write_expanded_run_matrix,
     write_expanded_static_summary,
 )
 
 
-PAPER_FACING_PROVIDER_MODELS = (
+REPORTED_PROVIDER_MODELS = (
     "openai/gpt-5",
     "openai/gpt-5.1_medium",
     "openai/gpt-5.1_none",
@@ -54,7 +54,8 @@ def _manifest_row(**overrides: object) -> ExpandedDatasetManifestRow:
         "source_citation": "Open CaptchaWorld-compatible test fixture",
         "source_license": "test fixture license",
         "source_provenance_notes": (
-            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation; "
+            "new to current captcha_data."
         ),
         "evidence_origin": "supplemented_category",
         "slice_type": "supplement_existing",
@@ -85,7 +86,7 @@ def _run_matrix_row(**overrides: object) -> ExpandedRunMatrixRow:
         "run_id": "phase041-static-openai-gpt5",
         "task_types": ["Dice_Count", "Click_Order"],
         "materialized_dataset_root": "expanded_captcha_data/phase04_1/evaluator_slice",
-        "output_root": "results/revision/phase041-static-openai-gpt5",
+        "output_root": "results/local_runs/phase041-static-openai-gpt5",
         "overwrite": False,
         "resume": True,
     }
@@ -108,9 +109,9 @@ def _preflight_row(**overrides: object) -> ExpandedPreflightMatrixRow:
         "prompt_config": {"prompts_file": "prompts_optimized.yaml"},
         "expected_request_count": 24,
         "cost_preview": {"unavailable_reason": "pricing metadata not provided"},
-        "output_dir": "results/revision/phase041-static-openai-gpt5",
+        "output_dir": "results/local_runs/phase041-static-openai-gpt5",
         "preflight_report_path": (
-            "results/revision/phase041-static-openai-gpt5/preflight.json"
+            "results/local_runs/phase041-static-openai-gpt5/preflight.json"
         ),
         "overwrite": False,
         "resume": True,
@@ -137,10 +138,10 @@ def _static_summary_row(**overrides: object) -> ExpandedStaticSummaryRow:
         "infrastructure_failure_count": 0,
         "pass_rate": 0.1667,
         "run_manifest_path": (
-            "results/revision/phase041-static-openai-gpt5/run_manifest.json"
+            "results/local_runs/phase041-static-openai-gpt5/run_manifest.json"
         ),
-        "attempt_log_path": "results/revision/phase041-static-openai-gpt5/attempts.jsonl",
-        "summary_source_path": "results/revision/phase041-static-openai-gpt5/summary.csv",
+        "attempt_log_path": "results/local_runs/phase041-static-openai-gpt5/attempts.jsonl",
+        "summary_source_path": "results/local_runs/phase041-static-openai-gpt5/summary.csv",
         "claim_use": "main_body_direct_evidence",
     }
     values.update(overrides)
@@ -169,13 +170,13 @@ def _adaptive_summary_row(**overrides: object) -> ExpandedAdaptiveSummaryRow:
         "memory_mode": "explicit-policy-notes",
         "stopping_rule": "first-success-or-budget",
         "run_manifest_path": (
-            "results/revision/phase041-adaptive-openai-gpt5/adaptive_manifest.json"
+            "results/local_runs/phase041-adaptive-openai-gpt5/adaptive_manifest.json"
         ),
         "adaptive_attempt_log_path": (
-            "results/revision/phase041-adaptive-openai-gpt5/adaptive_attempts.jsonl"
+            "results/local_runs/phase041-adaptive-openai-gpt5/adaptive_attempts.jsonl"
         ),
         "adaptive_summary_source_path": (
-            "results/revision/phase041-adaptive-openai-gpt5/adaptive_summary.csv"
+            "results/local_runs/phase041-adaptive-openai-gpt5/adaptive_summary.csv"
         ),
         "claim_use": "main_body_caveated",
     }
@@ -183,7 +184,7 @@ def _adaptive_summary_row(**overrides: object) -> ExpandedAdaptiveSummaryRow:
     return ExpandedAdaptiveSummaryRow(**values)
 
 
-def _paper_evidence_row(**overrides: object) -> ExpandedPaperEvidenceRow:
+def _final_evidence_row(**overrides: object) -> ExpandedFinalEvidenceRow:
     values: dict[str, object] = {
         "run_id": "phase041-paper",
         "evidence_row_id": "dice-count-openai-gpt5",
@@ -204,10 +205,10 @@ def _paper_evidence_row(**overrides: object) -> ExpandedPaperEvidenceRow:
         "direct_evidence": True,
         "contextual_sota_only": False,
         "claim_use": "main_body_direct_evidence",
-        "source_artifact_path": "results/revision/phase041-paper/evidence.csv",
+        "source_artifact_path": "results/local_runs/phase041-paper/evidence.csv",
     }
     values.update(overrides)
-    return ExpandedPaperEvidenceRow(**values)
+    return ExpandedFinalEvidenceRow(**values)
 
 
 def _claim_boundary_row(**overrides: object) -> ExpandedClaimBoundaryNoteRow:
@@ -225,7 +226,7 @@ def _claim_boundary_row(**overrides: object) -> ExpandedClaimBoundaryNoteRow:
         "contextual_sota_only": False,
         "claim_boundary_note": "direct expanded-dataset evidence, not population estimate",
         "limitation_notes": "sidecar supplemental slice only",
-        "source_artifact_path": "results/revision/phase041-paper/claim_boundaries.csv",
+        "source_artifact_path": "results/local_runs/phase041-paper/claim_boundaries.csv",
         "visible_in_main_body": True,
     }
     values.update(overrides)
@@ -251,8 +252,8 @@ def test_phase041_schema_versions_are_exact() -> None:
         == "cognition.revision.phase041.adaptive_summary.v1"
     )
     assert (
-        EXPANDED_PAPER_EVIDENCE_SCHEMA_VERSION
-        == "cognition.revision.phase041.paper_evidence.v1"
+        EXPANDED_FINAL_EVIDENCE_SCHEMA_VERSION
+        == "cognition.revision.phase041.final_evidence.v1"
     )
     assert (
         EXPANDED_CLAIM_BOUNDARY_SCHEMA_VERSION
@@ -267,7 +268,7 @@ def test_phase041_models_forbid_extra_fields() -> None:
         _preflight_row(),
         _static_summary_row(),
         _adaptive_summary_row(),
-        _paper_evidence_row(),
+        _final_evidence_row(),
         _claim_boundary_row(),
     ]
 
@@ -352,7 +353,8 @@ def test_manifest_source_provenance_allows_gpt_image_and_rejects_local_synthetic
         source_license="Generated sample usage follows project artifact terms",
         source_provenance_notes=(
             "GPT Image generated CAPTCHA-style image modeled after Open CaptchaWorld "
-            "task layouts with recorded prompts and local ground truth."
+            "task layouts with recorded prompts and local ground truth; new to "
+            "current captcha_data."
         ),
     )
     assert gpt_image_row.source_kind == "gpt_image_open_captchaworld_style"
@@ -363,7 +365,24 @@ def test_manifest_source_provenance_allows_gpt_image_and_rejects_local_synthetic
     with pytest.raises(ValidationError, match="real-world expanded sidecar rows"):
         _manifest_row(
             source_kind="open_source_dataset",
-            source_provenance_notes="deterministic offline generated local PIL samples",
+            source_provenance_notes=(
+                "deterministic offline generated local PIL samples; new to "
+                "current captcha_data."
+            ),
+        )
+
+    with pytest.raises(ValidationError, match="new relative to existing captcha_data"):
+        _manifest_row(
+            source_kind="open_source_dataset",
+            source_provenance_notes=(
+                "Copied from existing local captcha_data/Dice_Count into the sidecar."
+            ),
+        )
+
+    with pytest.raises(ValidationError, match="new relative to current captcha_data"):
+        _manifest_row(
+            source_kind="open_source_dataset",
+            source_provenance_notes="External dataset provenance without novelty statement.",
         )
 
 
@@ -383,7 +402,7 @@ def test_run_matrix_requires_paper_facing_model_rows_and_runtime_fields() -> Non
     )
     row = _run_matrix_row().model_dump()
 
-    for provider_model in PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
         assert (
             _run_matrix_row(
@@ -431,7 +450,7 @@ def test_preflight_matrix_requires_hash_cost_and_output_fields() -> None:
             ExpandedPreflightMatrixRow.model_validate(payload)
 
 
-def test_paper_evidence_requires_visible_caveats_and_direct_evidence_flags() -> None:
+def test_final_evidence_requires_visible_caveats_and_direct_evidence_flags() -> None:
     required_fields = (
         "agreement_status",
         "divergence_reason",
@@ -439,20 +458,20 @@ def test_paper_evidence_requires_visible_caveats_and_direct_evidence_flags() -> 
         "direct_evidence",
         "contextual_sota_only",
     )
-    row = _paper_evidence_row().model_dump()
+    row = _final_evidence_row().model_dump()
 
     for field in required_fields:
         payload = dict(row)
         payload.pop(field)
         with pytest.raises(ValidationError):
-            ExpandedPaperEvidenceRow.model_validate(payload)
+            ExpandedFinalEvidenceRow.model_validate(payload)
 
     with pytest.raises(ValidationError):
-        _paper_evidence_row(direct_evidence=False, claim_boundary_note="")
+        _final_evidence_row(direct_evidence=False, claim_boundary_note="")
     with pytest.raises(ValidationError):
-        _paper_evidence_row(contextual_sota_only=True, direct_evidence=True)
+        _final_evidence_row(contextual_sota_only=True, direct_evidence=True)
     with pytest.raises(ValidationError):
-        _paper_evidence_row(agreement_status="diverges_from_original", divergence_reason="")
+        _final_evidence_row(agreement_status="diverges_from_original", divergence_reason="")
 
 
 def test_writers_create_parent_dirs_and_emit_schema_payloads(tmp_path: Path) -> None:
@@ -496,10 +515,10 @@ def test_writers_create_parent_dirs_and_emit_schema_payloads(tmp_path: Path) -> 
             "expanded_adaptive_summary",
         ),
         (
-            write_expanded_paper_evidence,
-            EXPANDED_PAPER_EVIDENCE_SCHEMA_VERSION,
-            _paper_evidence_row(),
-            "expanded_paper_evidence",
+            write_expanded_final_evidence,
+            EXPANDED_FINAL_EVIDENCE_SCHEMA_VERSION,
+            _final_evidence_row(),
+            "expanded_final_evidence",
         ),
         (
             write_expanded_claim_boundaries,

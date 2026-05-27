@@ -1,4 +1,0 @@
-provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
-openai,gpt-5.1,Misleading_Click,10,1.000,2850.9,2852.0,8650,282,8932,0.013633,0.001363
-openai,gpt-5.1,Object_Match,20,0.100,14985.1,14989.7,81260,423,81683,0.105805,0.005290
-openai,gpt-5.1,Pick_Area,20,0.150,2207.9,2209.1,8640,580,9220,0.016600,0.000830

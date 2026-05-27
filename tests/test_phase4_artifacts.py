@@ -4,7 +4,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from phase4_artifacts import (
+from cognition.phase4_artifacts import (
     BASELINE_COMPARISON_SCHEMA_VERSION,
     BASELINE_COVERAGE_SCHEMA_VERSION,
     EXTERNAL_IMPORT_VALIDATION_SCHEMA_VERSION,
@@ -111,7 +111,7 @@ def _comparison_row(**overrides: object) -> BaselineComparisonRow:
     return BaselineComparisonRow(**values)
 
 
-def _paper_row(**overrides: object) -> PaperBaselineRow:
+def _final_row(**overrides: object) -> PaperBaselineRow:
     values: dict[str, object] = {
         "run_id": "phase4-test",
         "system_name": "Halligan",
@@ -148,7 +148,7 @@ def test_phase4_models_forbid_extra_fields() -> None:
         _coverage_row(),
         _import_validation_row(),
         _comparison_row(),
-        _paper_row(),
+        _final_row(),
     ]
 
     for row in rows:
@@ -240,9 +240,9 @@ def test_direct_and_adapter_rows_require_license_and_data_use_constraints() -> N
             )
 
 
-def test_paper_rows_require_visible_notes_when_not_directly_comparable() -> None:
+def test_final_rows_require_visible_notes_when_not_directly_comparable() -> None:
     with pytest.raises(ValidationError):
-        _paper_row(
+        _final_row(
             system_name="Oedipus",
             primary_status="literature-only",
             directly_comparable=False,
@@ -252,7 +252,7 @@ def test_paper_rows_require_visible_notes_when_not_directly_comparable() -> None
             caveat_tags=["metric-mismatch", "artifact-unavailable"],
         )
 
-    row = _paper_row(
+    row = _final_row(
         system_name="Oedipus",
         primary_status="literature-only",
         directly_comparable=False,
@@ -302,7 +302,7 @@ def test_writers_create_parent_dirs_and_emit_schema_payloads(tmp_path) -> None:
         [_import_validation_row()],
     )
     write_baseline_comparison(comparison_path, comparison_json, [_comparison_row()])
-    write_paper_baseline_table(paper_path, paper_json, [_paper_row()])
+    write_paper_baseline_table(paper_path, paper_json, [_final_row()])
 
     with coverage_path.open("r", encoding="utf-8", newline="") as handle:
         coverage_rows = list(csv.DictReader(handle))

@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from failure_taxonomy import (
+from cognition.failure_taxonomy import (
     AGGREGATE_ONLY_CAVEAT,
     INFRASTRUCTURE_CAVEAT,
     PROTOCOL_CAVEAT,

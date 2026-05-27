@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from limitations_summary import (
+from cognition.limitations_summary import (
     build_artifact_index,
     load_rows,
     main,

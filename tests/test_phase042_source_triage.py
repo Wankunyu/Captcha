@@ -1,6 +1,6 @@
 import pytest
 
-from expanded_dataset_phase042 import (
+from cognition.expanded_dataset_phase042 import (
     PHASE042_MIN_SAMPLES_PER_CATEGORY,
     build_source_triage_rows,
 )

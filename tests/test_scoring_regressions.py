@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-import run_eval
+from cognition import run_eval
 
 
 def _write_config(path: Path) -> None:

@@ -4,7 +4,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from phase3_artifacts import (
+from cognition.phase3_artifacts import (
     DATASET_SCOPE_SCHEMA_VERSION,
     EXTENDED_DATASET_MANIFEST_SCHEMA_VERSION,
     EXTENDED_VALIDATION_COMPARISON_SCHEMA_VERSION,

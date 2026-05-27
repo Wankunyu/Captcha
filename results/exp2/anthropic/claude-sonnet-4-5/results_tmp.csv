@@ -1,4 +1,0 @@
-provider,model,type,n,pass_at_1,avg_ttft_ms,avg_e2e_ms,tokens_in,tokens_out,total_tokens,cost_usd,cost_per_question
-anthropic,claude-sonnet-4-5,Misleading_Click,10,0.000,408.3,408.3,0,0,0,0.000000,0.000000
-anthropic,claude-sonnet-4-5,Object_Match,20,0.000,3632.1,3632.1,0,0,0,0.000000,0.000000
-anthropic,claude-sonnet-4-5,Pick_Area,20,0.000,269.2,269.2,0,0,0,0.000000,0.000000

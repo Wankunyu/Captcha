@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from extended_dataset_manifest import (
+from cognition.extended_dataset_manifest import (
     ADAPTIVE_RECOMMENDED_COMMAND_SCOPE,
     VALIDATION_QUESTION,
     build_extended_validation_comparison_rows,
@@ -13,7 +13,7 @@ from extended_dataset_manifest import (
     load_validation_slice_outcomes,
     main,
 )
-from phase3_artifacts import EXTENDED_VALIDATION_COMPARISON_SCHEMA_VERSION
+from cognition.phase3_artifacts import EXTENDED_VALIDATION_COMPARISON_SCHEMA_VERSION
 
 
 def _write_json(path: Path, payload: object) -> None:

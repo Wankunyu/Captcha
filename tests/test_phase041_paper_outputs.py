@@ -1,11 +1,11 @@
 import json
 from pathlib import Path
 
-from expanded_dataset import (
+from cognition.expanded_dataset import (
     PHASE041_EVALUATOR_SLICE,
     PHASE041_NEW_TASK_MIN_SAMPLE_COUNT,
     PHASE041_SIDECAR_ROOT,
-    write_phase041_paper_outputs,
+    write_phase041_final_outputs,
 )
 
 
@@ -33,7 +33,8 @@ def _manifest_row(task_type: str) -> dict[str, object]:
         "source_citation": "Open CaptchaWorld-compatible test fixture",
         "source_license": "test fixture license",
         "source_provenance_notes": (
-            "Mirrored from an open-source CAPTCHA dataset fixture for validation."
+            "Mirrored from an open-source CAPTCHA dataset fixture for validation; "
+            "new to current captcha_data."
         ),
         "materialized_path": str(PHASE041_EVALUATOR_SLICE / task_type),
         "evidence_origin": "new_category" if is_new else "supplemented_category",
@@ -79,8 +80,8 @@ def _summary_row(**overrides: object) -> dict[str, object]:
 
 
 def _write_phase4_artifacts(tmp_path: Path) -> tuple[Path, Path]:
-    phase4_table_path = tmp_path / "results" / "revision" / "phase4-paper" / "table.json"
-    phase4_notes_path = tmp_path / "results" / "revision" / "phase4-paper" / "notes.md"
+    phase4_table_path = tmp_path / "results" / "revision" / "sota_baselines" / "table.json"
+    phase4_notes_path = tmp_path / "results" / "revision" / "sota_baselines" / "notes.md"
     _write_json(
         phase4_table_path,
         {
@@ -98,7 +99,7 @@ def _write_phase4_artifacts(tmp_path: Path) -> tuple[Path, Path]:
     return phase4_table_path, phase4_notes_path
 
 
-def test_paper_outputs_preserve_divergence(tmp_path) -> None:
+def test_final_outputs_preserve_divergence(tmp_path) -> None:
     manifest_path = _write_manifest(tmp_path)
     results_dir = tmp_path / "results"
     exp2_path = results_dir / "exp2" / "openai" / "gpt-5" / "results.csv"
@@ -140,7 +141,7 @@ def test_paper_outputs_preserve_divergence(tmp_path) -> None:
     )
     phase4_table_path, phase4_notes_path = _write_phase4_artifacts(tmp_path)
 
-    summary = write_phase041_paper_outputs(
+    summary = write_phase041_final_outputs(
         manifest_path=manifest_path,
         static_summary_path=static_summary_path,
         adaptive_summary_path=adaptive_summary_path,
@@ -148,10 +149,10 @@ def test_paper_outputs_preserve_divergence(tmp_path) -> None:
         phase4_notes_path=phase4_notes_path,
         results_dir=results_dir,
         output_root=tmp_path / "results" / "revision",
-        run_id="phase04_1_paper_outputs",
+        run_id="phase04_1_final_outputs",
     )
 
-    output_dir = tmp_path / "results" / "revision" / "phase04_1_paper_outputs"
+    output_dir = tmp_path / "results" / "revision" / "phase04_1_final_outputs"
     validation_payload = json.loads(
         (output_dir / "expanded_dataset_validation_analysis.json").read_text(
             encoding="utf-8"

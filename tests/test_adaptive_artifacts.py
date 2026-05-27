@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from adaptive_artifacts import (
+from cognition.adaptive_artifacts import (
     ADAPTIVE_ATTEMPT_SCHEMA_VERSION,
     ADAPTIVE_COMPARISON_SCHEMA_VERSION,
     ADAPTIVE_POLICY_STATE_SCHEMA_VERSION,

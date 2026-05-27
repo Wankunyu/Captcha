@@ -2,7 +2,7 @@ import json
 
 import yaml
 
-from revision_secrets import REDACTED, load_local_config, redact_mapping, redact_text
+from cognition.revision_secrets import REDACTED, load_local_config, redact_mapping, redact_text
 
 
 def test_load_local_config_reads_yaml_and_json(tmp_path) -> None:

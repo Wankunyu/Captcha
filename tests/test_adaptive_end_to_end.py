@@ -4,11 +4,11 @@ from pathlib import Path
 
 import yaml
 
-import adaptive_attacker
-import adaptive_compare
-import adaptive_preflight
-import run_eval
-from adaptive_artifacts import AdaptiveArtifactWriter
+from cognition import adaptive_attacker
+from cognition import adaptive_compare
+from cognition import adaptive_preflight
+from cognition import run_eval
+from cognition.adaptive_artifacts import AdaptiveArtifactWriter
 
 
 def _write_json(path: Path, payload: object) -> None:

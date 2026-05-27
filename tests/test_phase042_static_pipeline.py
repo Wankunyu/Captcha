@@ -3,18 +3,18 @@ from pathlib import Path
 
 import pytest
 
-import revision_preflight
-import run_eval
-from expanded_dataset_phase042 import (
+from cognition import revision_preflight
+from cognition import run_eval
+from cognition.expanded_dataset_phase042 import (
     PHASE042_EVALUATOR_SLICE,
-    PHASE042_PAPER_FACING_PROVIDER_MODELS,
+    PHASE042_REPORTED_PROVIDER_MODELS,
     PHASE042_STATIC_SUPPLEMENTAL_RUN_ID,
     PHASE042_STATIC_TASK_TYPES,
     build_phase042_static_preflight_matrix,
     collect_phase042_static_runs,
 )
-from phase042_artifacts import PHASE042_STATIC_SUMMARY_SCHEMA_VERSION
-from revision_preflight import PreflightCostPreview, PreflightReport, PreflightTaskSummary
+from cognition.phase042_artifacts import PHASE042_STATIC_SUMMARY_SCHEMA_VERSION
+from cognition.revision_preflight import PreflightCostPreview, PreflightReport, PreflightTaskSummary
 
 
 def _write_json(path: Path, payload: object) -> Path:
@@ -36,9 +36,9 @@ def _write_phase042_pricing(path: Path) -> Path:
                 "  gemini:",
                 "    gemini-2.5-flash: {in_per_1k: 0.00030, out_per_1k: 0.0025}",
                 "    gemini-2.5-pro: {in_per_1k: 0.00125, out_per_1k: 0.0100}",
-                "  fireworks:",
-                "    accounts/fireworks/models/qwen3-vl-235b-a22b-instruct: "
-                "{in_per_1k: 0.00022, out_per_1k: 0.00088}",
+                "  openrouter:",
+                "    qwen/qwen3-vl-235b-a22b-instruct: "
+                "{in_per_1k: 0.00020, out_per_1k: 0.00088}",
                 "",
             ]
         ),
@@ -48,20 +48,17 @@ def _write_phase042_pricing(path: Path) -> Path:
 
 
 def _write_exp2_token_summaries(results_dir: Path) -> None:
-    for provider_model in PHASE042_PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in PHASE042_REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
-        summary_model = (
-            "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
-            if provider == "fireworks"
-            else ("gpt-5.1" if model.startswith("gpt-5.1_") else model)
-        )
+        summary_model = "gpt-5.1" if model.startswith("gpt-5.1_") else model
+        safe_model = model.replace("/", "_")
         _write_json(
             (
                 results_dir
                 / "exp2"
                 / provider
                 / model
-                / f"exp2_opt_{provider}_{model}_token_summary.json"
+                / f"exp2_opt_{provider}_{safe_model}_token_summary.json"
             ),
             {
                 "experiment": "exp2_opt",
@@ -138,7 +135,7 @@ def _write_phase042_static_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
         (task_root / image_name).write_bytes(b"fixture")
         _write_json(task_root / "ground_truth.json", {image_name: {"answer": task_type}})
     results_dir = tmp_path / "results"
-    for provider_model in PHASE042_PAPER_FACING_PROVIDER_MODELS:
+    for provider_model in PHASE042_REPORTED_PROVIDER_MODELS:
         provider, model = provider_model.split("/", 1)
         _write_json(results_dir / "exp2" / provider / model / "results.json", [])
     return selected_manifest, dataset_root, results_dir
@@ -183,7 +180,7 @@ def _fake_preflight_report(args) -> PreflightReport:
 
 def test_static_preflight_uses_full_paper_facing_matrix(tmp_path: Path, monkeypatch) -> None:
     selected_manifest, dataset_root, results_dir = _write_phase042_static_fixture(tmp_path)
-    output_root = tmp_path / "results/revision"
+    output_root = tmp_path / "results/local_runs"
     calls = []
 
     def record_report(args):
@@ -200,9 +197,9 @@ def test_static_preflight_uses_full_paper_facing_matrix(tmp_path: Path, monkeypa
         write_reports=True,
     )
 
-    assert [row.provider_model for row in rows] == PHASE042_PAPER_FACING_PROVIDER_MODELS
+    assert [row.provider_model for row in rows] == PHASE042_REPORTED_PROVIDER_MODELS
     assert [f"{call.provider}/{call.model}" for call in calls] == (
-        PHASE042_PAPER_FACING_PROVIDER_MODELS
+        PHASE042_REPORTED_PROVIDER_MODELS
     )
     assert (output_root / PHASE042_STATIC_SUPPLEMENTAL_RUN_ID / "preflight_reports").is_dir()
     assert (
@@ -220,7 +217,7 @@ def test_static_preflight_uses_only_three_new_categories(tmp_path: Path, monkeyp
         selected_manifest_path=selected_manifest,
         dataset_root=dataset_root,
         results_dir=results_dir,
-        output_root=tmp_path / "results/revision",
+        output_root=tmp_path / "results/local_runs",
     )
 
     assert {tuple(row.task_types) for row in rows} == {PHASE042_STATIC_TASK_TYPES}
@@ -241,7 +238,7 @@ def test_static_preflight_estimates_cost_from_token_pricing(
         selected_manifest_path=selected_manifest,
         dataset_root=dataset_root,
         results_dir=results_dir,
-        output_root=tmp_path / "results/revision",
+        output_root=tmp_path / "results/local_runs",
         pricing_file=pricing_file,
         write_reports=True,
     )
@@ -250,13 +247,13 @@ def test_static_preflight_estimates_cost_from_token_pricing(
     assert all(row.cost_preview["pricing_source"] == str(pricing_file) for row in rows)
     assert rows[0].cost_preview["pricing_model"] == "gpt-5"
     medium = next(row for row in rows if row.model == "gpt-5.1_medium")
-    fireworks = next(row for row in rows if row.provider == "fireworks")
+    openrouter = next(row for row in rows if row.provider == "openrouter")
     assert medium.cost_preview["pricing_model"] == "gpt-5.1"
-    assert fireworks.cost_preview["pricing_model"] == (
-        "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
+    assert openrouter.cost_preview["pricing_model"] == (
+        "qwen/qwen3-vl-235b-a22b-instruct"
     )
-    assert "unavailable_reason" not in fireworks.cost_preview
-    report_payload = json.loads(Path(fireworks.preflight_report_path).read_text(encoding="utf-8"))
+    assert "unavailable_reason" not in openrouter.cost_preview
+    report_payload = json.loads(Path(openrouter.preflight_report_path).read_text(encoding="utf-8"))
     assert report_payload["cost_preview"]["approximate_cost_usd"] > 0
 
 
@@ -273,7 +270,7 @@ def test_static_preflight_never_constructs_providers(tmp_path: Path, monkeypatch
         selected_manifest_path=selected_manifest,
         dataset_root=dataset_root,
         results_dir=results_dir,
-        output_root=tmp_path / "results/revision",
+        output_root=tmp_path / "results/local_runs",
     )
 
 
@@ -282,7 +279,7 @@ def test_collect_static_invokes_phase042_revision_contract(
     monkeypatch,
 ) -> None:
     selected_manifest, dataset_root, results_dir = _write_phase042_static_fixture(tmp_path)
-    output_root = tmp_path / "results/revision"
+    output_root = tmp_path / "results/local_runs"
     monkeypatch.setattr(revision_preflight, "build_report", _fake_preflight_report)
     build_phase042_static_preflight_matrix(
         selected_manifest_path=selected_manifest,
@@ -345,17 +342,15 @@ def test_collect_static_invokes_phase042_revision_contract(
     assert first_call["resume_revision_output"] is True
     medium_call = next(call for call in calls if call["revision_run_id"].endswith("gpt-5.1_medium"))
     none_call = next(call for call in calls if call["revision_run_id"].endswith("gpt-5.1_none"))
-    fireworks_call = next(call for call in calls if call["provider"] == "fireworks")
+    openrouter_call = next(call for call in calls if call["provider"] == "openrouter")
     assert medium_call["model"] == "gpt-5.1"
     assert medium_call["thinking"] is True
     assert medium_call["thinking_options"] == {"effort": "medium"}
     assert none_call["model"] == "gpt-5.1"
     assert none_call["thinking"] is False
-    assert fireworks_call["model"] == (
-        "accounts/fireworks/models/qwen3-vl-235b-a22b-instruct"
-    )
-    assert fireworks_call["thinking"] is False
-    assert fireworks_call["thinking_options"] is None
+    assert openrouter_call["model"] == "qwen/qwen3-vl-235b-a22b-instruct"
+    assert openrouter_call["thinking"] is False
+    assert openrouter_call["thinking_options"] is None
     payload = json.loads(
         (
             output_root
@@ -375,7 +370,7 @@ def test_static_pipeline_rejects_phase041_inputs(tmp_path: Path) -> None:
             selected_manifest_path=Path("expanded_captcha_data/phase04_1/manifest.json"),
             dataset_root=dataset_root,
             results_dir=results_dir,
-            output_root=tmp_path / "results/revision",
+            output_root=tmp_path / "results/local_runs",
         )
 
     with pytest.raises(ValueError, match="Phase 04.1"):
@@ -383,6 +378,6 @@ def test_static_pipeline_rejects_phase041_inputs(tmp_path: Path) -> None:
             selected_manifest_path=selected_manifest,
             dataset_root=dataset_root,
             results_dir=results_dir,
-            output_root=tmp_path / "results/revision",
+            output_root=tmp_path / "results/local_runs",
             run_id="phase04_1_static_supplemental",
         )

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from expanded_dataset_phase042 import (
+from cognition.expanded_dataset_phase042 import (
     PHASE042_ADAPTIVE_TASK_TYPES,
     PHASE042_TARGET_NEW_TASK_TYPES,
     load_phase042_selected_manifest,

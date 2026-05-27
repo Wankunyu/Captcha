@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-import run_eval
-from adaptive_artifacts import AdaptivePolicyState
-from revision_artifacts import utc_now
+from cognition import run_eval
+from cognition.adaptive_artifacts import AdaptivePolicyState
+from cognition.revision_artifacts import utc_now
 
-import adaptive_attacker
+from cognition import adaptive_attacker
 
 
 def _policy_state() -> AdaptivePolicyState:
