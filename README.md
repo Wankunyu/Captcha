@@ -8,6 +8,9 @@ paths are offline and dataset-based, local credentials are excluded, and
 local planning workflow files are not part of the submission surface. See
 `SUBMISSION.md` for clean-checkout setup, verification, and archive packaging.
 
+Code is provided for non-commercial research and reproducibility purposes. Data,
+documentation, and result artifacts are licensed under CC-BY-NC-4.0.
+
 ## Project Structure
 
 | Path | Purpose |
